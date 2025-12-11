@@ -1,146 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
-import {
-  Activity, Wind, Zap, Heart, BookOpen,
-  ArrowRight, Check, Calendar, Facebook,
-  Volume2, VolumeX, ChevronLeft,
-  AlertCircle, Copy, LogOut, BarChart, RefreshCw,
-  Brain, Eye, MessageCircle, Shield, Sun, Anchor, Hand, Disc, Target
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Activity, Wind, Zap, Heart, BookOpen, 
+  ArrowRight, Check, Calendar, Facebook, 
+  User, Lock, PlayCircle, Target, Battery,
+  Waves, Volume2, VolumeX, ChevronRight, ChevronLeft, X, AlertCircle, Copy, LogOut, BarChart, RefreshCw,
+  Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Clock
 } from 'lucide-react';
-
-// --- TYPES ---
-declare global {
-  interface Window {
-    webkitAudioContext: typeof AudioContext;
-  }
-}
-
-interface Goal {
-  outcome: string;
-  action: string;
-  when: string;
-}
-
-interface NavProps {
-  title: string;
-  subtitle: string;
-  onBack?: () => void;
-  isDashboard?: boolean;
-  soundEnabled: boolean;
-  toggleSound: () => void;
-  resetApp?: () => void;
-  progress?: number;
-}
-
-interface IdentityProps {
-  userName: string;
-  setUserName: (name: string) => void;
-  onComplete: () => void;
-}
-
-interface HorizonProps {
-  userName: string;
-  sessionCount: number;
-  stressor: string;
-  setStressor: (val: string) => void;
-  stressLevel: number;
-  setStressLevel: (val: number) => void;
-  energyLevel: number;
-  setEnergyLevel: (val: number) => void;
-  isBurnout: boolean;
-  setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
-  resetApp: () => void;
-}
-
-interface VesselProps {
-  somaticZones: string[];
-  setSomaticZones: (zones: string[]) => void;
-  setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
-}
-
-interface PartsWorkProps {
-  selectedPart: string;
-  sensation: string;
-  setSensation: (val: string) => void;
-  protection: string;
-  setProtection: (val: string) => void;
-  expandingBelief: string;
-  setExpandingBelief: (val: string) => void;
-  partsStep: string; // 'experience' | 'message' | 'channel'
-  setPartsStep: (val: string) => void;
-  setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
-}
-
-interface LaserCoachingProps {
-  stressor: string;
-  setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
-  setGoal: React.Dispatch<React.SetStateAction<Goal>>;
-  setExpandingBelief: (val: string) => void;
-}
-
-interface PerspectiveProps {
-  pressure: number;
-  setPressure: (val: number) => void;
-  ability: number;
-  setAbility: (val: number) => void;
-  setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
-}
-
-interface CrossroadsProps {
-  setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
-  stressLevel: number;
-  energyLevel: number;
-}
-
-interface BreathProps {
-  breathing: boolean;
-  setBreathing: (val: boolean) => void;
-  breathCount: number;
-  setBreathCount: React.Dispatch<React.SetStateAction<number>>;
-  setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
-}
-
-interface AlchemyProps {
-  setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
-}
-
-interface MoltProps {
-  goal: Goal;
-  setGoal: React.Dispatch<React.SetStateAction<Goal>>;
-  goalStep: number;
-  setGoalStep: (step: number) => void;
-  isLocked: boolean;
-  setIsLocked: (val: boolean) => void;
-  expandingBelief: string;
-  stressor: string;
-  sessionCount: number;
-  completeSession: () => void;
-  resetApp: () => void;
-  setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
-  somaticZones: string[];
-}
-
-interface EnergyAnalyzerProps {
-  setView: (view: string) => void;
-}
-
 
 // --- STYLES & FONTS ---
 const FontStyles = () => (
@@ -222,8 +87,8 @@ const FontStyles = () => (
 
 // --- SHARED COMPONENTS ---
 
-const Atmosphere = ({ bgState }: { bgState: string }) => {
-  const themes: Record<string, string> = {
+const Atmosphere = ({ bgState }) => {
+  const themes = {
     neutral: "from-[#0f172a] via-[#1e1b4b] to-[#0f172a]", 
     friction: "from-[#2a0a12] via-[#1a0505] to-[#2a0a12]", 
     flow: "from-[#042f2e] via-[#022c22] to-[#042f2e]",     
@@ -240,7 +105,7 @@ const Atmosphere = ({ bgState }: { bgState: string }) => {
   );
 };
 
-const Nav = ({ title, subtitle, onBack, isDashboard, soundEnabled, toggleSound, resetApp, progress }: NavProps) => (
+const Nav = ({ title, subtitle, onBack, isDashboard, soundEnabled, toggleSound, resetApp, progress }) => (
   <div className="flex flex-col mb-4 pt-4 animate-enter shrink-0 relative z-50">
     <div className="flex justify-between items-start">
       <div>
@@ -284,7 +149,37 @@ const Nav = ({ title, subtitle, onBack, isDashboard, soundEnabled, toggleSound, 
 
 // --- VIEW COMPONENTS ---
 
-const Identity = ({ userName, setUserName, onComplete }: IdentityProps) => (
+const Welcome = ({ onEnter }) => (
+  <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50">
+    <div className="mb-10 relative">
+      <div className="absolute inset-0 bg-teal-500/10 blur-xl rounded-full"></div>
+      <Activity size={56} className="text-teal-200/80 relative z-10" strokeWidth={0.8} />
+    </div>
+    
+    <div className="space-y-6 max-w-sm">
+      <h2 className="font-sans text-[10px] font-bold text-white/30 uppercase tracking-[0.3em] animate-enter">Architecture for the Soul</h2>
+      
+      <h1 className="font-serif text-5xl text-white italic tracking-wide leading-tight animate-enter delay-100">
+        Alchemy for the <br/> Modern Mind.
+      </h1>
+      
+      <p className="font-sans text-sm text-white/50 leading-relaxed max-w-[280px] mx-auto animate-enter delay-200">
+        You are not here to fix yourself. You are here to transmute friction into fuel.
+        <br/><br/>
+        In the next few minutes, we will locate the block, listen to its wisdom, and turn it into power.
+      </p>
+    </div>
+    
+    <button 
+      onClick={onEnter}
+      className="mt-12 px-8 py-4 rounded-full bg-white/10 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-white/20 hover:scale-105 transition-all animate-enter delay-300 border border-white/5"
+    >
+      Enter the Crucible
+    </button>
+  </div>
+);
+
+const Identity = ({ userName, setUserName, onComplete }) => (
   <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50">
     <div className="mb-8 relative">
       <div className="absolute inset-0 bg-white/10 blur-xl rounded-full"></div>
@@ -313,7 +208,7 @@ const Identity = ({ userName, setUserName, onComplete }: IdentityProps) => (
   </div>
 );
 
-const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }: HorizonProps) => (
+const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => (
   <div className="h-full flex flex-col">
     <Nav 
         title={`Hello, ${userName || 'Traveler'}`} 
@@ -398,7 +293,7 @@ const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, s
   </div>
 );
 
-const Vessel = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnabled }: VesselProps) => {
+const Vessel = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnabled }) => {
   const zones = [
     { id: 'Head', label: 'Head', sub: 'Racing thoughts • Fog', icon: Brain },
     { id: 'Eyes', label: 'Eyes', sub: 'Strain • Tiredness', icon: Eye },
@@ -410,7 +305,7 @@ const Vessel = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnab
     { id: 'Hands', label: 'Hands', sub: 'Grasping • Fighting', icon: Hand },
   ];
   
-  const selectZone = (id: string) => {
+  const selectZone = (id) => {
     setSomaticZones([id]); 
   };
 
@@ -459,7 +354,7 @@ const Vessel = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnab
   );
 };
 
-const PartsWork = ({ selectedPart, sensation, setSensation, protection, setProtection, expandingBelief, setExpandingBelief, partsStep, setPartsStep, setView, toggleSound, soundEnabled }: PartsWorkProps) => {
+const PartsWork = ({ selectedPart, sensation, setSensation, protection, setProtection, expandingBelief, setExpandingBelief, partsStep, setPartsStep, setView, toggleSound, soundEnabled }) => {
   
   const commonSensations = ["Tightness", "Heat", "Heaviness", "Empty", "Buzzing", "Numbness"];
   const commonProtections = ["Protecting me from failure", "Keeping me safe", "Stopping me from getting hurt", "Trying to control the uncontrollable"];
@@ -593,7 +488,7 @@ const PartsWork = ({ selectedPart, sensation, setSensation, protection, setProte
   );
 };
 
-const LaserCoaching = ({ stressor, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief }: LaserCoachingProps) => {
+const LaserCoaching = ({ stressor, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief }) => {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({ topic: '', result: '', permission: '', action: '' });
   
@@ -637,15 +532,15 @@ const LaserCoaching = ({ stressor, setView, toggleSound, soundEnabled, setGoal, 
                key={current.id}
                className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-teal-500/50 transition-colors mb-8 placeholder:text-white/10 text-lg"
                placeholder={current.ph}
-               value={answers[current.id as keyof typeof answers]}
+               value={answers[current.id]}
                onChange={e => setAnswers({...answers, [current.id]: e.target.value})}
-               onKeyDown={e => e.key === 'Enter' && answers[current.id as keyof typeof answers] && handleNext()}
+               onKeyDown={e => e.key === 'Enter' && answers[current.id] && handleNext()}
              />
              
              <div className="flex justify-end">
                <button 
                  onClick={handleNext}
-                 disabled={!answers[current.id as keyof typeof answers]}
+                 disabled={!answers[current.id]}
                  className="px-8 py-3 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all disabled:opacity-50"
                >
                  {step === 3 ? 'Lock It In' : 'Next'}
@@ -663,7 +558,7 @@ const LaserCoaching = ({ stressor, setView, toggleSound, soundEnabled, setGoal, 
   );
 };
 
-const Perspective = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }: PerspectiveProps) => {
+const Perspective = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }) => {
   const flowState = ability >= pressure;
   return (
     <div className="h-full flex flex-col">
@@ -722,9 +617,9 @@ const Perspective = ({ pressure, setPressure, ability, setAbility, setView, togg
   );
 }
 
-const Crossroads = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel }: CrossroadsProps) => {
+const Crossroads = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel }) => {
   // INTELLIGENT CROSSROADS LOGIC
-  const recommendStillness = stressLevel > 70 && energyLevel < 40;
+  const recommendStillness = parseInt(stressLevel) > 70 && parseInt(energyLevel) < 40;
 
   return (
     <div className="h-full flex flex-col justify-center animate-enter">
@@ -767,7 +662,7 @@ const Crossroads = ({ setView, toggleSound, soundEnabled, stressLevel, energyLev
   );
 };
 
-const Breath = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }: BreathProps) => {
+const Breath = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }) => {
   const phase = breathCount < 4 ? "Inhale" : breathCount < 8 ? "Hold" : "Exhale";
   // Smooth 4-4-8 rhythm scaling
   const scale = breathCount < 4 
@@ -811,7 +706,7 @@ const Breath = ({ breathing, setBreathing, breathCount, setBreathCount, setView,
   );
 };
 
-const Alchemy = ({ setView, toggleSound, soundEnabled }: AlchemyProps) => (
+const Alchemy = ({ setView, toggleSound, soundEnabled }) => (
   <div className="h-full flex flex-col animate-enter">
     <Nav title="Vitality Alchemy" subtitle="Select Chemistry" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
     <div className="flex-1 space-y-4 overflow-y-auto hide-scrollbar pb-4">
@@ -820,7 +715,7 @@ const Alchemy = ({ setView, toggleSound, soundEnabled }: AlchemyProps) => (
           { id: 'connect', label: 'Connection', sub: 'Oxytocin', desc: 'Soften defense. Open heart.', icon: Heart, color: 'text-rose-200' },
           { id: 'learn', label: 'Expansion', sub: 'DHEA', desc: 'Molt the shell. Build new paths.', icon: BookOpen, color: 'text-indigo-200' },
       ].map(i => (
-          <button
+          <button 
               key={i.id}
               onClick={() => setView('molt')}
               className="w-full p-6 rounded-[24px] glass-panel text-left hover:bg-white/5 transition-all group"
@@ -839,10 +734,10 @@ const Alchemy = ({ setView, toggleSound, soundEnabled }: AlchemyProps) => (
 );
 
 // --- ENERGY ANALYZER ---
-const EnergyAnalyzer = ({ setView }: EnergyAnalyzerProps) => {
+const EnergyAnalyzer = ({ setView }) => {
     const [step, setStep] = useState(0);
     const [score, setScore] = useState(0);
-    const [result, setResult] = useState<number | null>(null);
+    const [result, setResult] = useState(null);
 
     const questions = [
         {
@@ -874,7 +769,7 @@ const EnergyAnalyzer = ({ setView }: EnergyAnalyzerProps) => {
         }
     ];
 
-    const handleAnswer = (val: number) => {
+    const handleAnswer = (val) => {
         const newScore = score + val;
         if (step < 2) {
             setScore(newScore);
@@ -885,8 +780,8 @@ const EnergyAnalyzer = ({ setView }: EnergyAnalyzerProps) => {
         }
     };
 
-    const getResultText = (level: number) => {
-        const levels: Record<number, {title: string, desc: string}> = {
+    const getResultText = (level) => {
+        const levels = {
             1: { title: "Level 1: The Filter", desc: "You are identifying as the effect, not the cause. Coaching can help you regain agency." },
             2: { title: "Level 2: The Fighter", desc: "You have high energy, but it's fueled by conflict. We can transmute this into construction." },
             3: { title: "Level 3: The Rationalizer", desc: "You are coping well and taking responsibility. The next step is accessing intuition." },
@@ -934,7 +829,7 @@ const EnergyAnalyzer = ({ setView }: EnergyAnalyzerProps) => {
     )
 };
 
-const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones }: MoltProps) => {
+const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones }) => {
   const steps = [
       { id: 'outcome', q: 'The Goal', ph: 'What is the desired outcome?' },
       { id: 'action', q: 'The Action', ph: 'What is the single step?' },
@@ -983,9 +878,6 @@ const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, exp
        </div>
 
        <div className="flex-1 overflow-y-auto hide-scrollbar pb-20 animate-enter delay-100">
-          
-          {/* GENIUS UPGRADE: VISCERAL FLASH EFFECT */}
-          {/* We wrap the content in a container that flashes when isLocked becomes true */}
           <div className={`glass-panel p-8 rounded-[32px] mb-6 relative overflow-hidden transition-all duration-1000 ${isLocked ? 'animate-flash' : ''}`}>
               {!isLocked ? (
                   <div className="animate-fade-in relative z-10">
@@ -1018,11 +910,11 @@ const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, exp
                           <input 
                              autoFocus
                              className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-teal-500/50 transition-colors mb-6 placeholder:text-white/10"
-                             placeholder={current.ph!}
-                             value={(goal as any)[current.id] || ''}
+                             placeholder={current.ph}
+                             value={goal[current.id] || ''}
                              onChange={e => setGoal({...goal, [current.id]: e.target.value})}
                              onKeyDown={e => {
-                                 if (e.key === 'Enter' && (goal as any)[current.id]) {
+                                 if (e.key === 'Enter' && goal[current.id]) {
                                      if (goalStep < 2) setGoalStep(goalStep + 1);
                                      else setIsLocked(true);
                                  }
@@ -1031,7 +923,7 @@ const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, exp
                           <div className="flex gap-3">
                                {goalStep > 0 && <button onClick={() => setGoalStep(goalStep - 1)} className="px-4 py-3 rounded-xl border border-white/10 text-white/40">Back</button>}
                                <button 
-                                  disabled={!(goal as any)[current.id]}
+                                  disabled={!goal[current.id]}
                                   onClick={() => { if (goalStep < 2) setGoalStep(goalStep + 1); else setIsLocked(true); }}
                                   className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold font-sans text-xs uppercase tracking-widest disabled:opacity-50"
                                >
@@ -1106,40 +998,41 @@ const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, exp
 };
   
 // --- MAIN RENDER ---
-const AdaptivEthereal: React.FC = () => {
+const AdaptivEthereal = () => {
   // --- STATE ---
-  const [view, setView] = useState<string>('profile'); 
-  const [bgState, setBgState] = useState<string>('neutral'); 
+  const [view, setView] = useState('welcome'); // Starts at welcome
+  const [bgState, setBgState] = useState('neutral'); 
   
   // User & Data
-  const [userName, setUserName] = useState<string>('');
-  const [sessionCount, setSessionCount] = useState<number>(0);
-  const [stressor, setStressor] = useState<string>(''); 
-  const [stressLevel, setStressLevel] = useState<number>(50);
-  const [energyLevel, setEnergyLevel] = useState<number>(50);
-  const [isBurnout, setIsBurnout] = useState<boolean>(false);
+  const [userName, setUserName] = useState('');
+  const [sessionCount, setSessionCount] = useState(0);
+  const [stressor, setStressor] = useState(''); 
+  const [stressLevel, setStressLevel] = useState(50);
+  const [energyLevel, setEnergyLevel] = useState(50);
+  const [isBurnout, setIsBurnout] = useState(false);
   
   // Protocol State
-  const [somaticZones, setSomaticZones] = useState<string[]>([]);
-  const [partsStep, setPartsStep] = useState<string>('experience'); // experience, message, channel
-  const [sensation, setSensation] = useState<string>('');
-  const [protection, setProtection] = useState<string>('');
-  const [expandingBelief, setExpandingBelief] = useState<string>('');
+  const [somaticZones, setSomaticZones] = useState([]);
+  const [partsStep, setPartsStep] = useState('experience'); // experience, message, channel
+  const [sensation, setSensation] = useState('');
+  const [protection, setProtection] = useState('');
+  const [expandingBelief, setExpandingBelief] = useState('');
   
-  const [pressure, setPressure] = useState<number>(50);
-  const [ability, setAbility] = useState<number>(50);
+  const [pressure, setPressure] = useState(50);
+  const [ability, setAbility] = useState(50);
+  const [pathway, setPathway] = useState(null);
   
   // Goals & Tools
-  const [goal, setGoal] = useState<Goal>({ outcome: '', action: '', when: '' });
-  const [goalStep, setGoalStep] = useState<number>(0);
-  const [isLocked, setIsLocked] = useState<boolean>(false);
-  const [breathing, setBreathing] = useState<boolean>(false);
-  const [breathCount, setBreathCount] = useState<number>(0);
+  const [goal, setGoal] = useState({ outcome: '', action: '', when: '' });
+  const [goalStep, setGoalStep] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
+  const [breathing, setBreathing] = useState(false);
+  const [breathCount, setBreathCount] = useState(0);
   
   // Audio
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const noiseNodeRef = useRef<ScriptProcessorNode | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const audioContextRef = useRef(null);
+  const noiseNodeRef = useRef(null);
 
   // --- INITIALIZATION ---
   useEffect(() => {
@@ -1189,7 +1082,7 @@ const AdaptivEthereal: React.FC = () => {
     setGoal({ outcome: '', action: '', when: '' });
     setIsLocked(false);
     setPartsStep('experience');
-    setView('profile');
+    setView('welcome');
   };
 
   // --- AUDIO ENGINE ---
@@ -1201,12 +1094,11 @@ const AdaptivEthereal: React.FC = () => {
       }
       setSoundEnabled(false);
     } else {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
       const ctx = new AudioContext();
       const bufferSize = 4096;
       const brownNoise = ctx.createScriptProcessor(bufferSize, 1, 1);
       
-      let lastOut = 0;
       brownNoise.onaudioprocess = (e) => {
         const output = e.outputBuffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) {
@@ -1217,6 +1109,7 @@ const AdaptivEthereal: React.FC = () => {
         }
       };
       
+      let lastOut = 0;
       const gainNode = ctx.createGain();
       gainNode.gain.value = 0.05; 
       
@@ -1256,6 +1149,7 @@ const AdaptivEthereal: React.FC = () => {
         <Atmosphere bgState={bgState} />
         <div className="w-full max-w-md h-full relative z-10 p-6">
            {view === 'loading' && <div />}
+           {view === 'welcome' && <Welcome onEnter={() => setView('profile')} />}
            {view === 'profile' && <Identity userName={userName} setUserName={setUserName} onComplete={saveProfile} />}
            {view === 'dashboard' && <Horizon 
               userName={userName} sessionCount={sessionCount} 
@@ -1265,15 +1159,7 @@ const AdaptivEthereal: React.FC = () => {
               isBurnout={isBurnout} setView={setView} 
               toggleSound={toggleSound} soundEnabled={soundEnabled} resetApp={resetApp}
            />}
-           {view === 'preservation' && (
-             <div className="h-full flex flex-col justify-center animate-enter text-center px-4">
-               <h1 className="font-serif text-4xl text-orange-100 italic mb-4">Preservation Mode</h1>
-               <p className="font-sans text-sm text-orange-200/60 mb-8 leading-relaxed">Rest and recovery pathway. Take time to restore your energy.</p>
-               <button onClick={() => setView('dashboard')} className="w-full py-5 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all">
-                 Return to Horizon
-               </button>
-             </div>
-           )}
+           {view === 'preservation' && <Preservation setView={setView} setPathway={setPathway} setExpandingBelief={setExpandingBelief} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'somatic' && <Vessel somaticZones={somaticZones} setSomaticZones={setSomaticZones} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            
            {/* Replaced Narrative with PartsWork */}
@@ -1290,7 +1176,7 @@ const AdaptivEthereal: React.FC = () => {
            {view === 'lens' && <Perspective pressure={pressure} setPressure={setPressure} ability={ability} setAbility={setAbility} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'fork' && <Crossroads stressLevel={stressLevel} energyLevel={energyLevel} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'regulate' && <Breath breathing={breathing} setBreathing={setBreathing} breathCount={breathCount} setBreathCount={setBreathCount} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
-           {view === 'alchemy' && <Alchemy setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
+           {view === 'alchemy' && <Alchemy setPathway={setPathway} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'molt' && <Molt goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} isLocked={isLocked} setIsLocked={setIsLocked} expandingBelief={expandingBelief} stressor={stressor} sessionCount={sessionCount} completeSession={completeSession} resetApp={resetApp} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} somaticZones={somaticZones} />}
            {view === 'energy' && <EnergyAnalyzer setView={setView} />}
         </div>
