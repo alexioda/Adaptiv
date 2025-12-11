@@ -1,11 +1,154 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Activity, Wind, Zap, Heart, BookOpen, 
   ArrowRight, Check, Calendar, Facebook, 
-  User, Lock, PlayCircle, Target, Battery,
-  Waves, Volume2, VolumeX, ChevronRight, ChevronLeft, X, AlertCircle, Copy, LogOut, BarChart, RefreshCw,
-  Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Clock
+  Battery, Volume2, VolumeX, ChevronLeft, 
+  AlertCircle, Copy, LogOut, BarChart, RefreshCw,
+  Brain, Eye, MessageCircle, Shield, Sun, Anchor, Hand, Disc, Target
 } from 'lucide-react';
+
+// --- TYPES ---
+declare global {
+  interface Window {
+    webkitAudioContext: typeof AudioContext;
+  }
+}
+
+interface Goal {
+  outcome: string;
+  action: string;
+  when: string;
+}
+
+interface NavProps {
+  title: string;
+  subtitle: string;
+  onBack?: () => void;
+  isDashboard?: boolean;
+  soundEnabled: boolean;
+  toggleSound: () => void;
+  resetApp?: () => void;
+  progress?: number;
+}
+
+interface IdentityProps {
+  userName: string;
+  setUserName: (name: string) => void;
+  onComplete: () => void;
+}
+
+interface HorizonProps {
+  userName: string;
+  sessionCount: number;
+  stressor: string;
+  setStressor: (val: string) => void;
+  stressLevel: number;
+  setStressLevel: (val: number) => void;
+  energyLevel: number;
+  setEnergyLevel: (val: number) => void;
+  isBurnout: boolean;
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+  resetApp: () => void;
+}
+
+interface VesselProps {
+  somaticZones: string[];
+  setSomaticZones: (zones: string[]) => void;
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+}
+
+interface PartsWorkProps {
+  selectedPart: string;
+  sensation: string;
+  setSensation: (val: string) => void;
+  protection: string;
+  setProtection: (val: string) => void;
+  expandingBelief: string;
+  setExpandingBelief: (val: string) => void;
+  partsStep: string; // 'experience' | 'message' | 'channel'
+  setPartsStep: (val: string) => void;
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+}
+
+interface LaserCoachingProps {
+  stressor: string;
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+  setGoal: React.Dispatch<React.SetStateAction<Goal>>;
+  setExpandingBelief: (val: string) => void;
+}
+
+interface PerspectiveProps {
+  pressure: number;
+  setPressure: (val: number) => void;
+  ability: number;
+  setAbility: (val: number) => void;
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+}
+
+interface CrossroadsProps {
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+  stressLevel: number;
+  energyLevel: number;
+}
+
+interface BreathProps {
+  breathing: boolean;
+  setBreathing: (val: boolean) => void;
+  breathCount: number;
+  setBreathCount: React.Dispatch<React.SetStateAction<number>>;
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+}
+
+interface AlchemyProps {
+  setPathway: (path: string | null) => void;
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+}
+
+interface MoltProps {
+  goal: Goal;
+  setGoal: React.Dispatch<React.SetStateAction<Goal>>;
+  goalStep: number;
+  setGoalStep: (step: number) => void;
+  isLocked: boolean;
+  setIsLocked: (val: boolean) => void;
+  expandingBelief: string;
+  stressor: string;
+  sessionCount: number;
+  completeSession: () => void;
+  resetApp: () => void;
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+  somaticZones: string[];
+}
+
+interface EnergyAnalyzerProps {
+  setView: (view: string) => void;
+}
+
+interface PreservationProps {
+  setView: (view: string) => void;
+  setPathway: (path: string | null) => void;
+  setExpandingBelief: (val: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+}
 
 // --- STYLES & FONTS ---
 const FontStyles = () => (
@@ -36,14 +179,12 @@ const FontStyles = () => (
       50% { transform: scale(1.1); opacity: 0.8; }
     }
 
-    /* NEW: Subconscious Pulse for Global Regulation (6s rhythm) */
     .animate-subconscious { animation: subconscious 6s ease-in-out infinite; }
     @keyframes subconscious {
       0%, 100% { transform: scale(1); opacity: 0.4; }
       50% { transform: scale(1.05); opacity: 0.6; }
     }
 
-    /* NEW: Visceral Flash for Integration */
     .animate-flash { animation: flashRelease 1.5s ease-out forwards; }
     @keyframes flashRelease {
       0% { background-color: rgba(255, 255, 255, 0.8); }
@@ -89,8 +230,8 @@ const FontStyles = () => (
 
 // --- SHARED COMPONENTS ---
 
-const Atmosphere = ({ bgState }) => {
-  const themes = {
+const Atmosphere = ({ bgState }: { bgState: string }) => {
+  const themes: Record<string, string> = {
     neutral: "from-[#0f172a] via-[#1e1b4b] to-[#0f172a]", 
     friction: "from-[#2a0a12] via-[#1a0505] to-[#2a0a12]", 
     flow: "from-[#042f2e] via-[#022c22] to-[#042f2e]",     
@@ -99,19 +240,15 @@ const Atmosphere = ({ bgState }) => {
   };
 
   return (
-    <div className={`absolute inset-0 bg-gradient-to-b transition-colors duration-[3000ms] ${themes[bgState]}`}>
+    <div className={`absolute inset-0 bg-gradient-to-b transition-colors duration-[3000ms] ${themes[bgState] || themes.neutral}`}>
       <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
-      
-      {/* GENIUS UPGRADE: The Subconscious Pulse. 
-          Instead of random blobs, we now have a central "heart" that beats slowly. 
-          This regulates the user's nervous system visually. */}
       <div className="absolute top-[10%] left-[10%] w-[80%] h-[60%] bg-indigo-500/10 rounded-full blur-[100px] animate-subconscious"></div>
       <div className="absolute bottom-[-10%] right-[10%] w-[50%] h-[50%] bg-teal-500/10 rounded-full blur-[120px] animate-subconscious" style={{ animationDelay: '3s' }}></div>
     </div>
   );
 };
 
-const Nav = ({ title, subtitle, onBack, isDashboard, soundEnabled, toggleSound, resetApp, progress }) => (
+const Nav = ({ title, subtitle, onBack, isDashboard, soundEnabled, toggleSound, resetApp, progress }: NavProps) => (
   <div className="flex flex-col mb-4 pt-4 animate-enter shrink-0 relative z-50">
     <div className="flex justify-between items-start">
       <div>
@@ -142,21 +279,20 @@ const Nav = ({ title, subtitle, onBack, isDashboard, soundEnabled, toggleSound, 
       </div>
     </div>
     
-    {/* GENIUS UPGRADE: The Golden Thread Progress Line */}
-    {progress > 0 && (
+    {progress && progress > 0 ? (
       <div className="w-full h-[2px] bg-white/5 mt-4 rounded-full overflow-hidden">
         <div 
           className="h-full bg-gradient-to-r from-teal-500 to-indigo-500 transition-all duration-1000 ease-out" 
           style={{ width: `${progress}%` }}
         ></div>
       </div>
-    )}
+    ) : null}
   </div>
 );
 
 // --- VIEW COMPONENTS ---
 
-const Identity = ({ userName, setUserName, onComplete }) => (
+const Identity = ({ userName, setUserName, onComplete }: IdentityProps) => (
   <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50">
     <div className="mb-8 relative">
       <div className="absolute inset-0 bg-white/10 blur-xl rounded-full"></div>
@@ -185,7 +321,7 @@ const Identity = ({ userName, setUserName, onComplete }) => (
   </div>
 );
 
-const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => (
+const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }: HorizonProps) => (
   <div className="h-full flex flex-col">
     <Nav 
         title={`Hello, ${userName || 'Traveler'}`} 
@@ -215,7 +351,7 @@ const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, s
               <span>{stressLevel}%</span>
             </div>
             <input 
-              type="range" min="0" max="100" value={stressLevel} onChange={(e) => setStressLevel(e.target.value)}
+              type="range" min="0" max="100" value={stressLevel} onChange={(e) => setStressLevel(Number(e.target.value))}
               className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer"
             />
           </div>
@@ -225,7 +361,7 @@ const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, s
               <span>{energyLevel}%</span>
             </div>
             <input 
-              type="range" min="0" max="100" value={energyLevel} onChange={(e) => setEnergyLevel(e.target.value)}
+              type="range" min="0" max="100" value={energyLevel} onChange={(e) => setEnergyLevel(Number(e.target.value))}
               className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer"
             />
           </div>
@@ -270,7 +406,7 @@ const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, s
   </div>
 );
 
-const Vessel = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnabled }) => {
+const Vessel = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnabled }: VesselProps) => {
   const zones = [
     { id: 'Head', label: 'Head', sub: 'Racing thoughts • Fog', icon: Brain },
     { id: 'Eyes', label: 'Eyes', sub: 'Strain • Tiredness', icon: Eye },
@@ -282,7 +418,7 @@ const Vessel = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnab
     { id: 'Hands', label: 'Hands', sub: 'Grasping • Fighting', icon: Hand },
   ];
   
-  const selectZone = (id) => {
+  const selectZone = (id: string) => {
     setSomaticZones([id]); 
   };
 
@@ -331,7 +467,7 @@ const Vessel = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnab
   );
 };
 
-const PartsWork = ({ selectedPart, sensation, setSensation, protection, setProtection, expandingBelief, setExpandingBelief, partsStep, setPartsStep, setView, toggleSound, soundEnabled }) => {
+const PartsWork = ({ selectedPart, sensation, setSensation, protection, setProtection, expandingBelief, setExpandingBelief, partsStep, setPartsStep, setView, toggleSound, soundEnabled }: PartsWorkProps) => {
   
   const commonSensations = ["Tightness", "Heat", "Heaviness", "Empty", "Buzzing", "Numbness"];
   const commonProtections = ["Protecting me from failure", "Keeping me safe", "Stopping me from getting hurt", "Trying to control the uncontrollable"];
@@ -365,7 +501,7 @@ const PartsWork = ({ selectedPart, sensation, setSensation, protection, setProte
               onKeyDown={e => e.key === 'Enter' && setPartsStep('message')}
             />
             
-            {/* FIXED BUTTON VISIBILITY */}
+            {/* FIXED BUTTON VISIBILITY: Added bg-white/5 and text-white/90 */}
             <div className="flex flex-wrap justify-center gap-2 mb-8">
                {commonSensations.map(s => (
                  <button key={s} onClick={() => setSensation(s)} className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-[10px] uppercase tracking-wider text-white/90 hover:bg-white/20 hover:text-white transition-all shadow-sm">
@@ -465,7 +601,7 @@ const PartsWork = ({ selectedPart, sensation, setSensation, protection, setProte
   );
 };
 
-const LaserCoaching = ({ stressor, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief }) => {
+const LaserCoaching = ({ stressor, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief }: LaserCoachingProps) => {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({ topic: '', result: '', permission: '', action: '' });
   
@@ -509,15 +645,15 @@ const LaserCoaching = ({ stressor, setView, toggleSound, soundEnabled, setGoal, 
                key={current.id}
                className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-teal-500/50 transition-colors mb-8 placeholder:text-white/10 text-lg"
                placeholder={current.ph}
-               value={answers[current.id]}
+               value={answers[current.id as keyof typeof answers]}
                onChange={e => setAnswers({...answers, [current.id]: e.target.value})}
-               onKeyDown={e => e.key === 'Enter' && answers[current.id] && handleNext()}
+               onKeyDown={e => e.key === 'Enter' && answers[current.id as keyof typeof answers] && handleNext()}
              />
              
              <div className="flex justify-end">
                <button 
                  onClick={handleNext}
-                 disabled={!answers[current.id]}
+                 disabled={!answers[current.id as keyof typeof answers]}
                  className="px-8 py-3 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all disabled:opacity-50"
                >
                  {step === 3 ? 'Lock It In' : 'Next'}
@@ -535,7 +671,7 @@ const LaserCoaching = ({ stressor, setView, toggleSound, soundEnabled, setGoal, 
   );
 };
 
-const Perspective = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }) => {
+const Perspective = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }: PerspectiveProps) => {
   const flowState = ability >= pressure;
   return (
     <div className="h-full flex flex-col">
@@ -567,7 +703,7 @@ const Perspective = ({ pressure, setPressure, ability, setAbility, setView, togg
                 <span>{pressure}%</span>
               </div>
               <input 
-                type="range" min="0" max="100" value={pressure} onChange={(e) => setPressure(e.target.value)} 
+                type="range" min="0" max="100" value={pressure} onChange={(e) => setPressure(Number(e.target.value))} 
                 className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer"
               />
           </div>
@@ -577,7 +713,7 @@ const Perspective = ({ pressure, setPressure, ability, setAbility, setView, togg
                 <span>{ability}%</span>
               </div>
               <input 
-                type="range" min="0" max="100" value={ability} onChange={(e) => setAbility(e.target.value)} 
+                type="range" min="0" max="100" value={ability} onChange={(e) => setAbility(Number(e.target.value))} 
                 className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer"
               />
           </div>
@@ -594,9 +730,9 @@ const Perspective = ({ pressure, setPressure, ability, setAbility, setView, togg
   );
 }
 
-const Crossroads = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel }) => {
+const Crossroads = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel }: CrossroadsProps) => {
   // INTELLIGENT CROSSROADS LOGIC
-  const recommendStillness = parseInt(stressLevel) > 70 && parseInt(energyLevel) < 40;
+  const recommendStillness = stressLevel > 70 && energyLevel < 40;
 
   return (
     <div className="h-full flex flex-col justify-center animate-enter">
@@ -639,7 +775,7 @@ const Crossroads = ({ setView, toggleSound, soundEnabled, stressLevel, energyLev
   );
 };
 
-const Breath = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }) => {
+const Breath = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }: BreathProps) => {
   const phase = breathCount < 4 ? "Inhale" : breathCount < 8 ? "Hold" : "Exhale";
   // Smooth 4-4-8 rhythm scaling
   const scale = breathCount < 4 
@@ -683,7 +819,7 @@ const Breath = ({ breathing, setBreathing, breathCount, setBreathCount, setView,
   );
 };
 
-const Alchemy = ({ setPathway, setView, toggleSound, soundEnabled }) => (
+const Alchemy = ({ setPathway, setView, toggleSound, soundEnabled }: AlchemyProps) => (
   <div className="h-full flex flex-col animate-enter">
     <Nav title="Vitality Alchemy" subtitle="Select Chemistry" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
     <div className="flex-1 space-y-4 overflow-y-auto hide-scrollbar pb-4">
@@ -711,10 +847,10 @@ const Alchemy = ({ setPathway, setView, toggleSound, soundEnabled }) => (
 );
 
 // --- ENERGY ANALYZER ---
-const EnergyAnalyzer = ({ setView }) => {
+const EnergyAnalyzer = ({ setView }: EnergyAnalyzerProps) => {
     const [step, setStep] = useState(0);
     const [score, setScore] = useState(0);
-    const [result, setResult] = useState(null);
+    const [result, setResult] = useState<number | null>(null);
 
     const questions = [
         {
@@ -746,7 +882,7 @@ const EnergyAnalyzer = ({ setView }) => {
         }
     ];
 
-    const handleAnswer = (val) => {
+    const handleAnswer = (val: number) => {
         const newScore = score + val;
         if (step < 2) {
             setScore(newScore);
@@ -757,8 +893,8 @@ const EnergyAnalyzer = ({ setView }) => {
         }
     };
 
-    const getResultText = (level) => {
-        const levels = {
+    const getResultText = (level: number) => {
+        const levels: Record<number, {title: string, desc: string}> = {
             1: { title: "Level 1: The Filter", desc: "You are identifying as the effect, not the cause. Coaching can help you regain agency." },
             2: { title: "Level 2: The Fighter", desc: "You have high energy, but it's fueled by conflict. We can transmute this into construction." },
             3: { title: "Level 3: The Rationalizer", desc: "You are coping well and taking responsibility. The next step is accessing intuition." },
@@ -769,7 +905,7 @@ const EnergyAnalyzer = ({ setView }) => {
         return levels[level] || levels[3]; 
     };
 
-    if (result) {
+    if (result !== null) {
         const data = getResultText(result);
         return (
             <div className="h-full flex flex-col justify-center animate-enter text-center">
@@ -806,7 +942,7 @@ const EnergyAnalyzer = ({ setView }) => {
     )
 };
 
-const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones }) => {
+const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones }: MoltProps) => {
   const steps = [
       { id: 'outcome', q: 'The Goal', ph: 'What is the desired outcome?' },
       { id: 'action', q: 'The Action', ph: 'What is the single step?' },
@@ -890,11 +1026,11 @@ const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, exp
                           <input 
                              autoFocus
                              className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-teal-500/50 transition-colors mb-6 placeholder:text-white/10"
-                             placeholder={current.ph}
-                             value={goal[current.id] || ''}
+                             placeholder={current.ph!}
+                             value={(goal as any)[current.id] || ''}
                              onChange={e => setGoal({...goal, [current.id]: e.target.value})}
                              onKeyDown={e => {
-                                 if (e.key === 'Enter' && goal[current.id]) {
+                                 if (e.key === 'Enter' && (goal as any)[current.id]) {
                                      if (goalStep < 2) setGoalStep(goalStep + 1);
                                      else setIsLocked(true);
                                  }
@@ -903,7 +1039,7 @@ const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, exp
                           <div className="flex gap-3">
                                {goalStep > 0 && <button onClick={() => setGoalStep(goalStep - 1)} className="px-4 py-3 rounded-xl border border-white/10 text-white/40">Back</button>}
                                <button 
-                                  disabled={!goal[current.id]}
+                                  disabled={!(goal as any)[current.id]}
                                   onClick={() => { if (goalStep < 2) setGoalStep(goalStep + 1); else setIsLocked(true); }}
                                   className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold font-sans text-xs uppercase tracking-widest disabled:opacity-50"
                                >
@@ -977,68 +1113,42 @@ const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, exp
   );
 };
   
-const Preservation = ({ setView, setPathway, setExpandingBelief, toggleSound, soundEnabled }) => (
-      <div className="h-full flex flex-col">
-          <Nav title="Preservation" subtitle="Energy Triage" onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
-          <div className="flex-1 flex flex-col justify-center space-y-4">
-              <div className="glass-panel p-8 rounded-[32px] border-orange-500/10">
-                  <Battery size={24} className="text-orange-400 mb-4" />
-                  <h3 className="font-serif text-2xl text-orange-100 italic mb-4">Minimize Output</h3>
-                  <div className="space-y-4">
-                      {['Close all open loops.', 'Hydrate immediately.', '15 minutes of silence.'].map((step, i) => (
-                          <div key={i} className="flex items-center gap-4 text-orange-200/60">
-                              <div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
-                              <span className="font-sans text-sm">{step}</span>
-                          </div>
-                      ))}
-                  </div>
-              </div>
-              <button 
-                onClick={() => { setPathway('recovery'); setExpandingBelief("I protect my energy."); setView('molt'); }}
-                className="w-full py-5 rounded-full bg-orange-900/40 border border-orange-500/20 text-orange-100 font-sans text-xs tracking-widest uppercase hover:bg-orange-900/60 transition-all"
-              >
-                  Commit to Rest
-              </button>
-          </div>
-      </div>
-  );
-
-  // --- MAIN RENDER ---
-  const AdaptivEthereal = () => {
+// --- MAIN RENDER ---
+const AdaptivEthereal: React.FC = () => {
   // --- STATE ---
-  const [view, setView] = useState('profile'); 
-  const [bgState, setBgState] = useState('neutral'); 
+  const [view, setView] = useState<string>('profile'); 
+  const [bgState, setBgState] = useState<string>('neutral'); 
   
   // User & Data
-  const [userName, setUserName] = useState('');
-  const [sessionCount, setSessionCount] = useState(0);
-  const [stressor, setStressor] = useState(''); 
-  const [stressLevel, setStressLevel] = useState(50);
-  const [energyLevel, setEnergyLevel] = useState(50);
-  const [isBurnout, setIsBurnout] = useState(false);
+  const [userName, setUserName] = useState<string>('');
+  const [sessionCount, setSessionCount] = useState<number>(0);
+  const [stressor, setStressor] = useState<string>(''); 
+  const [stressLevel, setStressLevel] = useState<number>(50);
+  const [energyLevel, setEnergyLevel] = useState<number>(50);
+  const [isBurnout, setIsBurnout] = useState<boolean>(false);
   
   // Protocol State
-  const [somaticZones, setSomaticZones] = useState([]);
-  const [partsStep, setPartsStep] = useState('experience'); // experience, message, channel
-  const [sensation, setSensation] = useState('');
-  const [protection, setProtection] = useState('');
-  const [expandingBelief, setExpandingBelief] = useState('');
+  const [somaticZones, setSomaticZones] = useState<string[]>([]);
+  const [partsStep, setPartsStep] = useState<string>('experience'); // experience, message, channel
+  const [sensation, setSensation] = useState<string>('');
+  const [protection, setProtection] = useState<string>('');
+  const [expandingBelief, setExpandingBelief] = useState<string>('');
   
-  const [pressure, setPressure] = useState(50);
-  const [ability, setAbility] = useState(50);
-  const [pathway, setPathway] = useState(null);
+  const [pressure, setPressure] = useState<number>(50);
+  const [ability, setAbility] = useState<number>(50);
+  const [pathway, setPathway] = useState<string | null>(null);
   
   // Goals & Tools
-  const [goal, setGoal] = useState({ what: '', measure: '', when: '', outcome: '' });
-  const [goalStep, setGoalStep] = useState(0);
-  const [isLocked, setIsLocked] = useState(false);
-  const [breathing, setBreathing] = useState(false);
-  const [breathCount, setBreathCount] = useState(0);
+  const [goal, setGoal] = useState<Goal>({ outcome: '', action: '', when: '' });
+  const [goalStep, setGoalStep] = useState<number>(0);
+  const [isLocked, setIsLocked] = useState<boolean>(false);
+  const [breathing, setBreathing] = useState<boolean>(false);
+  const [breathCount, setBreathCount] = useState<number>(0);
   
   // Audio
-  const [soundEnabled, setSoundEnabled] = useState(false);
-  const audioContextRef = useRef(null);
-  const noiseNodeRef = useRef(null);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const noiseNodeRef = useRef<ScriptProcessorNode | null>(null);
 
   // --- INITIALIZATION ---
   useEffect(() => {
@@ -1085,7 +1195,7 @@ const Preservation = ({ setView, setPathway, setExpandingBelief, toggleSound, so
     setSensation('');
     setProtection('');
     setExpandingBelief('');
-    setGoal({ what: '', measure: '', when: '', outcome: '' });
+    setGoal({ outcome: '', action: '', when: '' });
     setIsLocked(false);
     setPartsStep('experience');
     setView('profile');
@@ -1100,11 +1210,12 @@ const Preservation = ({ setView, setPathway, setExpandingBelief, toggleSound, so
       }
       setSoundEnabled(false);
     } else {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       const ctx = new AudioContext();
       const bufferSize = 4096;
       const brownNoise = ctx.createScriptProcessor(bufferSize, 1, 1);
       
+      let lastOut = 0;
       brownNoise.onaudioprocess = (e) => {
         const output = e.outputBuffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) {
@@ -1115,7 +1226,6 @@ const Preservation = ({ setView, setPathway, setExpandingBelief, toggleSound, so
         }
       };
       
-      let lastOut = 0;
       const gainNode = ctx.createGain();
       gainNode.gain.value = 0.05; 
       
