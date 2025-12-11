@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { 
-  Activity, Wind, Zap, Heart, BookOpen, 
-  ArrowRight, Check, Calendar, Facebook, 
-  Battery, Volume2, VolumeX, ChevronLeft, 
+import {
+  Activity, Wind, Zap, Heart, BookOpen,
+  ArrowRight, Check, Calendar, Facebook,
+  Volume2, VolumeX, ChevronLeft,
   AlertCircle, Copy, LogOut, BarChart, RefreshCw,
   Brain, Eye, MessageCircle, Shield, Sun, Anchor, Hand, Disc, Target
 } from 'lucide-react';
@@ -114,7 +114,6 @@ interface BreathProps {
 }
 
 interface AlchemyProps {
-  setPathway: (path: string | null) => void;
   setView: (view: string) => void;
   toggleSound: () => void;
   soundEnabled: boolean;
@@ -142,13 +141,6 @@ interface EnergyAnalyzerProps {
   setView: (view: string) => void;
 }
 
-interface PreservationProps {
-  setView: (view: string) => void;
-  setPathway: (path: string | null) => void;
-  setExpandingBelief: (val: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
-}
 
 // --- STYLES & FONTS ---
 const FontStyles = () => (
@@ -819,7 +811,7 @@ const Breath = ({ breathing, setBreathing, breathCount, setBreathCount, setView,
   );
 };
 
-const Alchemy = ({ setPathway, setView, toggleSound, soundEnabled }: AlchemyProps) => (
+const Alchemy = ({ setView, toggleSound, soundEnabled }: AlchemyProps) => (
   <div className="h-full flex flex-col animate-enter">
     <Nav title="Vitality Alchemy" subtitle="Select Chemistry" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
     <div className="flex-1 space-y-4 overflow-y-auto hide-scrollbar pb-4">
@@ -828,9 +820,9 @@ const Alchemy = ({ setPathway, setView, toggleSound, soundEnabled }: AlchemyProp
           { id: 'connect', label: 'Connection', sub: 'Oxytocin', desc: 'Soften defense. Open heart.', icon: Heart, color: 'text-rose-200' },
           { id: 'learn', label: 'Expansion', sub: 'DHEA', desc: 'Molt the shell. Build new paths.', icon: BookOpen, color: 'text-indigo-200' },
       ].map(i => (
-          <button 
+          <button
               key={i.id}
-              onClick={() => { setPathway(i.id); setView('molt'); }}
+              onClick={() => setView('molt')}
               className="w-full p-6 rounded-[24px] glass-panel text-left hover:bg-white/5 transition-all group"
           >
               <div className="flex justify-between items-start mb-2">
@@ -1136,7 +1128,6 @@ const AdaptivEthereal: React.FC = () => {
   
   const [pressure, setPressure] = useState<number>(50);
   const [ability, setAbility] = useState<number>(50);
-  const [pathway, setPathway] = useState<string | null>(null);
   
   // Goals & Tools
   const [goal, setGoal] = useState<Goal>({ outcome: '', action: '', when: '' });
@@ -1274,7 +1265,15 @@ const AdaptivEthereal: React.FC = () => {
               isBurnout={isBurnout} setView={setView} 
               toggleSound={toggleSound} soundEnabled={soundEnabled} resetApp={resetApp}
            />}
-           {view === 'preservation' && <Preservation setView={setView} setPathway={setPathway} setExpandingBelief={setExpandingBelief} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
+           {view === 'preservation' && (
+             <div className="h-full flex flex-col justify-center animate-enter text-center px-4">
+               <h1 className="font-serif text-4xl text-orange-100 italic mb-4">Preservation Mode</h1>
+               <p className="font-sans text-sm text-orange-200/60 mb-8 leading-relaxed">Rest and recovery pathway. Take time to restore your energy.</p>
+               <button onClick={() => setView('dashboard')} className="w-full py-5 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all">
+                 Return to Horizon
+               </button>
+             </div>
+           )}
            {view === 'somatic' && <Vessel somaticZones={somaticZones} setSomaticZones={setSomaticZones} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            
            {/* Replaced Narrative with PartsWork */}
@@ -1291,7 +1290,7 @@ const AdaptivEthereal: React.FC = () => {
            {view === 'lens' && <Perspective pressure={pressure} setPressure={setPressure} ability={ability} setAbility={setAbility} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'fork' && <Crossroads stressLevel={stressLevel} energyLevel={energyLevel} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'regulate' && <Breath breathing={breathing} setBreathing={setBreathing} breathCount={breathCount} setBreathCount={setBreathCount} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
-           {view === 'alchemy' && <Alchemy setPathway={setPathway} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
+           {view === 'alchemy' && <Alchemy setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'molt' && <Molt goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} isLocked={isLocked} setIsLocked={setIsLocked} expandingBelief={expandingBelief} stressor={stressor} sessionCount={sessionCount} completeSession={completeSession} resetApp={resetApp} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} somaticZones={somaticZones} />}
            {view === 'energy' && <EnergyAnalyzer setView={setView} />}
         </div>
