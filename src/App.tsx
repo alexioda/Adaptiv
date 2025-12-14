@@ -706,7 +706,7 @@ const Breath = ({ breathing, setBreathing, breathCount, setBreathCount, setView,
   );
 };
 
-const Alchemy = ({ setView, toggleSound, soundEnabled }) => (
+const Alchemy = ({ setPathway, setView, toggleSound, soundEnabled }) => (
   <div className="h-full flex flex-col animate-enter">
     <Nav title="Vitality Alchemy" subtitle="Select Chemistry" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
     <div className="flex-1 space-y-4 overflow-y-auto hide-scrollbar pb-4">
@@ -792,7 +792,7 @@ const EnergyAnalyzer = ({ setView }) => {
         return levels[level] || levels[3]; 
     };
 
-    if (result !== null) {
+    if (result) {
         const data = getResultText(result);
         return (
             <div className="h-full flex flex-col justify-center animate-enter text-center">
@@ -967,6 +967,22 @@ const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, exp
               )}
           </div>
 
+          {/* WORKBOOK DOWNLOAD BUTTON */}
+          <a 
+            href="https://drive.google.com/file/d/1i75xJFlb-21Q5cTqiTlg22AkdcEQa4Cx/view?usp=sharing" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="w-full mb-8 py-4 rounded-2xl border border-indigo-500/30 bg-indigo-900/10 flex items-center justify-center gap-3 group hover:bg-indigo-900/30 transition-all"
+          >
+            <div className="p-2 bg-indigo-500/20 rounded-full group-hover:bg-indigo-500/40 transition-colors">
+              <BookOpen size={18} className="text-indigo-200" />
+            </div>
+            <div className="text-left">
+              <p className="font-serif text-indigo-100 italic text-lg leading-none">The Stress Workbook</p>
+              <p className="font-sans text-[10px] text-indigo-300 uppercase tracking-wider mt-1">Download the Blueprints</p>
+            </div>
+          </a>
+
           {isLocked && (
               <button 
                 onClick={() => setView('energy')}
@@ -997,8 +1013,34 @@ const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, exp
   );
 };
   
-// --- MAIN RENDER ---
-const AdaptivEthereal = () => {
+const Preservation = ({ setView, setPathway, setExpandingBelief, toggleSound, soundEnabled }) => (
+      <div className="h-full flex flex-col">
+          <Nav title="Preservation" subtitle="Energy Triage" onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
+          <div className="flex-1 flex flex-col justify-center space-y-4">
+              <div className="glass-panel p-8 rounded-[32px] border-orange-500/10">
+                  <Battery size={24} className="text-orange-400 mb-4" />
+                  <h3 className="font-serif text-2xl text-orange-100 italic mb-4">Minimize Output</h3>
+                  <div className="space-y-4">
+                      {['Close all open loops.', 'Hydrate immediately.', '15 minutes of silence.'].map((step, i) => (
+                          <div key={i} className="flex items-center gap-4 text-orange-200/60">
+                              <div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
+                              <span className="font-sans text-sm">{step}</span>
+                          </div>
+                      ))}
+                  </div>
+              </div>
+              <button 
+                onClick={() => { setPathway('recovery'); setExpandingBelief("I protect my energy."); setView('molt'); }}
+                className="w-full py-5 rounded-full bg-orange-900/40 border border-orange-500/20 text-orange-100 font-sans text-xs tracking-widest uppercase hover:bg-orange-900/60 transition-all"
+              >
+                  Commit to Rest
+              </button>
+          </div>
+      </div>
+  );
+
+  // --- MAIN RENDER ---
+  const AdaptivEthereal = () => {
   // --- STATE ---
   const [view, setView] = useState('welcome'); // Starts at welcome
   const [bgState, setBgState] = useState('neutral'); 
@@ -1023,7 +1065,7 @@ const AdaptivEthereal = () => {
   const [pathway, setPathway] = useState(null);
   
   // Goals & Tools
-  const [goal, setGoal] = useState({ outcome: '', action: '', when: '' });
+  const [goal, setGoal] = useState({ what: '', measure: '', when: '', outcome: '' });
   const [goalStep, setGoalStep] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [breathing, setBreathing] = useState(false);
@@ -1079,7 +1121,7 @@ const AdaptivEthereal = () => {
     setSensation('');
     setProtection('');
     setExpandingBelief('');
-    setGoal({ outcome: '', action: '', when: '' });
+    setGoal({ what: '', measure: '', when: '', outcome: '' });
     setIsLocked(false);
     setPartsStep('experience');
     setView('welcome');
