@@ -4,7 +4,7 @@ import {
   ArrowRight, Check, Calendar, Facebook, 
   User, Lock, PlayCircle, Target, Battery,
   Waves, Volume2, VolumeX, ChevronRight, ChevronLeft, X, AlertCircle, Copy, LogOut, BarChart, RefreshCw,
-  Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Clock
+  Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Clock, Mountain
 } from 'lucide-react';
 
 // --- STYLES & FONTS ---
@@ -150,60 +150,66 @@ const Nav = ({ title, subtitle, onBack, isDashboard, soundEnabled, toggleSound, 
 // --- VIEW COMPONENTS ---
 
 const Welcome = ({ onEnter }) => (
-  <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50">
-    <div className="mb-10 relative">
-      <div className="absolute inset-0 bg-teal-500/10 blur-xl rounded-full"></div>
-      <Activity size={56} className="text-teal-200/80 relative z-10" strokeWidth={0.8} />
-    </div>
-    
-    <div className="space-y-6 max-w-sm">
-      <h2 className="font-sans text-[10px] font-bold text-white/30 uppercase tracking-[0.3em] animate-enter">Architecture for the Soul</h2>
+  // ADDED overflow-y-auto to allow scrolling on small screens
+  <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
+    <div className="min-h-full flex flex-col justify-center items-center py-10">
+      <div className="mb-10 relative">
+        <div className="absolute inset-0 bg-teal-500/10 blur-xl rounded-full"></div>
+        <Activity size={56} className="text-teal-200/80 relative z-10" strokeWidth={0.8} />
+      </div>
       
-      <h1 className="font-serif text-5xl text-white italic tracking-wide leading-tight animate-enter delay-100">
-        Alchemy for the <br/> Modern Mind.
-      </h1>
+      <div className="space-y-6 max-w-sm">
+        <h2 className="font-sans text-[10px] font-bold text-white/30 uppercase tracking-[0.3em] animate-enter">Architecture for the Soul</h2>
+        
+        <h1 className="font-serif text-5xl text-white italic tracking-wide leading-tight animate-enter delay-100">
+          Alchemy for the <br/> Modern Mind.
+        </h1>
+        
+        <p className="font-sans text-sm text-white/50 leading-relaxed max-w-[280px] mx-auto animate-enter delay-200">
+          You are not here to fix yourself. You are here to transmute friction into fuel.
+          <br/><br/>
+          In the next few minutes, we will locate the block, listen to its wisdom, and turn it into power.
+        </p>
+      </div>
       
-      <p className="font-sans text-sm text-white/50 leading-relaxed max-w-[280px] mx-auto animate-enter delay-200">
-        You are not here to fix yourself. You are here to transmute friction into fuel.
-        <br/><br/>
-        In the next few minutes, we will locate the block, listen to its wisdom, and turn it into power.
-      </p>
+      <button 
+        onClick={onEnter}
+        className="mt-12 px-8 py-4 rounded-full bg-white/10 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-white/20 hover:scale-105 transition-all animate-enter delay-300 border border-white/5"
+      >
+        Enter the Crucible
+      </button>
     </div>
-    
-    <button 
-      onClick={onEnter}
-      className="mt-12 px-8 py-4 rounded-full bg-white/10 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-white/20 hover:scale-105 transition-all animate-enter delay-300 border border-white/5"
-    >
-      Enter the Crucible
-    </button>
   </div>
 );
 
 const Identity = ({ userName, setUserName, onComplete }) => (
-  <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50">
-    <div className="mb-8 relative">
-      <div className="absolute inset-0 bg-white/10 blur-xl rounded-full"></div>
-      <Activity size={48} className="text-white/80 relative z-10" strokeWidth={1} />
-    </div>
-    <h1 className="font-serif text-5xl text-white mb-2 italic tracking-wide">Adaptiv</h1>
-    <p className="font-sans text-white/40 text-xs tracking-[0.2em] uppercase mb-12">Architecture for the Soul</p>
-    
-    <div className="w-full max-w-xs space-y-6 relative z-50">
-      <input 
-        type="text" 
-        value={userName}
-        onChange={(e) => setUserName(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && userName && onComplete()}
-        placeholder="Who enters?"
-        className="w-full bg-transparent border-b border-white/20 py-3 text-center text-white text-xl font-serif placeholder:text-white/20 focus:outline-none focus:border-white/60 transition-colors"
-      />
-      <button 
-        onClick={onComplete}
-        disabled={!userName}
-        className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs font-medium tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        Begin
-      </button>
+  // ADDED overflow-y-auto
+  <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
+    <div className="min-h-full flex flex-col justify-center items-center py-10 w-full">
+      <div className="mb-8 relative">
+        <div className="absolute inset-0 bg-white/10 blur-xl rounded-full"></div>
+        <Activity size={48} className="text-white/80 relative z-10" strokeWidth={1} />
+      </div>
+      <h1 className="font-serif text-5xl text-white mb-2 italic tracking-wide">Adaptiv</h1>
+      <p className="font-sans text-white/40 text-xs tracking-[0.2em] uppercase mb-12">Architecture for the Soul</p>
+      
+      <div className="w-full max-w-xs space-y-6 relative z-50">
+        <input 
+          type="text" 
+          value={userName}
+          onChange={(e) => setUserName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && userName && onComplete()}
+          placeholder="Who enters?"
+          className="w-full bg-transparent border-b border-white/20 py-3 text-center text-white text-xl font-serif placeholder:text-white/20 focus:outline-none focus:border-white/60 transition-colors"
+        />
+        <button 
+          onClick={onComplete}
+          disabled={!userName}
+          className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs font-medium tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Begin
+        </button>
+      </div>
     </div>
   </div>
 );
@@ -367,14 +373,15 @@ const PartsWork = ({ selectedPart, sensation, setSensation, protection, setProte
         
         {partsStep === 'experience' && (
           <div className="animate-enter w-full">
-            <div className="mb-6 text-center px-4">
-               <div className="w-16 h-16 mx-auto bg-white/5 rounded-full flex items-center justify-center mb-4 border border-white/10">
+            <div className="mb-8 text-center px-4">
+               <div className="w-16 h-16 mx-auto bg-white/5 rounded-full flex items-center justify-center mb-6 border border-white/10">
                   <Activity size={24} className="text-white/80" strokeWidth={1} />
                </div>
-               <p className="font-serif text-xl text-white/90 italic leading-relaxed mb-2">
-                 "How does the {selectedPart} feel?"
+               {/* INCREASED FONT SIZE HERE */}
+               <p className="font-serif text-2xl text-white/90 italic leading-relaxed mb-4">
+                 "How does the {selectedPart} feel right now?"
                </p>
-               <p className="font-sans text-xs text-white/60 leading-relaxed">
+               <p className="font-sans text-sm text-white/70 leading-relaxed">
                  Describe the sensation. Is it hot, cold, tight, heavy?
                </p>
             </div>
@@ -388,7 +395,6 @@ const PartsWork = ({ selectedPart, sensation, setSensation, protection, setProte
               onKeyDown={e => e.key === 'Enter' && setPartsStep('message')}
             />
             
-            {/* FIXED BUTTON VISIBILITY: Added bg-white/5 and text-white/90 */}
             <div className="flex flex-wrap justify-center gap-2 mb-8">
                {commonSensations.map(s => (
                  <button key={s} onClick={() => setSensation(s)} className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-[10px] uppercase tracking-wider text-white/90 hover:bg-white/20 hover:text-white transition-all shadow-sm">
@@ -409,18 +415,19 @@ const PartsWork = ({ selectedPart, sensation, setSensation, protection, setProte
 
         {partsStep === 'message' && (
           <div className="animate-enter w-full">
-             <div className="mb-6 text-center px-4">
-               <div className="w-16 h-16 mx-auto bg-white/5 rounded-full flex items-center justify-center mb-4 border border-white/10">
+             <div className="mb-8 text-center px-4">
+               <div className="w-16 h-16 mx-auto bg-white/5 rounded-full flex items-center justify-center mb-6 border border-white/10">
                   <Shield size={24} className="text-white/80" strokeWidth={1} />
                </div>
-               <p className="font-serif text-xl text-white/90 italic leading-relaxed mb-2">
-                 "What is it protecting?"
+               {/* INCREASED FONT SIZE AND REMOVED 'TIP' LABEL */}
+               <p className="font-serif text-2xl text-white/90 italic leading-relaxed mb-4">
+                 "What is it protecting you from?"
                </p>
-               <p className="font-sans text-xs text-white/60 leading-relaxed">
+               <p className="font-sans text-sm text-white/70 leading-relaxed">
                  Ask the part: "What are you trying to do for me?"
                </p>
-               <p className="font-serif text-teal-200/80 italic text-sm mt-4">
-                 Tip: When you hear the answer, say "Thank you for protecting me."
+               <p className="font-serif text-teal-200/90 italic text-lg mt-6 bg-teal-900/10 p-4 rounded-xl border border-teal-500/20">
+                 When you hear the answer, say "Thank you for protecting me."
                </p>
             </div>
 
@@ -433,7 +440,6 @@ const PartsWork = ({ selectedPart, sensation, setSensation, protection, setProte
               onKeyDown={e => e.key === 'Enter' && setPartsStep('channel')}
             />
 
-            {/* FIXED BUTTON VISIBILITY */}
             <div className="flex flex-wrap justify-center gap-2 mb-8">
                {commonProtections.map(p => (
                  <button key={p} onClick={() => setProtection(p)} className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-[10px] uppercase tracking-wider text-white/90 hover:bg-white/20 hover:text-white transition-all shadow-sm">
@@ -454,15 +460,19 @@ const PartsWork = ({ selectedPart, sensation, setSensation, protection, setProte
 
         {partsStep === 'channel' && (
           <div className="animate-enter w-full">
-            <div className="mb-6 text-center px-4">
-               <div className="w-16 h-16 mx-auto bg-teal-500/10 rounded-full flex items-center justify-center mb-4 border border-teal-500/20">
+            <div className="mb-8 text-center px-4">
+               <div className="w-16 h-16 mx-auto bg-teal-500/10 rounded-full flex items-center justify-center mb-6 border border-teal-500/20">
                   <Zap size={24} className="text-teal-200" strokeWidth={1} />
                </div>
-               <p className="font-serif text-xl text-teal-100 italic leading-relaxed mb-2">
-                 "Channel the Energy"
+               {/* INCREASED FONT SIZE */}
+               <p className="font-serif text-2xl text-teal-100 italic leading-relaxed mb-4">
+                 "Now, channel the energy."
                </p>
-               <p className="font-sans text-xs text-teal-200/60 leading-relaxed">
-                 Tell the part: "I appreciate your protection, but I can handle this now. Let's use your energy for..."
+               <p className="font-sans text-sm text-teal-200/70 leading-relaxed mb-4">
+                 Tell the part: "I appreciate your protection, but I can handle this now."
+               </p>
+               <p className="font-serif text-white/80 italic text-lg">
+                 "Let's use your energy for..."
                </p>
             </div>
 
@@ -829,7 +839,77 @@ const EnergyAnalyzer = ({ setView }) => {
     )
 };
 
+const Priming = ({ onComplete }) => {
+  const [step, setStep] = useState(0);
+
+  const steps = [
+    {
+      icon: Mountain,
+      title: "Physiology",
+      instruction: "Change your state immediately. Stand up. Shoulders back. Deep breath. Look up.",
+      action: "I am ready."
+    },
+    {
+      icon: Anchor,
+      title: "Somatic Anchor",
+      instruction: "Where do you feel this new power in your body? Put your hand there now.",
+      action: "I feel it."
+    },
+    {
+      icon: Eye,
+      title: "Visualization",
+      instruction: "Close your eyes. See the goal achieved. Feel the emotion of the win in your body.",
+      action: "Seal it."
+    }
+  ];
+
+  const current = steps[step];
+
+  const next = () => {
+    if (step < steps.length - 1) {
+      setStep(step + 1);
+    } else {
+      onComplete();
+    }
+  };
+
+  return (
+    // ADDED overflow-y-auto to this view as well
+    <div className="h-full flex flex-col justify-center items-center text-center animate-enter overflow-y-auto hide-scrollbar">
+      <div className="min-h-full flex flex-col justify-center items-center py-10 w-full">
+        <div className="mb-8 relative">
+          <div className="absolute inset-0 bg-teal-500/20 blur-xl rounded-full"></div>
+          <current.icon size={64} className="text-white relative z-10 animate-pulse" strokeWidth={1} />
+        </div>
+        
+        <h2 className="font-serif text-3xl text-white italic mb-4 animate-enter" key={`t-${step}`}>
+          {current.title}
+        </h2>
+        
+        <p className="font-sans text-lg text-white/80 leading-relaxed max-w-[280px] mx-auto mb-12 animate-enter delay-100" key={`i-${step}`}>
+          {current.instruction}
+        </p>
+
+        <button 
+          onClick={next}
+          className="px-10 py-5 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-[0.2em] uppercase hover:scale-105 hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] transition-all animate-enter delay-200"
+        >
+          {current.action}
+        </button>
+
+        <div className="flex gap-2 mt-8">
+          {steps.map((_, i) => (
+            <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i === step ? 'w-8 bg-white' : 'w-2 bg-white/20'}`}></div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones }) => {
+  const [primingDone, setPrimingDone] = useState(false);
+  
   const steps = [
       { id: 'outcome', q: 'The Goal', ph: 'What is the desired outcome?' },
       { id: 'action', q: 'The Action', ph: 'What is the single step?' },
@@ -858,6 +938,23 @@ const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, exp
   };
 
   const quickTimes = ["Now", "Within 1 Hr", "Today", "Tomorrow"];
+
+  // RENDER LOGIC FOR PRIMING VS SUMMARY
+  if (isLocked && !primingDone) {
+    return (
+      <div className="h-full flex flex-col relative z-20">
+         <Nav 
+            title="Integration" 
+            subtitle="Embodiment" 
+            onBack={() => { setIsLocked(false); }} 
+            soundEnabled={soundEnabled} 
+            toggleSound={toggleSound} 
+            progress={90}
+         />
+         <Priming onComplete={() => setPrimingDone(true)} />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col relative z-20">
@@ -1000,8 +1097,8 @@ const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, exp
                <p className="font-sans text-xs text-white/50 mb-6 leading-relaxed max-w-[80%]">
                   You have begun the shift. Cement this architecture with a 1:1 session at Conscious Growth Coaching.
                </p>
-               <a href="https://www.facebook.com/ConsciousGrowthCoaching" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-200 hover:bg-blue-600/40 transition-colors text-xs font-bold uppercase tracking-wide">
-                  Connect on Facebook <ArrowRight size={14} />
+               <a href="https://www.facebook.com/alexiodacoaching" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-200 hover:bg-blue-600/40 transition-colors text-xs font-bold uppercase tracking-wide">
+                  Visit Facebook Page <ArrowRight size={14} />
                </a>
           </div>
           
