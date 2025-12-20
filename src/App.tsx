@@ -4,7 +4,8 @@ import {
   ArrowRight, Check, Calendar, Facebook, 
   User, Lock, PlayCircle, Target, Battery,
   Waves, Volume2, VolumeX, ChevronRight, ChevronLeft, X, AlertCircle, Copy, LogOut, BarChart, RefreshCw,
-  Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Clock, Mountain, Mail, Share2, Map, Layers, Compass
+  Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Clock, Mountain, Mail, Share2, Map, Layers, Compass,
+  Moon, Coffee, MinusCircle
 } from 'lucide-react';
 
 // --- STYLES & FONTS ---
@@ -215,11 +216,19 @@ const Identity = ({ userName, setUserName, onComplete }) => (
 const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => {
   // PROTOCOL LOGIC
   const [activeDay, setActiveDay] = useState(1);
+  const [showWorkCheck, setShowWorkCheck] = useState(false);
   
   useEffect(() => {
     const savedDay = localStorage.getItem('adaptiv_protocol_day');
     if (savedDay) setActiveDay(parseInt(savedDay));
   }, []);
+
+  // DETECT WORK KEYWORDS
+  useEffect(() => {
+    const workKeywords = ['work', 'job', 'boss', 'career', 'project', 'deadline', 'email', 'client', 'business'];
+    const hasKeyword = workKeywords.some(keyword => stressor.toLowerCase().includes(keyword));
+    setShowWorkCheck(hasKeyword);
+  }, [stressor]);
 
   const days = [
     { day: 1, title: "The Vessel", focus: "Somatic Map", icon: Map },
@@ -250,7 +259,7 @@ const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, s
       
       <div className="flex-1 flex flex-col gap-6 overflow-y-auto hide-scrollbar animate-enter pb-8">
         
-        {/* PROTOCOL TRACKER - THE NEW "CONTAINER" */}
+        {/* PROTOCOL TRACKER */}
         <div className="glass-panel p-6 rounded-[32px] border-teal-500/20 relative overflow-hidden">
            <div className="flex justify-between items-center mb-4">
               <h3 className="font-serif text-xl text-teal-100 italic">Genesis Protocol</h3>
@@ -271,7 +280,6 @@ const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, s
                    </div>
                 </div>
               ))}
-              {/* Connecting Line */}
               <div className="absolute top-4 left-4 right-4 h-[1px] bg-white/10 -z-10"></div>
            </div>
 
@@ -293,37 +301,29 @@ const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, s
            </button>
         </div>
 
-        {/* STANDARD CHECK-IN */}
+        {/* CHECK-IN */}
         <div className={`glass-panel p-8 rounded-[32px] transition-all duration-700 ${isBurnout ? 'border-orange-500/20' : ''}`}>
           <div className="flex justify-between items-start mb-2">
             <h3 className="font-serif text-xl text-white/90 italic">Internal Weather</h3>
             {isBurnout && <AlertCircle size={18} className="text-orange-400/80 animate-pulse"/>}
           </div>
-          
           <p className="font-sans text-xs text-white/50 mb-8 leading-relaxed">
-            Calibrate your current state. High pressure is sustainable only if vitality matches it.
+            Calibrate your current state.
           </p>
-
           <div className="space-y-8">
             <div className="space-y-3">
               <div className="flex justify-between font-sans text-[10px] tracking-widest text-white/50">
                 <span>PRESSURE</span>
                 <span>{stressLevel}%</span>
               </div>
-              <input 
-                type="range" min="0" max="100" value={stressLevel} onChange={(e) => setStressLevel(Number(e.target.value))}
-                className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer"
-              />
+              <input type="range" min="0" max="100" value={stressLevel} onChange={(e) => setStressLevel(Number(e.target.value))} className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer" />
             </div>
             <div className="space-y-3">
               <div className="flex justify-between font-sans text-[10px] tracking-widest text-white/50">
                 <span>VITALITY</span>
                 <span>{energyLevel}%</span>
               </div>
-              <input 
-                type="range" min="0" max="100" value={energyLevel} onChange={(e) => setEnergyLevel(Number(e.target.value))}
-                className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer"
-              />
+              <input type="range" min="0" max="100" value={energyLevel} onChange={(e) => setEnergyLevel(Number(e.target.value))} className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer" />
             </div>
           </div>
         </div>
@@ -342,7 +342,7 @@ const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, s
             </button>
           </div>
         ) : (
-          <div className="space-y-6 animate-enter delay-100">
+          <div className="space-y-4 animate-enter delay-100">
             <div className="relative">
               <div className="flex items-center gap-2 mb-2 px-2">
                  <span className="font-sans text-[10px] uppercase tracking-widest text-white/30">Quick Session</span>
@@ -356,6 +356,23 @@ const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, s
               />
             </div>
             
+            {/* THE SOUL DRAIN DETECTOR - NOW A PROMINENT CARD */}
+            {showWorkCheck && (
+              <div className="animate-enter">
+                <button 
+                  onClick={() => setView('burnout_check')}
+                  className="w-full py-4 rounded-xl bg-orange-900/40 border border-orange-500/50 text-orange-200 flex items-center justify-center gap-3 hover:bg-orange-900/60 transition-all shadow-[0_0_15px_rgba(249,115,22,0.1)]"
+                >
+                  <Coffee size={16} className="text-orange-400"/>
+                  <div className="text-left">
+                    <p className="font-serif text-sm italic">Is this draining your soul?</p>
+                    <p className="font-sans text-[9px] uppercase tracking-widest opacity-60">Take the Spark Check</p>
+                  </div>
+                  <ArrowRight size={14} className="ml-auto opacity-50"/>
+                </button>
+              </div>
+            )}
+            
             <button 
               onClick={() => setView('somatic')}
               disabled={!stressor}
@@ -366,6 +383,139 @@ const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, s
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+// --- BURNOUT ASSESSMENT ---
+const BurnoutCheck = ({ setView, toggleSound, soundEnabled, setBurnoutPath }) => {
+  const [step, setStep] = useState(0);
+  const [yesCount, setYesCount] = useState(0);
+
+  const questions = [
+    { 
+      q: "The Cynicism Check", 
+      text: "Do you feel like what you do doesn't matter anymore, or have you become increasingly cynical about your work?" 
+    },
+    { 
+      q: "The Battery Check", 
+      text: "Is your tiredness emotional? Meaning, even if you sleep, you still wake up feeling 'heavy' inside?" 
+    },
+    { 
+      q: "The Fog Check", 
+      text: "Do you feel like you are working harder than ever, but accomplishing less?" 
+    }
+  ];
+
+  const handleAnswer = (isYes) => {
+    const newCount = isYes ? yesCount + 1 : yesCount;
+    setYesCount(newCount);
+    
+    if (step < 2) {
+      setStep(step + 1);
+    } else {
+      // Logic: If 2 or more YES, go to Preservation/Burnout path. Else go back to Somatic.
+      if (newCount >= 1) { // Strict check: even 1 strong yes suggests needing rest.
+        setBurnoutPath(true);
+        setView('preservation');
+      } else {
+        setBurnoutPath(false);
+        setView('somatic');
+      }
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col justify-center animate-enter px-6">
+       <Nav title="The Spark Check" subtitle={`Assessment ${step + 1} / 3`} onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
+       
+       <div className="flex-1 flex flex-col justify-center items-center text-center">
+          <div className="mb-8 p-4 bg-orange-500/10 rounded-full border border-orange-500/20">
+             <Battery size={40} className="text-orange-300" />
+          </div>
+          
+          <h3 className="font-serif text-2xl text-white italic mb-2">{questions[step].q}</h3>
+          <p className="font-sans text-sm text-white/70 leading-relaxed mb-12 max-w-xs">
+            {questions[step].text}
+          </p>
+
+          <div className="w-full space-y-4">
+             <button onClick={() => handleAnswer(true)} className="w-full py-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white font-sans text-xs tracking-widest uppercase transition-all">
+                Yes, I feel this
+             </button>
+             <button onClick={() => handleAnswer(false)} className="w-full py-4 rounded-xl bg-transparent hover:bg-white/5 border border-white/5 text-white/50 hover:text-white font-sans text-xs tracking-widest uppercase transition-all">
+                No, not really
+             </button>
+          </div>
+       </div>
+    </div>
+  );
+};
+
+// --- PRESERVATION (BURNOUT RECOVERY) ---
+const Preservation = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToMolt }) => {
+  const [step, setStep] = useState(0);
+
+  const recoverySteps = [
+    {
+      title: "Emergency Brake",
+      icon: Anchor,
+      desc: "We cannot 'push' through burnout. We must stop. Locate one part of your body that feels neutral (hands, feet). Focus there only.",
+      action: "I am anchored."
+    },
+    {
+      title: "Boundary Alchemy",
+      icon: MinusCircle,
+      desc: "Burnout is cured by subtraction. What is one thing you will REFUSE to do today?",
+      action: "I let it go."
+    },
+    {
+      title: "Identity Shift",
+      icon: User,
+      desc: "You are not the worker. You are the Asset. If the Asset breaks, the work stops. Protecting the Asset IS the work.",
+      action: "I am the Asset."
+    }
+  ];
+
+  const current = recoverySteps[step];
+
+  const handleNext = () => {
+    if (step < 2) {
+      setStep(step + 1);
+    } else {
+      // Finish Preservation -> Go to Molt with specific Burnout context
+      setExpandingBelief("I am the Asset. Rest is my strategy.");
+      setGoal({ 
+        outcome: "Status: Unavailable", 
+        action: "I am offline to realign.", 
+        when: "Now" 
+      });
+      setViewToMolt();
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+       <Nav title="Preservation Mode" subtitle="Recovery Loop" onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={33 * (step+1)} />
+       
+       <div className="flex-1 flex flex-col justify-center animate-enter text-center px-4">
+          <div className="mb-8 relative mx-auto">
+             <div className="absolute inset-0 bg-orange-500/20 blur-2xl rounded-full"></div>
+             <current.icon size={64} className="text-orange-200 relative z-10" strokeWidth={1} />
+          </div>
+
+          <h2 className="font-serif text-3xl text-white italic mb-4">{current.title}</h2>
+          <p className="font-sans text-sm text-orange-100/70 leading-relaxed mb-12 max-w-xs mx-auto">
+             {current.desc}
+          </p>
+
+          <button 
+            onClick={handleNext}
+            className="w-full py-5 rounded-full bg-gradient-to-r from-orange-900/60 to-amber-900/60 border border-orange-500/30 text-orange-100 font-sans text-xs tracking-widest uppercase hover:border-orange-500/50 transition-all"
+          >
+             {current.action}
+          </button>
+       </div>
     </div>
   );
 };
@@ -1033,7 +1183,7 @@ const Priming = ({ onComplete }) => {
   );
 };
 
-const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones }) => {
+const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath }) => {
   const [primingDone, setPrimingDone] = useState(false);
   
   const steps = [
@@ -1072,7 +1222,7 @@ const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, exp
   const quickTimes = ["Now", "Within 1 Hr", "Today", "Tomorrow"];
 
   // RENDER LOGIC FOR PRIMING VS SUMMARY
-  if (isLocked && !primingDone) {
+  if (isLocked && !primingDone && !isBurnoutPath) { // No priming needed for burnout path (already done in preservation)
     return (
       <div className="h-full flex flex-col relative z-20">
          <Nav 
@@ -1099,8 +1249,8 @@ const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, exp
           progress={100}
        />
        <div className="text-center pt-2 mb-8 animate-enter">
-          <div className="w-16 h-16 mx-auto bg-gradient-to-tr from-indigo-500/20 to-teal-500/20 rounded-full flex items-center justify-center mb-4 border border-white/10">
-              <Check className="text-white" size={24} />
+          <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 border border-white/10 ${isBurnoutPath ? 'bg-orange-500/20' : 'bg-gradient-to-tr from-indigo-500/20 to-teal-500/20'}`}>
+              {isBurnoutPath ? <Moon className="text-orange-200" size={24}/> : <Check className="text-white" size={24} />}
           </div>
           <h1 className="font-serif text-3xl text-white italic">Integration</h1>
           <p className="font-sans text-[10px] uppercase tracking-widest text-white/40 mt-2">The Molt is Complete</p>
@@ -1165,22 +1315,26 @@ const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, exp
               ) : (
                   <div className="text-center animate-fade-in relative z-10">
                       {/* REDESIGNED VISUAL ARTIFACT CARD */}
-                      <div className="mb-8 p-8 rounded-2xl bg-gradient-to-br from-teal-900/40 to-slate-900/80 border border-teal-500/30 text-center relative overflow-hidden shadow-2xl">
+                      <div className={`mb-8 p-8 rounded-2xl border text-center relative overflow-hidden shadow-2xl ${isBurnoutPath ? 'bg-slate-900 border-orange-900/50' : 'bg-gradient-to-br from-teal-900/40 to-slate-900/80 border-teal-500/30'}`}>
                           <div className="absolute top-0 right-0 p-4 opacity-10">
-                              <Zap size={80} />
+                              {isBurnoutPath ? <Moon size={80} className="text-orange-200" /> : <Zap size={80} />}
                           </div>
                           <div className="absolute top-4 left-4">
-                              <Activity size={16} className="text-teal-400" />
+                              <Activity size={16} className={isBurnoutPath ? "text-orange-400" : "text-teal-400"} />
                           </div>
                           
-                          <p className="font-sans text-[9px] uppercase tracking-[0.3em] text-teal-200/60 mb-6 mt-2">Adaptiv Artifact</p>
+                          <p className={`font-sans text-[9px] uppercase tracking-[0.3em] mb-6 mt-2 ${isBurnoutPath ? 'text-orange-200/60' : 'text-teal-200/60'}`}>
+                            {isBurnoutPath ? 'Permission Slip' : 'Adaptiv Artifact'}
+                          </p>
                           
                           <h2 className="font-serif text-2xl text-white italic leading-snug mb-2">"{expandingBelief}"</h2>
-                          <div className="w-12 h-[1px] bg-teal-500/50 mx-auto mb-6"></div>
+                          <div className={`w-12 h-[1px] mx-auto mb-6 ${isBurnoutPath ? 'bg-orange-500/50' : 'bg-teal-500/50'}`}></div>
                           
                           <div className="space-y-2">
-                             <p className="font-sans text-[10px] text-white/40 uppercase tracking-widest">Goal</p>
-                             <p className="font-serif text-lg text-teal-100 italic">"{goal.outcome}"</p>
+                             <p className="font-sans text-[10px] text-white/40 uppercase tracking-widest">
+                                {isBurnoutPath ? 'Current Status' : 'Goal'}
+                             </p>
+                             <p className={`font-serif text-lg italic ${isBurnoutPath ? 'text-orange-100' : 'text-teal-100'}`}>"{goal.outcome}"</p>
                           </div>
                       </div>
                       
@@ -1250,32 +1404,6 @@ const Molt = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, exp
   );
 };
   
-const Preservation = ({ setView, setPathway, setExpandingBelief, toggleSound, soundEnabled }) => (
-      <div className="h-full flex flex-col">
-          <Nav title="Preservation" subtitle="Energy Triage" onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
-          <div className="flex-1 flex flex-col justify-center space-y-4">
-              <div className="glass-panel p-8 rounded-[32px] border-orange-500/10">
-                  <Battery size={24} className="text-orange-400 mb-4" />
-                  <h3 className="font-serif text-2xl text-orange-100 italic mb-4">Minimize Output</h3>
-                  <div className="space-y-4">
-                      {['Close all open loops.', 'Hydrate immediately.', '15 minutes of silence.'].map((step, i) => (
-                          <div key={i} className="flex items-center gap-4 text-orange-200/60">
-                              <div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
-                              <span className="font-sans text-sm">{step}</span>
-                          </div>
-                      ))}
-                  </div>
-              </div>
-              <button 
-                onClick={() => { setPathway('recovery'); setExpandingBelief("I protect my energy."); setView('molt'); }}
-                className="w-full py-5 rounded-full bg-orange-900/40 border border-orange-500/20 text-orange-100 font-sans text-xs tracking-widest uppercase hover:bg-orange-900/60 transition-all"
-              >
-                  Commit to Rest
-              </button>
-          </div>
-      </div>
-  );
-
   // --- MAIN RENDER ---
   const AdaptivEthereal = () => {
   // --- STATE ---
@@ -1289,6 +1417,7 @@ const Preservation = ({ setView, setPathway, setExpandingBelief, toggleSound, so
   const [stressLevel, setStressLevel] = useState(50);
   const [energyLevel, setEnergyLevel] = useState(50);
   const [isBurnout, setIsBurnout] = useState(false);
+  const [isBurnoutPath, setBurnoutPath] = useState(false); // NEW STATE FOR BRANCHING
   
   // Protocol State
   const [somaticZones, setSomaticZones] = useState([]);
@@ -1367,6 +1496,7 @@ const Preservation = ({ setView, setPathway, setExpandingBelief, toggleSound, so
     setGoal({ what: '', measure: '', when: '', outcome: '' });
     setIsLocked(false);
     setPartsStep('experience');
+    setBurnoutPath(false);
     setView('welcome');
   };
 
@@ -1409,13 +1539,13 @@ const Preservation = ({ setView, setPathway, setExpandingBelief, toggleSound, so
 
   // --- LOGIC ---
   useEffect(() => {
-    if (view === 'preservation') setBgState('preservation');
+    if (view === 'preservation' || isBurnoutPath) setBgState('preservation');
     else if (view === 'laser') setBgState('laser');
     else if (view === 'regulate' || breathing) setBgState('flow');
     else if (stressLevel > 75 && energyLevel > 40) setBgState('friction');
     else if (stressLevel > 80 && energyLevel < 30) setBgState('preservation');
     else setBgState('neutral');
-  }, [view, stressLevel, energyLevel, breathing]);
+  }, [view, stressLevel, energyLevel, breathing, isBurnoutPath]);
 
   useEffect(() => {
     setIsBurnout(stressLevel > 80 && energyLevel < 30);
@@ -1444,7 +1574,16 @@ const Preservation = ({ setView, setPathway, setExpandingBelief, toggleSound, so
               isBurnout={isBurnout} setView={setView} 
               toggleSound={toggleSound} soundEnabled={soundEnabled} resetApp={resetApp}
            />}
-           {view === 'preservation' && <Preservation setView={setView} setPathway={setPathway} setExpandingBelief={setExpandingBelief} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
+           {view === 'preservation' && <Preservation 
+              setView={setView} 
+              toggleSound={toggleSound} 
+              soundEnabled={soundEnabled} 
+              setGoal={setGoal} 
+              setExpandingBelief={setExpandingBelief} 
+              setViewToMolt={() => { setIsLocked(true); setView('molt'); }}
+           />}
+           {view === 'burnout_check' && <BurnoutCheck setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setBurnoutPath={setBurnoutPath} />}
+           
            {view === 'somatic' && <Vessel somaticZones={somaticZones} setSomaticZones={setSomaticZones} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            
            {/* Replaced Narrative with PartsWork */}
@@ -1462,7 +1601,7 @@ const Preservation = ({ setView, setPathway, setExpandingBelief, toggleSound, so
            {view === 'fork' && <Crossroads stressLevel={stressLevel} energyLevel={energyLevel} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'regulate' && <Breath breathing={breathing} setBreathing={setBreathing} breathCount={breathCount} setBreathCount={setBreathCount} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'alchemy' && <Alchemy setPathway={setPathway} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
-           {view === 'molt' && <Molt goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} isLocked={isLocked} setIsLocked={setIsLocked} expandingBelief={expandingBelief} stressor={stressor} sessionCount={sessionCount} completeSession={completeSession} resetApp={resetApp} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} somaticZones={somaticZones} />}
+           {view === 'molt' && <Molt goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} isLocked={isLocked} setIsLocked={setIsLocked} expandingBelief={expandingBelief} stressor={stressor} sessionCount={sessionCount} completeSession={completeSession} resetApp={resetApp} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} somaticZones={somaticZones} isBurnoutPath={isBurnoutPath} />}
            {view === 'energy' && <EnergyAnalyzer setView={setView} />}
         </div>
       </div>
