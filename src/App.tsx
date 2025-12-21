@@ -8,6 +8,154 @@ import {
   Moon, Coffee, MinusCircle
 } from 'lucide-react';
 
+// --- TYPES ---
+
+interface NavProps {
+  title: string;
+  subtitle: string;
+  onBack?: () => void;
+  isDashboard?: boolean;
+  soundEnabled: boolean;
+  toggleSound: () => void;
+  resetApp?: () => void;
+  progress?: number;
+}
+
+interface WelcomeProps {
+  onEnter: () => void;
+}
+
+interface IdentityProps {
+  userName: string;
+  setUserName: (name: string) => void;
+  onComplete: () => void;
+}
+
+interface HorizonProps {
+  userName: string;
+  sessionCount: number;
+  stressor: string;
+  setStressor: (val: string) => void;
+  stressLevel: number;
+  setStressLevel: (val: number) => void;
+  energyLevel: number;
+  setEnergyLevel: (val: number) => void;
+  isBurnout: boolean;
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+  resetApp: () => void;
+}
+
+interface BurnoutCheckProps {
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+  setBurnoutPath: (isBurnout: boolean) => void;
+}
+
+interface PreservationProps {
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+  setGoal: (goal: any) => void;
+  setExpandingBelief: (belief: string) => void;
+  setViewToMolt: () => void;
+}
+
+interface VesselProps {
+  somaticZones: string[];
+  setSomaticZones: (zones: string[]) => void;
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+}
+
+interface PartsWorkProps {
+  selectedPart: string;
+  sensation: string;
+  setSensation: (val: string) => void;
+  protection: string;
+  setProtection: (val: string) => void;
+  expandingBelief: string;
+  setExpandingBelief: (val: string) => void;
+  partsStep: string;
+  setPartsStep: (val: string) => void;
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+}
+
+interface LaserCoachingProps {
+  stressor: string;
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+  setGoal: (val: any) => void;
+  setExpandingBelief: (val: string) => void;
+}
+
+interface PerspectiveProps {
+  pressure: number;
+  setPressure: (val: number) => void;
+  ability: number;
+  setAbility: (val: number) => void;
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+}
+
+interface CrossroadsProps {
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+  stressLevel: number;
+  energyLevel: number;
+}
+
+interface BreathProps {
+  breathing: boolean;
+  setBreathing: (val: boolean) => void;
+  breathCount: number;
+  setBreathCount: (val: number) => void; // Fixed: expects a number, not function
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+}
+
+interface AlchemyProps {
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+}
+
+interface EnergyAnalyzerProps {
+  setView: (view: string) => void;
+}
+
+interface MoltProps {
+  goal: { what: string; measure: string; when: string; outcome: string; action?: string };
+  setGoal: (val: any) => void;
+  goalStep: number;
+  setGoalStep: (val: number) => void;
+  isLocked: boolean;
+  setIsLocked: (val: boolean) => void;
+  expandingBelief: string;
+  stressor: string;
+  sessionCount: number;
+  completeSession: () => void;
+  resetApp: () => void;
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+  somaticZones: string[];
+  isBurnoutPath: boolean;
+}
+
+interface PrimingProps {
+  onComplete: () => void;
+}
+
 // --- STYLES & FONTS ---
 const FontStyles = () => (
   <style>{`
@@ -88,8 +236,8 @@ const FontStyles = () => (
 
 // --- SHARED COMPONENTS ---
 
-const Atmosphere = ({ bgState }) => {
-  const themes = {
+const Atmosphere: React.FC<{ bgState: string }> = ({ bgState }) => {
+  const themes: Record<string, string> = {
     neutral: "from-[#0f172a] via-[#1e1b4b] to-[#0f172a]", 
     friction: "from-[#2a0a12] via-[#1a0505] to-[#2a0a12]", 
     flow: "from-[#042f2e] via-[#022c22] to-[#042f2e]",     
@@ -106,7 +254,7 @@ const Atmosphere = ({ bgState }) => {
   );
 };
 
-const Nav = ({ title, subtitle, onBack, isDashboard, soundEnabled, toggleSound, resetApp, progress }) => (
+const Nav: React.FC<NavProps> = ({ title, subtitle, onBack, isDashboard, soundEnabled, toggleSound, resetApp, progress }) => (
   <div className="flex flex-col mb-4 pt-4 animate-enter shrink-0 relative z-50">
     <div className="flex justify-between items-start">
       <div>
@@ -120,7 +268,7 @@ const Nav = ({ title, subtitle, onBack, isDashboard, soundEnabled, toggleSound, 
           </button>
         )}
         
-        {isDashboard && (
+        {isDashboard && resetApp && (
            <button onClick={resetApp} className="p-3 rounded-full glass-button text-white/40 hover:text-white hover:bg-white/20 transition-all" title="Reset Identity">
              <LogOut size={20} />
            </button>
@@ -150,7 +298,7 @@ const Nav = ({ title, subtitle, onBack, isDashboard, soundEnabled, toggleSound, 
 
 // --- VIEW COMPONENTS ---
 
-const Welcome = ({ onEnter }) => (
+const Welcome: React.FC<WelcomeProps> = ({ onEnter }) => (
   <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
     <div className="min-h-full flex flex-col justify-center items-center py-10">
       <div className="mb-10 relative">
@@ -182,7 +330,7 @@ const Welcome = ({ onEnter }) => (
   </div>
 );
 
-const Identity = ({ userName, setUserName, onComplete }) => (
+const Identity: React.FC<IdentityProps> = ({ userName, setUserName, onComplete }) => (
   <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
     <div className="min-h-full flex flex-col justify-center items-center py-10 w-full">
       <div className="mb-8 relative">
@@ -213,7 +361,7 @@ const Identity = ({ userName, setUserName, onComplete }) => (
   </div>
 );
 
-const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => {
+const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => {
   // PROTOCOL LOGIC
   const [activeDay, setActiveDay] = useState(1);
   const [showWorkCheck, setShowWorkCheck] = useState(false);
@@ -240,7 +388,7 @@ const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, s
     { day: 7, title: "Genesis", focus: "Integration", icon: Mountain },
   ];
 
-  const startProtocolDay = (day) => {
+  const startProtocolDay = (day: { day: number; focus: string }) => {
     setStressor(`Day ${day.day}: ${day.focus}`);
     setView('somatic');
   };
@@ -388,7 +536,7 @@ const Horizon = ({ userName, sessionCount, stressor, setStressor, stressLevel, s
 };
 
 // --- BURNOUT ASSESSMENT ---
-const BurnoutCheck = ({ setView, toggleSound, soundEnabled, setBurnoutPath }) => {
+const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, soundEnabled, setBurnoutPath }) => {
   const [step, setStep] = useState(0);
   const [yesCount, setYesCount] = useState(0);
 
@@ -407,7 +555,7 @@ const BurnoutCheck = ({ setView, toggleSound, soundEnabled, setBurnoutPath }) =>
     }
   ];
 
-  const handleAnswer = (isYes) => {
+  const handleAnswer = (isYes: boolean) => {
     const newCount = isYes ? yesCount + 1 : yesCount;
     setYesCount(newCount);
     
@@ -453,7 +601,7 @@ const BurnoutCheck = ({ setView, toggleSound, soundEnabled, setBurnoutPath }) =>
 };
 
 // --- PRESERVATION (BURNOUT RECOVERY) ---
-const Preservation = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToMolt }) => {
+const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToMolt }) => {
   const [step, setStep] = useState(0);
 
   const recoverySteps = [
@@ -520,7 +668,7 @@ const Preservation = ({ setView, toggleSound, soundEnabled, setGoal, setExpandin
   );
 };
 
-const Vessel = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnabled }) => {
+const Vessel: React.FC<VesselProps> = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnabled }) => {
   const zones = [
     { id: 'Head', label: 'Head', sub: 'Racing thoughts • Fog', icon: Brain },
     { id: 'Eyes', label: 'Eyes', sub: 'Strain • Tiredness', icon: Eye },
@@ -532,7 +680,7 @@ const Vessel = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnab
     { id: 'Hands', label: 'Hands', sub: 'Grasping • Fighting', icon: Hand },
   ];
   
-  const selectZone = (id) => {
+  const selectZone = (id: string) => {
     setSomaticZones([id]); 
   };
 
@@ -581,7 +729,7 @@ const Vessel = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnab
   );
 };
 
-const PartsWork = ({ selectedPart, sensation, setSensation, protection, setProtection, expandingBelief, setExpandingBelief, partsStep, setPartsStep, setView, toggleSound, soundEnabled }) => {
+const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensation, protection, setProtection, expandingBelief, setExpandingBelief, partsStep, setPartsStep, setView, toggleSound, soundEnabled }) => {
   
   const commonSensations = ["Tightness", "Heat", "Heaviness", "Empty", "Buzzing", "Numbness"];
   const commonProtections = ["Protecting me from failure", "Keeping me safe", "Stopping me from getting hurt", "Trying to control the uncontrollable"];
@@ -744,7 +892,7 @@ const PartsWork = ({ selectedPart, sensation, setSensation, protection, setProte
   );
 };
 
-const LaserCoaching = ({ stressor, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief }) => {
+const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief }) => {
   const [step, setStep] = useState(-1);
   const [answers, setAnswers] = useState({ topic: '', result: '', permission: '', action: '' });
   
@@ -761,7 +909,7 @@ const LaserCoaching = ({ stressor, setView, toggleSound, soundEnabled, setGoal, 
     if (step < 3) setStep(step + 1);
     else {
       setExpandingBelief(answers.topic);
-      setGoal(prev => ({ 
+      setGoal((prev: any) => ({ 
         ...prev, 
         outcome: answers.result, 
         action: answers.action 
@@ -810,7 +958,7 @@ const LaserCoaching = ({ stressor, setView, toggleSound, soundEnabled, setGoal, 
                <Target size={100} />
              </div>
              
-             <span className="font-sans text-[10px] uppercase tracking-widest text-white/40 mb-2 block">{current.label}</span>
+             <span className="font-sans text-[10px] uppercase tracking-widest text-white/40 mb-2 block">{current.label as string}</span>
              <h3 className="font-serif text-2xl text-white italic mb-8 leading-snug">{current.q}</h3>
              
              <input 
@@ -818,15 +966,15 @@ const LaserCoaching = ({ stressor, setView, toggleSound, soundEnabled, setGoal, 
                key={current.id}
                className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-teal-500/50 transition-colors mb-8 placeholder:text-white/10 text-lg"
                placeholder={current.ph}
-               value={answers[current.id]}
+               value={answers[current.id as keyof typeof answers]}
                onChange={e => setAnswers({...answers, [current.id]: e.target.value})}
-               onKeyDown={e => e.key === 'Enter' && answers[current.id] && handleNext()}
+               onKeyDown={e => e.key === 'Enter' && answers[current.id as keyof typeof answers] && handleNext()}
              />
              
              <div className="flex justify-end">
                <button 
                  onClick={handleNext}
-                 disabled={!answers[current.id]}
+                 disabled={!answers[current.id as keyof typeof answers]}
                  className="px-8 py-3 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all disabled:opacity-50"
                >
                  {step === 3 ? 'Lock It In' : 'Next'}
@@ -844,7 +992,7 @@ const LaserCoaching = ({ stressor, setView, toggleSound, soundEnabled, setGoal, 
   );
 };
 
-const Perspective = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }) => {
+const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }) => {
   const flowState = ability >= pressure;
   return (
     <div className="h-full flex flex-col">
@@ -903,9 +1051,9 @@ const Perspective = ({ pressure, setPressure, ability, setAbility, setView, togg
   );
 }
 
-const Crossroads = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel }) => {
+const Crossroads: React.FC<CrossroadsProps> = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel }) => {
   // INTELLIGENT CROSSROADS LOGIC
-  const recommendStillness = parseInt(stressLevel) > 70 && parseInt(energyLevel) < 40;
+  const recommendStillness = stressLevel > 70 && energyLevel < 40;
 
   return (
     <div className="h-full flex flex-col justify-center animate-enter">
@@ -948,7 +1096,7 @@ const Crossroads = ({ setView, toggleSound, soundEnabled, stressLevel, energyLev
   );
 };
 
-const Breath = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }) => {
+const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }) => {
   const phase = breathCount < 4 ? "Inhale" : breathCount < 8 ? "Hold" : "Exhale";
   // Smooth 4-4-8 rhythm scaling
   const scale = breathCount < 4 
@@ -992,7 +1140,7 @@ const Breath = ({ breathing, setBreathing, breathCount, setBreathCount, setView,
   );
 };
 
-const Alchemy = ({ setView, toggleSound, soundEnabled }) => (
+const Alchemy: React.FC<AlchemyProps> = ({ setView, toggleSound, soundEnabled }) => (
   <div className="h-full flex flex-col animate-enter">
     <Nav title="Vitality Alchemy" subtitle="Select Chemistry" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
     <div className="flex-1 space-y-4 overflow-y-auto hide-scrollbar pb-4">
@@ -1020,10 +1168,10 @@ const Alchemy = ({ setView, toggleSound, soundEnabled }) => (
 );
 
 // --- ENERGY ANALYZER ---
-const EnergyAnalyzer = ({ setView }) => {
+const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
     const [step, setStep] = useState(0);
     const [score, setScore] = useState(0);
-    const [result, setResult] = useState(null);
+    const [result, setResult] = useState<number | null>(null);
 
     const questions = [
         {
@@ -1055,7 +1203,7 @@ const EnergyAnalyzer = ({ setView }) => {
         }
     ];
 
-    const handleAnswer = (val) => {
+    const handleAnswer = (val: number) => {
         const newScore = score + val;
         if (step < 2) {
             setScore(newScore);
@@ -1066,8 +1214,8 @@ const EnergyAnalyzer = ({ setView }) => {
         }
     };
 
-    const getResultText = (level) => {
-        const levels = {
+    const getResultText = (level: number) => {
+        const levels: Record<number, { title: string; desc: string }> = {
             1: { title: "Level 1: The Filter", desc: "You are identifying as the effect, not the cause. Coaching can help you regain agency." },
             2: { title: "Level 2: The Fighter", desc: "You have high energy, but it's fueled by conflict. We can transmute this into construction." },
             3: { title: "Level 3: The Rationalizer", desc: "You are coping well and taking responsibility. The next step is accessing intuition." },
@@ -1115,8 +1263,229 @@ const EnergyAnalyzer = ({ setView }) => {
     )
 };
 
-// --- MAIN RENDER ---
-const AdaptivEthereal = () => {
+const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath }) => {
+  const [primingDone, setPrimingDone] = useState(false);
+  
+  const steps = [
+      { id: 'outcome', q: 'The Goal', ph: 'What is the desired outcome?' },
+      { id: 'action', q: 'The Action', ph: 'What is the single step?' },
+      { id: 'when', q: 'The Commitment', ph: 'When will you do it?' }
+  ];
+  
+  useEffect(() => {
+      if (goal.outcome && goal.action && goalStep === 0) {
+          setGoalStep(2);
+      }
+      if (goal.outcome === undefined) {
+          setGoal({ outcome: '', action: '', when: '' });
+      }
+  }, [goal.outcome, goal.action, goalStep]);
+
+  const current = steps[Math.min(goalStep, steps.length - 1)];
+  const partName = somaticZones[0] || 'Body';
+
+  const generateLink = () => `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Adaptiv: ' + (goal.action || 'Action'))}&details=${encodeURIComponent('Goal: ' + (goal.outcome || 'Outcome') + '\n\nMindset: ' + expandingBelief)}`;
+  
+  const copyArtifact = () => {
+      const artifact = `ADAPTIV SESSION #${sessionCount + 1}\n\nSTRESSOR: ${stressor}\nENERGY RECLAIMED FROM: ${partName}\nNEW TRUTH: ${expandingBelief}\nGOAL: ${goal.outcome}\nACTION: ${goal.action} (by ${goal.when})\n\nGenerated by Adaptiv.`;
+      navigator.clipboard.writeText(artifact);
+      completeSession();
+      alert("Session Artifact copied to clipboard. Share it on your story.");
+  };
+
+  const generateEmailLink = () => {
+      const subject = `Adaptiv Session #${sessionCount + 1}: ${stressor}`;
+      const body = `ADAPTIV SESSION ARTIFACT\n\nSTRESSOR: ${stressor}\nENERGY RECLAIMED FROM: ${partName}\n\nTHE NEW TRUTH: "${expandingBelief}"\n\nGOAL: ${goal.outcome}\nACTION: ${goal.action}\nWHEN: ${goal.when}\n\n(CC save@alexioda.com to log this session)`;
+      return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const quickTimes = ["Now", "Within 1 Hr", "Today", "Tomorrow"];
+
+  // RENDER LOGIC FOR PRIMING VS SUMMARY
+  if (isLocked && !primingDone && !isBurnoutPath) { // No priming needed for burnout path (already done in preservation)
+    return (
+      <div className="h-full flex flex-col relative z-20">
+         <Nav 
+            title="Integration" 
+            subtitle="Embodiment" 
+            onBack={() => { setIsLocked(false); }} 
+            soundEnabled={soundEnabled} 
+            toggleSound={toggleSound} 
+            progress={90}
+         />
+         <Priming onComplete={() => setPrimingDone(true)} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full flex flex-col relative z-20">
+       <Nav 
+          title="Integration" 
+          subtitle="Molt Complete" 
+          onBack={() => setView('fork')} 
+          soundEnabled={soundEnabled} 
+          toggleSound={toggleSound} 
+          progress={100}
+       />
+       <div className="text-center pt-2 mb-8 animate-enter">
+          <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 border border-white/10 ${isBurnoutPath ? 'bg-orange-500/20' : 'bg-gradient-to-tr from-indigo-500/20 to-teal-500/20'}`}>
+              {isBurnoutPath ? <Moon className="text-orange-200" size={24}/> : <Check className="text-white" size={24} />}
+          </div>
+          <h1 className="font-serif text-3xl text-white italic">Integration</h1>
+          <p className="font-sans text-[10px] uppercase tracking-widest text-white/40 mt-2">The Molt is Complete</p>
+       </div>
+
+       <div className="flex-1 overflow-y-auto hide-scrollbar pb-20 animate-enter delay-100">
+          <div className={`glass-panel p-8 rounded-[32px] mb-6 relative overflow-hidden transition-all duration-1000 ${isLocked ? 'animate-flash' : ''}`}>
+              {!isLocked ? (
+                  <div className="animate-fade-in relative z-10">
+                      <div className="flex justify-between items-center mb-6">
+                          <span className="font-sans text-[10px] uppercase tracking-widest text-white/40">Seal the Contract</span>
+                          <span className="font-sans text-[10px] text-white/20">{goalStep + 1} / 3</span>
+                      </div>
+                      <h3 className="font-serif text-xl text-white italic mb-6">{current.q}</h3>
+                      
+                      {current.id === 'when' ? (
+                        <div className="space-y-6">
+                           <div className="grid grid-cols-2 gap-3">
+                              {quickTimes.map(time => (
+                                <button
+                                  key={time}
+                                  onClick={() => {
+                                    setGoal({...goal, when: time});
+                                    setIsLocked(true);
+                                  }}
+                                  className="py-3 rounded-xl border border-white/20 bg-white/5 text-sm font-sans text-white/90 hover:bg-white/20 hover:border-white/40 hover:text-white transition-all shadow-sm"
+                                >
+                                  {time}
+                                </button>
+                              ))}
+                           </div>
+                           <p className="text-center text-[10px] text-white/30 uppercase tracking-widest mt-4">Select to Seal</p>
+                        </div>
+                      ) : (
+                        <>
+                          <input 
+                             autoFocus
+                             className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-teal-500/50 transition-colors mb-6 placeholder:text-white/10"
+                             placeholder={current.ph}
+                             value={goal[current.id as keyof typeof goal]}
+                             onChange={e => setGoal({...goal, [current.id]: e.target.value})}
+                             onKeyDown={e => {
+                                 if (e.key === 'Enter' && goal[current.id as keyof typeof goal]) {
+                                     if (goalStep < 2) setGoalStep(goalStep + 1);
+                                     else setIsLocked(true);
+                                 }
+                             }}
+                          />
+                          <div className="flex gap-3">
+                               {goalStep > 0 && <button onClick={() => setGoalStep(goalStep - 1)} className="px-4 py-3 rounded-xl border border-white/10 text-white/40">Back</button>}
+                               <button 
+                                  disabled={!goal[current.id as keyof typeof goal]}
+                                  onClick={() => { if (goalStep < 2) setGoalStep(goalStep + 1); else setIsLocked(true); }}
+                                  className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold font-sans text-xs uppercase tracking-widest disabled:opacity-50"
+                               >
+                                  Next
+                               </button>
+                          </div>
+                        </>
+                      )}
+                  </div>
+              ) : (
+                  <div className="text-center animate-fade-in relative z-10">
+                      {/* REDESIGNED VISUAL ARTIFACT CARD */}
+                      <div className={`mb-8 p-8 rounded-2xl border text-center relative overflow-hidden shadow-2xl ${isBurnoutPath ? 'bg-slate-900 border-orange-900/50' : 'bg-gradient-to-br from-teal-900/40 to-slate-900/80 border-teal-500/30'}`}>
+                          <div className="absolute top-0 right-0 p-4 opacity-10">
+                              {isBurnoutPath ? <Moon size={80} className="text-orange-200" /> : <Zap size={80} />}
+                          </div>
+                          <div className="absolute top-4 left-4">
+                              <Activity size={16} className={isBurnoutPath ? "text-orange-400" : "text-teal-400"} />
+                          </div>
+                          
+                          <p className={`font-sans text-[9px] uppercase tracking-[0.3em] mb-6 mt-2 ${isBurnoutPath ? 'text-orange-200/60' : 'text-teal-200/60'}`}>
+                            {isBurnoutPath ? 'Permission Slip' : 'Adaptiv Artifact'}
+                          </p>
+                          
+                          <h2 className="font-serif text-2xl text-white italic leading-snug mb-2">"{expandingBelief}"</h2>
+                          <div className={`w-12 h-[1px] mx-auto mb-6 ${isBurnoutPath ? 'bg-orange-500/50' : 'bg-teal-500/50'}`}></div>
+                          
+                          <div className="space-y-2">
+                             <p className="font-sans text-[10px] text-white/40 uppercase tracking-widest">
+                                {isBurnoutPath ? 'Current Status' : 'Goal'}
+                             </p>
+                             <p className={`font-serif text-lg italic ${isBurnoutPath ? 'text-orange-100' : 'text-teal-100'}`}>"{goal.outcome}"</p>
+                          </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                          <button onClick={copyArtifact} className="flex flex-col items-center justify-center p-4 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors gap-2">
+                              <Copy size={20}/> 
+                              <span className="text-[10px] font-bold uppercase tracking-wide">Copy Text</span>
+                          </button>
+                          
+                          {/* NEW EMAIL TO SELF FEATURE */}
+                          <a href={generateEmailLink()} className="flex flex-col items-center justify-center p-4 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors gap-2">
+                              <Mail size={20}/>
+                              <span className="text-[10px] font-bold uppercase tracking-wide">Email Self</span>
+                          </a>
+                      </div>
+                      
+                      <a href={generateLink()} target="_blank" rel="noopener noreferrer" className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-teal-900/30 border border-teal-500/30 text-teal-200 hover:bg-teal-900/50 transition-colors text-xs font-bold uppercase tracking-wide">
+                          <Calendar size={14}/> Add to Calendar
+                      </a>
+                  </div>
+              )}
+          </div>
+
+          {/* WORKBOOK DOWNLOAD BUTTON */}
+          <a 
+            href="https://drive.google.com/file/d/1i75xJFlb-21Q5cTqiTlg22AkdcEQa4Cx/view?usp=sharing" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="w-full mb-8 py-4 rounded-2xl border border-indigo-500/30 bg-indigo-900/10 flex items-center justify-center gap-3 group hover:bg-indigo-900/30 transition-all"
+          >
+            <div className="p-2 bg-indigo-500/20 rounded-full group-hover:bg-indigo-500/40 transition-colors">
+              <BookOpen size={18} className="text-indigo-200" />
+            </div>
+            <div className="text-left">
+              <p className="font-serif text-indigo-100 italic text-lg leading-none">The Alchemist's Field Guide</p>
+              <p className="font-sans text-[10px] text-indigo-300 uppercase tracking-wider mt-1">Download the Blueprints</p>
+            </div>
+          </a>
+
+          {isLocked && (
+              <button 
+                onClick={() => setView('energy')}
+                className="w-full mb-6 py-5 rounded-[24px] bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-100 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_30px_rgba(245,158,11,0.2)] transition-all flex items-center justify-center gap-3"
+              >
+                  <BarChart size={16} /> Unlock Energy Profile
+              </button>
+          )}
+
+          <div className="relative overflow-hidden p-8 rounded-[32px] glass-panel group cursor-pointer transition-all hover:bg-white/5">
+               <div className="absolute -right-4 -top-4 opacity-10 group-hover:opacity-20 transition-opacity rotate-12">
+                   <Facebook size={100} className="text-blue-400" />
+               </div>
+               <h3 className="font-serif text-xl text-white italic mb-2">Deepen the Work</h3>
+               <p className="font-sans text-xs text-white/50 mb-6 leading-relaxed max-w-[80%]">
+                  You have begun the shift. Cement this architecture with a 1:1 session at Conscious Growth Coaching.
+               </p>
+               <a href="https://www.facebook.com/alexiodacoaching" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-200 hover:bg-blue-600/40 transition-colors text-xs font-bold uppercase tracking-wide">
+                  Visit Facebook Page <ArrowRight size={14} />
+               </a>
+          </div>
+          
+          <button onClick={resetApp} className="mt-8 mx-auto flex items-center gap-2 text-white/20 hover:text-white transition-colors text-[10px] uppercase tracking-widest">
+              <RefreshCw size={12} /> Reset System
+          </button>
+       </div>
+    </div>
+  );
+};
+  
+  // --- MAIN RENDER ---
+  const AdaptivEthereal = () => {
   // --- STATE ---
   const [view, setView] = useState('welcome'); // Starts at welcome
   const [bgState, setBgState] = useState('neutral'); 
@@ -1131,7 +1500,7 @@ const AdaptivEthereal = () => {
   const [isBurnoutPath, setBurnoutPath] = useState(false); // NEW STATE FOR BRANCHING
   
   // Protocol State
-  const [somaticZones, setSomaticZones] = useState([]);
+  const [somaticZones, setSomaticZones] = useState<string[]>([]);
   const [partsStep, setPartsStep] = useState('experience'); // experience, connect, message, channel
   const [sensation, setSensation] = useState('');
   const [protection, setProtection] = useState('');
@@ -1141,7 +1510,7 @@ const AdaptivEthereal = () => {
   const [ability, setAbility] = useState(50);
   
   // Goals & Tools
-  const [goal, setGoal] = useState({ what: '', measure: '', when: '', outcome: '' });
+  const [goal, setGoal] = useState({ what: '', measure: '', when: '', outcome: '', action: '' });
   const [goalStep, setGoalStep] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [breathing, setBreathing] = useState(false);
@@ -1149,8 +1518,8 @@ const AdaptivEthereal = () => {
   
   // Audio
   const [soundEnabled, setSoundEnabled] = useState(false);
-  const audioContextRef = useRef(null);
-  const noiseNodeRef = useRef(null);
+  const audioContextRef = useRef<any>(null);
+  const noiseNodeRef = useRef<any>(null);
 
   // --- INITIALIZATION ---
   useEffect(() => {
@@ -1203,7 +1572,7 @@ const AdaptivEthereal = () => {
     setSensation('');
     setProtection('');
     setExpandingBelief('');
-    setGoal({ what: '', measure: '', when: '', outcome: '' });
+    setGoal({ what: '', measure: '', when: '', outcome: '', action: '' });
     setIsLocked(false);
     setPartsStep('experience');
     setBurnoutPath(false);
@@ -1219,12 +1588,12 @@ const AdaptivEthereal = () => {
       }
       setSoundEnabled(false);
     } else {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       const ctx = new AudioContext();
       const bufferSize = 4096;
       const brownNoise = ctx.createScriptProcessor(bufferSize, 1, 1);
       
-      brownNoise.onaudioprocess = (e) => {
+      brownNoise.onaudioprocess = (e: any) => {
         const output = e.outputBuffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) {
           const white = Math.random() * 2 - 1;
