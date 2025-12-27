@@ -539,6 +539,7 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
 const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, soundEnabled, setBurnoutPath }) => {
   const [step, setStep] = useState(0);
   const [yesCount, setYesCount] = useState(0);
+  const [selected, setSelected] = useState<boolean | null>(null);
 
   const questions = [
     { 
@@ -555,15 +556,18 @@ const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, sound
     }
   ];
 
-  const handleAnswer = (isYes: boolean) => {
-    const newCount = isYes ? yesCount + 1 : yesCount;
+  const confirmAnswer = () => {
+    if (selected === null) return;
+    
+    const newCount = selected ? yesCount + 1 : yesCount;
     setYesCount(newCount);
+    setSelected(null); // Reset selection for next step
     
     if (step < 2) {
       setStep(step + 1);
     } else {
-      // Logic: If 2 or more YES, go to Preservation/Burnout path. Else go back to Somatic.
-      if (newCount >= 1) { // Strict check: even 1 strong yes suggests needing rest.
+      // Logic: If 1 or more YES, go to Preservation/Burnout path.
+      if (newCount >= 1) { 
         setBurnoutPath(true);
         setView('preservation');
       } else {
@@ -574,25 +578,39 @@ const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, sound
   };
 
   return (
-    <div className="h-full flex flex-col justify-center animate-enter px-6">
+    <div className="h-full flex flex-col">
        <Nav title="The Spark Check" subtitle={`Assessment ${step + 1} / 3`} onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
        
-       <div className="flex-1 flex flex-col justify-center items-center text-center">
-          <div className="mb-8 p-4 bg-orange-500/10 rounded-full border border-orange-500/20">
+       <div className="flex-1 flex flex-col justify-center items-center text-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-6">
+          <div className="mb-8 p-4 bg-orange-500/10 rounded-full border border-orange-500/20 shrink-0">
              <Battery size={40} className="text-orange-300" />
           </div>
           
-          <h3 className="font-serif text-2xl text-white italic mb-2">{questions[step].q}</h3>
-          <p className="font-sans text-sm text-white/70 leading-relaxed mb-12 max-w-xs">
+          <h3 className="font-serif text-2xl text-white italic mb-2 shrink-0">{questions[step].q}</h3>
+          <p className="font-sans text-sm text-white/70 leading-relaxed mb-8 max-w-xs shrink-0">
             {questions[step].text}
           </p>
 
-          <div className="w-full space-y-4">
-             <button onClick={() => handleAnswer(true)} className="w-full py-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white font-sans text-xs tracking-widest uppercase transition-all">
+          <div className="w-full space-y-4 shrink-0">
+             <button 
+                onClick={() => setSelected(true)} 
+                className={`w-full py-4 rounded-xl border font-sans text-xs tracking-widest uppercase transition-all ${selected === true ? 'bg-orange-500/20 border-orange-500 text-orange-200' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}`}
+             >
                 Yes, I feel this
              </button>
-             <button onClick={() => handleAnswer(false)} className="w-full py-4 rounded-xl bg-transparent hover:bg-white/5 border border-white/5 text-white/50 hover:text-white font-sans text-xs tracking-widest uppercase transition-all">
+             <button 
+                onClick={() => setSelected(false)} 
+                className={`w-full py-4 rounded-xl border font-sans text-xs tracking-widest uppercase transition-all ${selected === false ? 'bg-orange-500/20 border-orange-500 text-orange-200' : 'bg-transparent border-white/5 text-white/50 hover:bg-white/5'}`}
+             >
                 No, not really
+             </button>
+
+             <button 
+                onClick={confirmAnswer}
+                disabled={selected === null}
+                className="w-full mt-6 py-4 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-widest uppercase transition-all disabled:opacity-0 disabled:translate-y-2"
+             >
+                Next
              </button>
           </div>
        </div>
@@ -1053,7 +1071,7 @@ const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, abilit
 
 const Crossroads: React.FC<CrossroadsProps> = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel }) => {
   // INTELLIGENT CROSSROADS LOGIC
-  const recommendStillness = stressLevel > 70 && energyLevel < 40;
+  const recommendStillness = parseInt(stressLevel.toString()) > 70 && parseInt(energyLevel.toString()) < 40;
 
   return (
     <div className="h-full flex flex-col justify-center animate-enter">
@@ -1172,6 +1190,7 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
     const [step, setStep] = useState(0);
     const [score, setScore] = useState(0);
     const [result, setResult] = useState<number | null>(null);
+    const [selected, setSelected] = useState<number | null>(null);
 
     const questions = [
         {
@@ -1203,10 +1222,14 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
         }
     ];
 
-    const handleAnswer = (val: number) => {
-        const newScore = score + val;
+    const confirmAnswer = () => {
+        if (selected === null) return;
+        
+        const newScore = score + selected;
+        setScore(newScore);
+        setSelected(null); // Reset selection
+
         if (step < 2) {
-            setScore(newScore);
             setStep(step + 1);
         } else {
             const final = Math.round(newScore / 3);
@@ -1247,17 +1270,27 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
     return (
         <div className="h-full flex flex-col justify-center animate-enter">
             <Nav title="Energy Scan" subtitle={`Question ${step + 1} / 3`} onBack={() => setView('molt')} toggleSound={() => {}} soundEnabled={false} />
-            <h2 className="font-serif text-2xl text-white italic mb-8 text-center px-4">{questions[step].q}</h2>
-            <div className="grid gap-3">
-                {questions[step].options.map((opt, i) => (
-                    <button 
-                        key={i} 
-                        onClick={() => handleAnswer(opt.val)}
-                        className="p-5 rounded-2xl glass-panel text-left hover:bg-white/10 transition-all font-sans text-sm text-white/80"
-                    >
-                        {opt.text}
-                    </button>
-                ))}
+            <div className="flex-1 flex flex-col justify-center items-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-2">
+                <h2 className="font-serif text-2xl text-white italic mb-8 text-center px-4">{questions[step].q}</h2>
+                <div className="grid gap-3 w-full">
+                    {questions[step].options.map((opt, i) => (
+                        <button 
+                            key={i} 
+                            onClick={() => setSelected(opt.val)}
+                            className={`p-5 rounded-2xl border text-left transition-all font-sans text-sm ${selected === opt.val ? 'bg-amber-500/20 border-amber-500 text-amber-100' : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'}`}
+                        >
+                            {opt.text}
+                        </button>
+                    ))}
+                </div>
+                
+                <button 
+                    onClick={confirmAnswer}
+                    disabled={selected === null}
+                    className="w-full mt-6 py-4 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-widest uppercase transition-all disabled:opacity-0 disabled:translate-y-2"
+                >
+                    Next
+                </button>
             </div>
         </div>
     )
@@ -1506,20 +1539,21 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
               )}
           </div>
 
-          {/* WORKBOOK DOWNLOAD BUTTON */}
+          {/* WORKBOOK UPSELL BUTTON */}
           <a 
-            href="https://drive.google.com/file/d/1i75xJFlb-21Q5cTqiTlg22AkdcEQa4Cx/view?usp=sharing" 
+            href="https://alexioda.gumroad.com/l/hltqhb" 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="w-full mb-8 py-4 rounded-2xl border border-indigo-500/30 bg-indigo-900/10 flex items-center justify-center gap-3 group hover:bg-indigo-900/30 transition-all"
+            className="w-full mb-8 py-4 rounded-2xl border border-indigo-500/30 bg-indigo-900/10 flex items-center justify-center gap-3 group hover:bg-indigo-900/30 transition-all cursor-pointer"
           >
             <div className="p-2 bg-indigo-500/20 rounded-full group-hover:bg-indigo-500/40 transition-colors">
               <BookOpen size={18} className="text-indigo-200" />
             </div>
             <div className="text-left">
               <p className="font-serif text-indigo-100 italic text-lg leading-none">The Alchemist's Field Guide</p>
-              <p className="font-sans text-[10px] text-indigo-300 uppercase tracking-wider mt-1">Download the Blueprints</p>
+              <p className="font-sans text-[10px] text-indigo-300 uppercase tracking-wider mt-1">Get the 7-Day Protocol ($27)</p>
             </div>
+            <ArrowRight size={16} className="text-indigo-300/50 group-hover:text-indigo-300 group-hover:translate-x-1 transition-all"/>
           </a>
 
           {isLocked && (
