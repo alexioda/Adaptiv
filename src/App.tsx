@@ -4,8 +4,8 @@ import {
   ArrowRight, Check, Calendar, Facebook, 
   User, Target, Battery,
   Waves, Volume2, VolumeX, ChevronLeft, AlertCircle, Copy, LogOut, BarChart, RefreshCw,
-  Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Clock, Mountain, Mail, Map, Compass,
-  Moon, Coffee, MinusCircle, Thermometer, TrendingUp, AlertTriangle, Lock, Info
+  Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail, Map, Compass,
+  Moon, Coffee, MinusCircle, Thermometer, AlertTriangle, Lock, Info
 } from 'lucide-react';
 
 // --- TYPES ---
@@ -754,160 +754,6 @@ const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, sound
   );
 };
 
-// --- ENERGY ANALYZER (UPDATED: 6 QUESTIONS + RESULTS CARD + SCROLL) ---
-const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
-    const [step, setStep] = useState(0);
-    const [score, setScore] = useState(0);
-    const [result, setResult] = useState<number | null>(null);
-    const [selected, setSelected] = useState<number | null>(null);
-
-    const questions = [
-        {
-            q: "Reaction to Challenge",
-            options: [
-                { text: "I feel like a victim. Why me?", val: 1 },
-                { text: "I have to fight to win.", val: 2 },
-                { text: "I look for the opportunity.", val: 5 }
-            ]
-        },
-        {
-            q: "Inner Monologue",
-            options: [
-                { text: "I'm not good enough.", val: 1 },
-                { text: "I'm better than them.", val: 2 },
-                { text: "I'm curious about this.", val: 5 }
-            ]
-        },
-        {
-            q: "Motivation Source",
-            options: [
-                { text: "I have to do this (Fear).", val: 1 },
-                { text: "I need to prove myself (Ego).", val: 2 },
-                { text: "I want to create this (Purpose).", val: 6 }
-            ]
-        },
-        {
-            q: "View of Others",
-            options: [
-                { text: "They just don't get it.", val: 2 },
-                { text: "They are doing their best.", val: 4 },
-                { text: "We are partners in this.", val: 6 }
-            ]
-        },
-        {
-            q: "Energy at 3 PM",
-            options: [
-                { text: "Completely drained / Foggy.", val: 1 },
-                { text: "Wired / Anxious / Tense.", val: 2 },
-                { text: "Steady / Calm.", val: 5 }
-            ]
-        },
-        {
-            q: "Goal Driver",
-            options: [
-                { text: "Avoiding failure.", val: 1 },
-                { text: "Beating the competition.", val: 2 },
-                { text: "Expressing my potential.", val: 6 }
-            ]
-        }
-    ];
-
-    const confirmAnswer = () => {
-        if (selected === null) return;
-        
-        const newScore = score + selected;
-        setScore(newScore);
-        setSelected(null);
-
-        if (step < questions.length - 1) {
-            setStep(step + 1);
-        } else {
-            const final = Math.round(newScore / questions.length);
-            setResult(final);
-        }
-    };
-
-    const getResultText = (level: number) => {
-        const levels: Record<number, { title: string; desc: string; type: string }> = {
-            1: { title: "Level 1: The Victim", type: "Catabolic", desc: "You are identifying as the effect, not the cause. Coaching can help you regain agency." },
-            2: { title: "Level 2: The Fighter", type: "Catabolic", desc: "You have high energy, but it's fueled by conflict. We can transmute this into construction." },
-            3: { title: "Level 3: The Rationalizer", type: "Anabolic", desc: "You are coping well. You take responsibility and rationalize stress to get through the day." },
-            4: { title: "Level 4: The Caregiver", type: "Anabolic", desc: "You are driven by compassion and service. Be careful not to give so much that you deplete yourself." },
-            5: { title: "Level 5: The Opportunist", type: "Anabolic", desc: "You see problems as possibilities. You don't fight stress; you transform it. This is high-performance." },
-            6: { title: "Level 6: The Visionary", type: "Anabolic", desc: "You are connected to a larger purpose. Intuition guides you. This is the zone of genius." }
-        };
-        return levels[level] || levels[3]; 
-    };
-
-    if (result) {
-        const data = getResultText(result);
-        const isCatabolic = data.type === "Catabolic";
-        
-        return (
-            <div className="h-full flex flex-col justify-center animate-enter text-center px-4 overflow-y-auto hide-scrollbar">
-                <div className="py-10">
-                    <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(255,255,255,0.1)] border-2 ${isCatabolic ? 'bg-red-500/20 border-red-500' : 'bg-teal-500/20 border-teal-500'}`}>
-                        {isCatabolic ? <AlertTriangle size={40} className="text-red-400" /> : <Zap size={40} className="text-teal-400" />}
-                    </div>
-                    
-                    <p className="font-sans text-[10px] uppercase tracking-widest opacity-60 mb-2">Your Energy Leadership Level</p>
-                    <h2 className="font-serif text-3xl text-white italic mb-2">{data.title}</h2>
-                    <p className="font-sans text-xs text-white/50 uppercase tracking-widest mb-6 border border-white/10 inline-block px-3 py-1 rounded-full">{data.type} Energy</p>
-                    
-                    <p className="font-sans text-sm text-white/70 mb-10 leading-relaxed max-w-xs mx-auto">{data.desc}</p>
-                    
-                    <div className="bg-white/5 rounded-xl p-6 mb-8 text-left">
-                        <h4 className="font-serif text-white italic mb-2 text-sm flex items-center justify-center gap-2"><Info size={14}/> The Deeper Why</h4>
-                        <h4 className="font-serif text-white italic mb-2">The Prescription:</h4>
-                        <p className="font-sans text-xs text-white/60">
-                           {isCatabolic 
-                             ? "Your engine is running on 'dirty fuel' (fear/anger). This causes burnout. We need to shift you to Level 3 (Responsibility) immediately."
-                             : "You are running clean fuel. To sustain this, focus on 'The Vision' protocol to lock in this state."
-                           }
-                        </p>
-                        <p className="font-sans text-[10px] text-white/40 mt-4 leading-relaxed border-t border-white/5 pt-4">
-                           This quick scan captures your current state. To understand the root cause—your Energy Leadership levels—and fix this permanently, the full ELI Assessment is required.
-                        </p>
-                    </div>
-
-                    <a href="https://calendly.com/alexioda" target="_blank" rel="noopener noreferrer" className="w-full block py-4 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] transition-all">
-                        Book Full Energy Audit (ELI)
-                    </a>
-                    <button onClick={() => setView('dashboard')} className="mt-6 text-xs text-white/30 hover:text-white uppercase tracking-widest">Return to Horizon</button>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="h-full flex flex-col justify-center animate-enter">
-            <Nav title="Energy Lens" subtitle={`Question ${step + 1} / 6`} onBack={() => setView('molt')} toggleSound={() => {}} soundEnabled={false} progress={((step + 1) / 6) * 100} />
-            <div className="flex-1 flex flex-col justify-start items-center text-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-2 pt-8">
-                <h2 className="font-serif text-2xl text-white italic mb-8 text-center px-4">{questions[step].q}</h2>
-                <div className="grid gap-3 w-full shrink-0">
-                    {questions[step].options.map((opt, i) => (
-                        <button 
-                            key={i} 
-                            onClick={() => setSelected(opt.val)}
-                            className={`p-5 rounded-2xl border text-left transition-all font-sans text-sm ${selected === opt.val ? 'bg-indigo-500/20 border-indigo-400 text-indigo-100' : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'}`}
-                        >
-                            {opt.text}
-                        </button>
-                    ))}
-                </div>
-                
-                <button 
-                    onClick={confirmAnswer}
-                    disabled={selected === null}
-                    className="w-full mt-8 py-4 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-widest uppercase transition-all disabled:opacity-0 disabled:translate-y-2 shrink-0"
-                >
-                    Next
-                </button>
-            </div>
-        </div>
-    )
-};
-
 // --- PRESERVATION (BURNOUT RECOVERY) ---
 const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToMolt }) => {
   const [step, setStep] = useState(0);
@@ -1475,8 +1321,443 @@ const Alchemy: React.FC<AlchemyProps> = ({ setView, toggleSound, soundEnabled })
   </div>
 );
 
-// --- MAIN RENDER ---
-const AdaptivEthereal = () => {
+// --- ENERGY ANALYZER ---
+const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
+    const [step, setStep] = useState(0);
+    const [score, setScore] = useState(0);
+    const [result, setResult] = useState<number | null>(null);
+    const [selected, setSelected] = useState<number | null>(null);
+
+    const questions = [
+        {
+            q: "Reaction to Challenge",
+            options: [
+                { text: "I feel like a victim. Why me?", val: 1 },
+                { text: "I have to fight to win.", val: 2 },
+                { text: "I look for the opportunity.", val: 5 }
+            ]
+        },
+        {
+            q: "Inner Monologue",
+            options: [
+                { text: "I'm not good enough.", val: 1 },
+                { text: "I'm better than them.", val: 2 },
+                { text: "I'm curious about this.", val: 5 }
+            ]
+        },
+        {
+            q: "Motivation Source",
+            options: [
+                { text: "I have to do this (Fear).", val: 1 },
+                { text: "I need to prove myself (Ego).", val: 2 },
+                { text: "I want to create this (Purpose).", val: 6 }
+            ]
+        },
+        {
+            q: "View of Others",
+            options: [
+                { text: "They just don't get it.", val: 2 },
+                { text: "They are doing their best.", val: 4 },
+                { text: "We are partners in this.", val: 6 }
+            ]
+        },
+        {
+            q: "Energy at 3 PM",
+            options: [
+                { text: "Completely drained / Foggy.", val: 1 },
+                { text: "Wired / Anxious / Tense.", val: 2 },
+                { text: "Steady / Calm.", val: 5 }
+            ]
+        },
+        {
+            q: "Goal Driver",
+            options: [
+                { text: "Avoiding failure.", val: 1 },
+                { text: "Beating the competition.", val: 2 },
+                { text: "Expressing my potential.", val: 6 }
+            ]
+        }
+    ];
+
+    const confirmAnswer = () => {
+        if (selected === null) return;
+        
+        const newScore = score + selected;
+        setScore(newScore);
+        setSelected(null); // Reset selection
+
+        if (step < questions.length - 1) {
+            setStep(step + 1);
+        } else {
+            const final = Math.round(newScore / questions.length);
+            setResult(final);
+        }
+    };
+
+    const getResultText = (level: number) => {
+        const levels: Record<number, { title: string; desc: string; type: string }> = {
+            1: { title: "Level 1: The Victim", type: "Catabolic", desc: "You are identifying as the effect, not the cause. Coaching can help you regain agency." },
+            2: { title: "Level 2: The Fighter", type: "Catabolic", desc: "You have high energy, but it's fueled by conflict. We can transmute this into construction." },
+            3: { title: "Level 3: The Rationalizer", type: "Anabolic", desc: "You are coping well. You take responsibility and rationalize stress to get through the day." },
+            4: { title: "Level 4: The Caregiver", type: "Anabolic", desc: "You are driven by compassion and service. Be careful not to give so much that you deplete yourself." },
+            5: { title: "Level 5: The Opportunist", type: "Anabolic", desc: "You see problems as possibilities. You don't fight stress; you transform it. This is high-performance." },
+            6: { title: "Level 6: The Visionary", type: "Anabolic", desc: "You are connected to a larger purpose. Intuition guides you. This is the zone of genius." }
+        };
+        return levels[level] || levels[3]; 
+    };
+
+    if (result) {
+        const data = getResultText(result);
+        return (
+            <div className="h-full flex flex-col justify-center animate-enter text-center">
+                <div className="w-20 h-20 mx-auto bg-gradient-to-tr from-amber-400 to-orange-500 rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(251,191,36,0.4)]">
+                    <Zap size={40} className="text-white" />
+                </div>
+                <h2 className="font-serif text-3xl text-white italic mb-2">{data.title}</h2>
+                <p className="font-sans text-sm text-white/60 mb-8 leading-relaxed px-4">{data.desc}</p>
+                
+                <a href="https://calendly.com/alexioda" target="_blank" rel="noopener noreferrer" className="w-full py-4 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] transition-all">
+                    Stabilize at Level {result + 1} (Book Session)
+                </a>
+                <button onClick={() => setView('dashboard')} className="mt-6 text-xs text-white/30 hover:text-white uppercase tracking-widest">Return to Horizon</button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="h-full flex flex-col justify-center animate-enter">
+            <Nav title="Energy Scan" subtitle={`Question ${step + 1} / 3`} onBack={() => setView('molt')} toggleSound={() => {}} soundEnabled={false} />
+            <div className="flex-1 flex flex-col justify-center items-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-2">
+                <h2 className="font-serif text-2xl text-white italic mb-8 text-center px-4">{questions[step].q}</h2>
+                <div className="grid gap-3 w-full">
+                    {questions[step].options.map((opt, i) => (
+                        <button 
+                            key={i} 
+                            onClick={() => setSelected(opt.val)}
+                            className={`p-5 rounded-2xl border text-left transition-all font-sans text-sm ${selected === opt.val ? 'bg-amber-500/20 border-amber-500 text-amber-100' : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'}`}
+                        >
+                            {opt.text}
+                        </button>
+                    ))}
+                </div>
+                
+                <button 
+                    onClick={confirmAnswer}
+                    disabled={selected === null}
+                    className="w-full mt-6 py-4 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-widest uppercase transition-all disabled:opacity-0 disabled:translate-y-2"
+                >
+                    Next
+                </button>
+            </div>
+        </div>
+    )
+};
+
+const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
+  const [step, setStep] = useState(0);
+
+  const steps = [
+    {
+      icon: Mountain,
+      title: "Physiology",
+      instruction: "Change your state immediately. Stand up. Shoulders back. Deep breath. Look up.",
+      action: "I am ready."
+    },
+    {
+      icon: Anchor,
+      title: "Somatic Anchor",
+      instruction: "Where do you feel this new power in your body? Put your hand there now.",
+      action: "I feel it."
+    },
+    {
+      icon: Eye,
+      title: "Visualization",
+      instruction: "Close your eyes. See the goal achieved. Feel the emotion of the win in your body.",
+      action: "Seal it."
+    }
+  ];
+
+  const current = steps[step];
+
+  const next = () => {
+    if (step < steps.length - 1) {
+      setStep(step + 1);
+    } else {
+      onComplete();
+    }
+  };
+
+  return (
+    // ADDED overflow-y-auto to this view as well
+    <div className="h-full flex flex-col justify-center items-center text-center animate-enter overflow-y-auto hide-scrollbar">
+      <div className="min-h-full flex flex-col justify-center items-center py-10 w-full">
+        <div className="mb-8 relative">
+          <div className="absolute inset-0 bg-teal-500/20 blur-xl rounded-full"></div>
+          <current.icon size={64} className="text-white relative z-10 animate-pulse" strokeWidth={1} />
+        </div>
+        
+        <h2 className="font-serif text-3xl text-white italic mb-4 animate-enter" key={`t-${step}`}>
+          {current.title}
+        </h2>
+        
+        <p className="font-sans text-lg text-white/80 leading-relaxed max-w-[280px] mx-auto mb-12 animate-enter delay-100" key={`i-${step}`}>
+          {current.instruction}
+        </p>
+
+        <button 
+          onClick={next}
+          className="px-10 py-5 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-[0.2em] uppercase hover:scale-105 hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] transition-all animate-enter delay-200"
+        >
+          {current.action}
+        </button>
+
+        <div className="flex gap-2 mt-8">
+          {steps.map((_, i) => (
+            <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i === step ? 'w-8 bg-white' : 'w-2 bg-white/20'}`}></div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath }) => {
+  const [primingDone, setPrimingDone] = useState(false);
+  
+  const steps = [
+      { id: 'outcome', q: 'The Goal', ph: 'What is the desired outcome?' },
+      { id: 'action', q: 'The Action', ph: 'What is the single step?' },
+      { id: 'when', q: 'The Commitment', ph: 'When will you do it?' }
+  ];
+  
+  useEffect(() => {
+      if (goal.outcome && goal.action && goalStep === 0) {
+          setGoalStep(2);
+      }
+      if (goal.outcome === undefined) {
+          setGoal({ outcome: '', action: '', when: '' });
+      }
+  }, [goal.outcome, goal.action, goalStep]);
+
+  const current = steps[Math.min(goalStep, steps.length - 1)];
+  const partName = somaticZones[0] || 'Body';
+
+  const generateLink = () => `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Adaptiv: ' + (goal.action || 'Action'))}&details=${encodeURIComponent('Goal: ' + (goal.outcome || 'Outcome') + '\n\nMindset: ' + expandingBelief)}`;
+  
+  const copyArtifact = () => {
+      const artifact = `ADAPTIV SESSION #${sessionCount + 1}\n\nSTRESSOR: ${stressor}\nENERGY RECLAIMED FROM: ${partName}\nNEW TRUTH: ${expandingBelief}\nGOAL: ${goal.outcome}\nACTION: ${goal.action} (by ${goal.when})\n\nGenerated by Adaptiv.`;
+      navigator.clipboard.writeText(artifact);
+      completeSession();
+      alert("Session Artifact copied to clipboard. Share it on your story.");
+  };
+
+  const generateEmailLink = () => {
+      const subject = `Adaptiv Session #${sessionCount + 1}: ${stressor}`;
+      const body = `ADAPTIV SESSION ARTIFACT\n\nSTRESSOR: ${stressor}\nENERGY RECLAIMED FROM: ${partName}\n\nTHE NEW TRUTH: "${expandingBelief}"\n\nGOAL: ${goal.outcome}\nACTION: ${goal.action}\nWHEN: ${goal.when}\n\n(CC save@alexioda.com to log this session)`;
+      return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const quickTimes = ["Now", "Within 1 Hr", "Today", "Tomorrow"];
+  
+  // DYNAMIC WORKBOOK LOGIC
+  const isBurnout = isBurnoutPath;
+  const workbookTitle = isBurnout ? "Burnout Rescue Kit" : "The Alchemist's Field Guide";
+  const workbookDesc = isBurnout ? "Emergency Protocol + Audio ($27)" : "Get the 7-Day Protocol ($27)";
+  const workbookLink = "https://alexioda.gumroad.com/l/hltqhb";
+
+  // RENDER LOGIC FOR PRIMING VS SUMMARY
+  if (isLocked && !primingDone && !isBurnoutPath) { // No priming needed for burnout path (already done in preservation)
+    return (
+      <div className="h-full flex flex-col relative z-20">
+         <Nav 
+            title="Integration" 
+            subtitle="Embodiment" 
+            onBack={() => { setIsLocked(false); }} 
+            soundEnabled={soundEnabled} 
+            toggleSound={toggleSound} 
+            progress={90}
+         />
+         <Priming onComplete={() => setPrimingDone(true)} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full flex flex-col relative z-20">
+       <Nav 
+          title="Integration" 
+          subtitle="Molt Complete" 
+          onBack={() => setView('fork')} 
+          soundEnabled={soundEnabled} 
+          toggleSound={toggleSound} 
+          progress={100}
+       />
+       <div className="text-center pt-2 mb-8 animate-enter">
+          <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 border border-white/10 ${isBurnoutPath ? 'bg-orange-500/20' : 'bg-gradient-to-tr from-indigo-500/20 to-teal-500/20'}`}>
+              {isBurnoutPath ? <Moon className="text-orange-200" size={24}/> : <Check className="text-white" size={24} />}
+          </div>
+          <h1 className="font-serif text-3xl text-white italic">Integration</h1>
+          <p className="font-sans text-[10px] uppercase tracking-widest text-white/40 mt-2">The Molt is Complete</p>
+       </div>
+
+       <div className="flex-1 overflow-y-auto hide-scrollbar pb-20 animate-enter delay-100">
+          <div className={`glass-panel p-8 rounded-[32px] mb-6 relative overflow-hidden transition-all duration-1000 ${isLocked ? 'animate-flash' : ''}`}>
+              {!isLocked ? (
+                  <div className="animate-fade-in relative z-10">
+                      <div className="flex justify-between items-center mb-6">
+                          <span className="font-sans text-[10px] uppercase tracking-widest text-white/40">Seal the Contract</span>
+                          <span className="font-sans text-[10px] text-white/20">{goalStep + 1} / 3</span>
+                      </div>
+                      <h3 className="font-serif text-xl text-white italic mb-6">{current.q}</h3>
+                      
+                      {current.id === 'when' ? (
+                        <div className="space-y-6">
+                           <div className="grid grid-cols-2 gap-3">
+                              {quickTimes.map(time => (
+                                <button
+                                  key={time}
+                                  onClick={() => {
+                                    setGoal({...goal, when: time});
+                                    setIsLocked(true);
+                                  }}
+                                  className="py-3 rounded-xl border border-white/20 bg-white/5 text-sm font-sans text-white/90 hover:bg-white/20 hover:border-white/40 hover:text-white transition-all shadow-sm"
+                                >
+                                  {time}
+                                </button>
+                              ))}
+                           </div>
+                           <p className="text-center text-[10px] text-white/30 uppercase tracking-widest mt-4">Select to Seal</p>
+                        </div>
+                      ) : (
+                        <>
+                          <input 
+                             autoFocus
+                             className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-teal-500/50 transition-colors mb-6 placeholder:text-white/10"
+                             placeholder={current.ph}
+                             value={goal[current.id as keyof typeof goal]}
+                             onChange={e => setGoal({...goal, [current.id]: e.target.value})}
+                             onKeyDown={e => {
+                                 if (e.key === 'Enter' && goal[current.id as keyof typeof goal]) {
+                                     if (goalStep < 2) setGoalStep(goalStep + 1);
+                                     else setIsLocked(true);
+                                 }
+                             }}
+                          />
+                          <div className="flex gap-3">
+                               {goalStep > 0 && <button onClick={() => setGoalStep(goalStep - 1)} className="px-4 py-3 rounded-xl border border-white/10 text-white/40">Back</button>}
+                               <button 
+                                  disabled={!goal[current.id as keyof typeof goal]}
+                                  onClick={() => { if (goalStep < 2) setGoalStep(goalStep + 1); else setIsLocked(true); }}
+                                  className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold font-sans text-xs uppercase tracking-widest disabled:opacity-50"
+                               >
+                                  Next
+                               </button>
+                          </div>
+                        </>
+                      )}
+                  </div>
+              ) : (
+                  <div className="text-center animate-fade-in relative z-10">
+                      {/* REDESIGNED VISUAL ARTIFACT CARD */}
+                      <div className={`mb-8 p-8 rounded-2xl border text-center relative overflow-hidden shadow-2xl ${isBurnoutPath ? 'bg-slate-900 border-orange-900/50' : 'bg-gradient-to-br from-teal-900/40 to-slate-900/80 border-teal-500/30'}`}>
+                          <div className="absolute top-0 right-0 p-4 opacity-10">
+                              {isBurnoutPath ? <Moon size={80} className="text-orange-200" /> : <Zap size={80} />}
+                          </div>
+                          <div className="absolute top-4 left-4">
+                              <Activity size={16} className={isBurnoutPath ? "text-orange-400" : "text-teal-400"} />
+                          </div>
+                          
+                          <p className={`font-sans text-[9px] uppercase tracking-[0.3em] mb-6 mt-2 ${isBurnoutPath ? 'text-orange-200/60' : 'text-teal-200/60'}`}>
+                            {isBurnoutPath ? 'Permission Slip' : 'Adaptiv Artifact'}
+                          </p>
+                          
+                          <h2 className="font-serif text-2xl text-white italic leading-snug mb-2">"{expandingBelief}"</h2>
+                          <div className={`w-12 h-[1px] mx-auto mb-6 ${isBurnoutPath ? 'bg-orange-500/50' : 'bg-teal-500/50'}`}></div>
+                          
+                          <div className="space-y-2">
+                             <p className="font-sans text-[10px] text-white/40 uppercase tracking-widest">
+                                {isBurnoutPath ? 'Current Status' : 'Goal'}
+                             </p>
+                             <p className={`font-serif text-lg italic ${isBurnoutPath ? 'text-orange-100' : 'text-teal-100'}`}>"{goal.outcome}"</p>
+                          </div>
+                      </div>
+                      
+                      <div className="text-center space-y-4 mb-8">
+                         <p className="font-serif text-white/90 italic">Mission Complete.</p>
+                         <p className="font-sans text-xs text-white/60 leading-relaxed max-w-[280px] mx-auto">
+                            You have mapped the friction and forged a new truth. Carry this state into your next task. You are the Architect.
+                         </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                          <button onClick={copyArtifact} className="flex flex-col items-center justify-center p-4 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors gap-2">
+                              <Copy size={20}/> 
+                              <span className="text-[10px] font-bold uppercase tracking-wide">Copy Text</span>
+                          </button>
+                          
+                          {/* NEW EMAIL TO SELF FEATURE */}
+                          <a href={generateEmailLink()} className="flex flex-col items-center justify-center p-4 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors gap-2">
+                              <Mail size={20}/>
+                              <span className="text-[10px] font-bold uppercase tracking-wide">Email Self</span>
+                          </a>
+                      </div>
+                      
+                      <a href={generateLink()} target="_blank" rel="noopener noreferrer" className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-teal-900/30 border border-teal-500/30 text-teal-200 hover:bg-teal-900/50 transition-colors text-xs font-bold uppercase tracking-wide">
+                          <Calendar size={14}/> Add to Calendar
+                      </a>
+                  </div>
+              )}
+          </div>
+
+          {/* WORKBOOK UPSELL BUTTON */}
+          <a 
+            href={workbookLink} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className={`w-full mb-8 py-4 rounded-2xl border flex items-center justify-center gap-3 group transition-all cursor-pointer ${isBurnoutPath ? 'border-orange-500/30 bg-orange-900/10 hover:bg-orange-900/30' : 'border-indigo-500/30 bg-indigo-900/10 hover:bg-indigo-900/30'}`}
+          >
+            <div className={`p-2 rounded-full transition-colors ${isBurnoutPath ? 'bg-orange-500/20 group-hover:bg-orange-500/40' : 'bg-indigo-500/20 group-hover:bg-indigo-500/40'}`}>
+              <BookOpen size={18} className={isBurnoutPath ? "text-orange-200" : "text-indigo-200"} />
+            </div>
+            <div className="text-left">
+              <p className={`font-serif italic text-lg leading-none ${isBurnoutPath ? "text-orange-100" : "text-indigo-100"}`}>{workbookTitle}</p>
+              <p className={`font-sans text-[10px] uppercase tracking-wider mt-1 ${isBurnoutPath ? "text-orange-300" : "text-indigo-300"}`}>{workbookDesc}</p>
+            </div>
+            <ArrowRight size={16} className={`group-hover:translate-x-1 transition-all ${isBurnoutPath ? "text-orange-300/50 group-hover:text-orange-300" : "text-indigo-300/50 group-hover:text-indigo-300"}`}/>
+          </a>
+
+          {isLocked && (
+              <button 
+                onClick={() => setView('energy')}
+                className="w-full mb-6 py-5 rounded-[24px] bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-100 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_30px_rgba(245,158,11,0.2)] transition-all flex items-center justify-center gap-3"
+              >
+                  <BarChart size={16} /> Unlock Energy Profile
+              </button>
+          )}
+
+          <div className="relative overflow-hidden p-8 rounded-[32px] glass-panel group cursor-pointer transition-all hover:bg-white/5">
+               <div className="absolute -right-4 -top-4 opacity-10 group-hover:opacity-20 transition-opacity rotate-12">
+                   <Facebook size={100} className="text-blue-400" />
+               </div>
+               <h3 className="font-serif text-xl text-white italic mb-2">Deepen the Work</h3>
+               <p className="font-sans text-xs text-white/50 mb-6 leading-relaxed max-w-[80%]">
+                  You have begun the shift. Cement this architecture with a 1:1 session at Conscious Growth Coaching.
+               </p>
+               <a href="https://www.facebook.com/alexiodacoaching" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-200 hover:bg-blue-600/40 transition-colors text-xs font-bold uppercase tracking-wide">
+                  Visit Facebook Page <ArrowRight size={14} />
+               </a>
+          </div>
+          
+          <button onClick={resetApp} className="mt-8 mx-auto flex items-center gap-2 text-white/20 hover:text-white transition-colors text-[10px] uppercase tracking-widest">
+              <RefreshCw size={12} /> Reset System
+          </button>
+       </div>
+    </div>
+  );
+};
+  
+  // --- MAIN RENDER ---
+  const AdaptivEthereal = () => {
   // --- STATE ---
   const [view, setView] = useState('welcome'); // Starts at welcome (removed gate)
   const [bgState, setBgState] = useState('neutral'); 
@@ -1515,13 +1796,18 @@ const AdaptivEthereal = () => {
   // --- INITIALIZATION ---
   useEffect(() => {
     try {
+      const savedAccess = localStorage.getItem('adaptiv_access');
+      if (savedAccess === 'granted') {
+          setView('welcome');
+      }
+
       const savedUser = localStorage.getItem('adaptiv_user');
       const savedCount = localStorage.getItem('adaptiv_sessions');
       
       if (savedUser) {
         setUserName(savedUser);
         setSessionCount(savedCount ? parseInt(savedCount) : 0);
-        setView('dashboard');
+        if (savedAccess === 'granted') setView('dashboard');
       }
     } catch (e) {
       console.log("Storage access denied or empty, starting fresh.");
@@ -1555,6 +1841,7 @@ const AdaptivEthereal = () => {
       localStorage.removeItem('adaptiv_user');
       localStorage.removeItem('adaptiv_sessions');
       localStorage.removeItem('adaptiv_protocol_day');
+      // Note: We deliberately do NOT remove 'adaptiv_access' so they don't have to re-enter code.
     } catch (e) {}
     setUserName('');
     setSessionCount(0);
@@ -1634,6 +1921,7 @@ const AdaptivEthereal = () => {
         <Atmosphere bgState={bgState} />
         <div className="w-full max-w-md h-full relative z-10 p-6">
            {view === 'loading' && <div />}
+           {view === 'gate' && <Gate onUnlock={() => setView('welcome')} />}
            {view === 'welcome' && <Welcome onEnter={() => setView('manifesto')} />}
            {view === 'manifesto' && <Manifesto onContinue={() => setView('profile')} />}
            {view === 'profile' && <Identity userName={userName} setUserName={setUserName} onComplete={saveProfile} />}
