@@ -406,8 +406,15 @@ const Identity: React.FC<IdentityProps> = ({ userName, setUserName, onComplete }
 );
 
 const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => {
+  // PROTOCOL LOGIC
   const [showWorkCheck, setShowWorkCheck] = useState(false);
   
+  useEffect(() => {
+    // Legacy support for cleaning up old keys
+    // const savedDay = localStorage.getItem('adaptiv_protocol_day');
+    // if (savedDay) setActiveDay(parseInt(savedDay));
+  }, []);
+
   // DETECT WORK KEYWORDS
   useEffect(() => {
     const workKeywords = ['work', 'job', 'boss', 'career', 'project', 'deadline', 'email', 'client', 'business', 'manager', 'shift', 'hospital', 'patient'];
@@ -424,11 +431,6 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
     { day: 6, title: "The Vision", focus: "Future Self", icon: Compass },
     { day: 7, title: "Genesis", focus: "Integration", icon: Mountain },
   ];
-
-  const startProtocolDay = (day: { day: number; focus: string }) => {
-    setStressor(`Day ${day.day}: ${day.focus}`);
-    setView('somatic');
-  };
 
   return (
     <div className="h-full flex flex-col">
@@ -470,19 +472,22 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
 
            <div className="bg-white/5 rounded-2xl p-4 flex items-center gap-4 mb-4">
               <div className="p-3 bg-teal-500/20 rounded-full text-teal-200">
-                 {React.createElement(days[activeDay-1].icon, { size: 20 })}
+                 <RefreshCw size={20} />
               </div>
               <div>
                  <p className="font-sans text-[10px] text-white/40 uppercase tracking-widest">Current Mission</p>
-                 <p className="font-serif text-lg text-white italic">{days[activeDay-1].title}</p>
+                 <p className="font-serif text-lg text-white italic">Full System Reset</p>
               </div>
            </div>
 
            <button 
-             onClick={() => startProtocolDay(days[activeDay-1])}
+             onClick={() => {
+                 if (!stressor) setStressor("General Reset");
+                 setView('somatic');
+             }}
              className="w-full py-3 rounded-xl bg-teal-500 text-slate-900 font-sans text-xs font-bold tracking-widest uppercase hover:bg-teal-400 transition-all shadow-[0_0_20px_rgba(20,184,166,0.2)]"
            >
-             Begin Day {activeDay}
+             Begin Cycle
            </button>
         </div>
 
@@ -639,8 +644,12 @@ const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, sound
           </p>
 
           <div className="bg-white/5 rounded-xl p-6 border border-white/10 w-full mb-8">
+            <h4 className="font-serif text-white italic mb-2 text-sm flex items-center justify-center gap-2"><Info size={14}/> The Deeper Why</h4>
             <p className="font-sans text-[10px] uppercase tracking-widest text-white/50 mb-2">Recommended Protocol</p>
             <p className="font-serif text-lg text-white italic">{resultData.action}</p>
+            <p className="font-sans text-[10px] text-white/40 mt-4 leading-relaxed border-t border-white/5 pt-4">
+              This quick scan captures your current state. To understand the root cause—your Energy Leadership levels—and fix this permanently, the full ELI Assessment is required.
+            </p>
           </div>
 
           <button 
@@ -1348,33 +1357,55 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
 
     if (result) {
         const data = getResultText(result);
+        const isCatabolic = data.type === "Catabolic";
+        
         return (
-            <div className="h-full flex flex-col justify-center animate-enter text-center">
-                <div className="w-20 h-20 mx-auto bg-gradient-to-tr from-amber-400 to-orange-500 rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(251,191,36,0.4)]">
-                    <Zap size={40} className="text-white" />
+            <div className="h-full flex flex-col justify-center animate-enter text-center px-4 overflow-y-auto hide-scrollbar">
+                <div className="py-10">
+                    <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(255,255,255,0.1)] border-2 ${isCatabolic ? 'bg-red-500/20 border-red-500' : 'bg-teal-500/20 border-teal-500'}`}>
+                        {isCatabolic ? <AlertTriangle size={40} className="text-red-400" /> : <Zap size={40} className="text-teal-400" />}
+                    </div>
+                    
+                    <p className="font-sans text-[10px] uppercase tracking-widest opacity-60 mb-2">Your Energy Leadership Level</p>
+                    <h2 className="font-serif text-3xl text-white italic mb-2">{data.title}</h2>
+                    <p className="font-sans text-xs text-white/50 uppercase tracking-widest mb-6 border border-white/10 inline-block px-3 py-1 rounded-full">{data.type} Energy</p>
+                    
+                    <p className="font-sans text-sm text-white/70 mb-10 leading-relaxed max-w-xs mx-auto">{data.desc}</p>
+                    
+                    <div className="bg-white/5 rounded-xl p-6 mb-8 text-left">
+                        <h4 className="font-serif text-white italic mb-2 text-sm flex items-center justify-center gap-2"><Info size={14}/> The Deeper Why</h4>
+                        <h4 className="font-serif text-white italic mb-2">The Prescription:</h4>
+                        <p className="font-sans text-xs text-white/60">
+                           {isCatabolic 
+                             ? "Your engine is running on 'dirty fuel' (fear/anger). This causes burnout. We need to shift you to Level 3 (Responsibility) immediately."
+                             : "You are running clean fuel. To sustain this, focus on 'The Vision' protocol to lock in this state."
+                           }
+                        </p>
+                        <p className="font-sans text-[10px] text-white/40 mt-4 leading-relaxed border-t border-white/5 pt-4">
+                           This quick scan captures your current state. To understand the root cause—your Energy Leadership levels—and fix this permanently, the full ELI Assessment is required.
+                        </p>
+                    </div>
+
+                    <a href="https://calendly.com/alexioda" target="_blank" rel="noopener noreferrer" className="w-full block py-4 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] transition-all">
+                        Book Full Energy Audit (ELI)
+                    </a>
+                    <button onClick={() => setView('dashboard')} className="mt-6 text-xs text-white/30 hover:text-white uppercase tracking-widest">Return to Horizon</button>
                 </div>
-                <h2 className="font-serif text-3xl text-white italic mb-2">{data.title}</h2>
-                <p className="font-sans text-sm text-white/60 mb-8 leading-relaxed px-4">{data.desc}</p>
-                
-                <a href="https://calendly.com/alexioda" target="_blank" rel="noopener noreferrer" className="w-full py-4 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] transition-all">
-                    Stabilize at Level {result + 1} (Book Session)
-                </a>
-                <button onClick={() => setView('dashboard')} className="mt-6 text-xs text-white/30 hover:text-white uppercase tracking-widest">Return to Horizon</button>
             </div>
         );
     }
 
     return (
         <div className="h-full flex flex-col justify-center animate-enter">
-            <Nav title="Energy Scan" subtitle={`Question ${step + 1} / 3`} onBack={() => setView('molt')} toggleSound={() => {}} soundEnabled={false} />
-            <div className="flex-1 flex flex-col justify-center items-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-2">
+            <Nav title="Energy Lens" subtitle={`Question ${step + 1} / 6`} onBack={() => setView('molt')} toggleSound={() => {}} soundEnabled={false} progress={((step + 1) / 6) * 100} />
+            <div className="flex-1 flex flex-col justify-start items-center text-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-2 pt-8">
                 <h2 className="font-serif text-2xl text-white italic mb-8 text-center px-4">{questions[step].q}</h2>
-                <div className="grid gap-3">
+                <div className="grid gap-3 w-full shrink-0">
                     {questions[step].options.map((opt, i) => (
                         <button 
                             key={i} 
                             onClick={() => setSelected(opt.val)}
-                            className={`p-5 rounded-2xl border text-left transition-all font-sans text-sm ${selected === opt.val ? 'bg-amber-500/20 border-amber-500 text-amber-100' : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'}`}
+                            className={`p-5 rounded-2xl border text-left transition-all font-sans text-sm ${selected === opt.val ? 'bg-indigo-500/20 border-indigo-400 text-indigo-100' : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'}`}
                         >
                             {opt.text}
                         </button>
@@ -1384,7 +1415,7 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
                 <button 
                     onClick={confirmAnswer}
                     disabled={selected === null}
-                    className="w-full mt-8 py-4 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-widest uppercase transition-all disabled:opacity-0 disabled:translate-y-2"
+                    className="w-full mt-8 py-4 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-widest uppercase transition-all disabled:opacity-0 disabled:translate-y-2 shrink-0"
                 >
                     Next
                 </button>
@@ -1699,7 +1730,7 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
   // --- MAIN RENDER ---
   const AdaptivEthereal = () => {
   // --- STATE ---
-  const [view, setView] = useState('welcome'); // Starts at welcome (removed gate)
+  const [view, setView] = useState('welcome'); // Starts at welcome
   const [bgState, setBgState] = useState('neutral'); 
   
   // User & Data
@@ -1736,7 +1767,6 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
   // --- INITIALIZATION ---
   useEffect(() => {
     try {
-      // Removed Gate check
       const savedUser = localStorage.getItem('adaptiv_user');
       const savedCount = localStorage.getItem('adaptiv_sessions');
       
@@ -1777,7 +1807,6 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
       localStorage.removeItem('adaptiv_user');
       localStorage.removeItem('adaptiv_sessions');
       localStorage.removeItem('adaptiv_protocol_day');
-      // Note: We deliberately do NOT remove 'adaptiv_access' so they don't have to re-enter code.
     } catch (e) {}
     setUserName('');
     setSessionCount(0);
@@ -1857,7 +1886,6 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
         <Atmosphere bgState={bgState} />
         <div className="w-full max-w-md h-full relative z-10 p-6">
            {view === 'loading' && <div />}
-           {view === 'gate' && <Gate onUnlock={() => setView('welcome')} />}
            {view === 'welcome' && <Welcome onEnter={() => setView('manifesto')} />}
            {view === 'manifesto' && <Manifesto onContinue={() => setView('profile')} />}
            {view === 'profile' && <Identity userName={userName} setUserName={setUserName} onComplete={saveProfile} />}
