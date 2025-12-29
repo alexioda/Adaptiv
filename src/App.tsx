@@ -3,9 +3,9 @@ import {
   Activity, Wind, Zap, Heart, BookOpen, 
   ArrowRight, Check, Calendar, Facebook, 
   User, Target,
-  Waves, Volume2, VolumeX, ChevronLeft, AlertCircle, Copy, LogOut, BarChart, RefreshCw,
+  Waves, Volume2, VolumeX, ChevronLeft, AlertCircle, Copy, LogOut, RefreshCw,
   Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail, 
-  Moon, Coffee, MinusCircle, AlertTriangle, Info, FileText
+  Moon, Coffee, MinusCircle, AlertTriangle, Info, FileText, Thermometer
 } from 'lucide-react';
 
 // --- TYPES ---
