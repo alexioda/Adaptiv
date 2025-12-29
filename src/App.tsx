@@ -5,7 +5,7 @@ import {
   User, Target, Battery,
   Waves, Volume2, VolumeX, ChevronLeft, AlertCircle, Copy, LogOut, BarChart, RefreshCw,
   Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Clock, Mountain, Mail, Map, Compass,
-  Moon, Coffee, MinusCircle, Thermometer, TrendingUp, AlertTriangle, Lock, Info
+  Moon, Coffee, MinusCircle, Thermometer, TrendingUp, AlertTriangle, Info
 } from 'lucide-react';
 
 // --- TYPES ---
@@ -27,10 +27,6 @@ interface WelcomeProps {
 
 interface ManifestoProps {
   onContinue: () => void;
-}
-
-interface GateProps {
-  onUnlock: () => void;
 }
 
 interface IdentityProps {
@@ -305,51 +301,6 @@ const Nav: React.FC<NavProps> = ({ title, subtitle, onBack, isDashboard, soundEn
 );
 
 // --- VIEW COMPONENTS ---
-
-const Gate: React.FC<GateProps> = ({ onUnlock }) => {
-  const [code, setCode] = useState('');
-  const [error, setError] = useState(false);
-
-  const handleUnlock = () => {
-    // Simple hardcoded codes for beta/corporate access
-    const validCodes = ['GENESIS', 'ADAPTIV', 'EYLEADERS', 'RESILIENCE'];
-    if (validCodes.includes(code.toUpperCase().trim())) {
-      localStorage.setItem('adaptiv_access', 'granted');
-      onUnlock();
-    } else {
-      setError(true);
-      setTimeout(() => setError(false), 2000);
-    }
-  };
-
-  return (
-    <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50">
-      <div className="mb-8">
-        <Lock size={48} className="text-white/80 mx-auto mb-4" strokeWidth={1} />
-        <h1 className="font-serif text-3xl text-white italic">Restricted Access</h1>
-        <p className="font-sans text-[10px] uppercase tracking-widest text-white/40 mt-2">Enter Access Code</p>
-      </div>
-      
-      <div className="w-full max-w-xs space-y-6">
-        <input 
-          type="password" 
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
-          placeholder="ACCESS CODE"
-          className={`w-full bg-transparent border-b ${error ? 'border-red-500 text-red-500' : 'border-white/20 text-white'} py-3 text-center text-xl font-serif placeholder:text-white/20 focus:outline-none focus:border-white/60 transition-colors`}
-        />
-        {error && <p className="text-red-400 text-[10px] uppercase tracking-widest animate-pulse">Invalid Code</p>}
-        <button 
-          onClick={handleUnlock}
-          className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs font-medium tracking-widest uppercase hover:bg-white/20 transition-all"
-        >
-          Enter System
-        </button>
-      </div>
-    </div>
-  );
-};
 
 const Welcome: React.FC<WelcomeProps> = ({ onEnter }) => (
   <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
@@ -841,11 +792,13 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
 
     if (result) {
         const data = getResultText(result);
+        const isCatabolic = data.type === "Catabolic";
+        
         return (
             <div className="h-full flex flex-col justify-center animate-enter text-center px-4 overflow-y-auto hide-scrollbar">
                 <div className="py-10">
-                    <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(255,255,255,0.1)] border-2 ${data.type === 'Catabolic' ? 'bg-red-500/20 border-red-500' : 'bg-teal-500/20 border-teal-500'}`}>
-                        {data.type === 'Catabolic' ? <AlertTriangle size={40} className="text-red-400" /> : <Zap size={40} className="text-teal-400" />}
+                    <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(255,255,255,0.1)] border-2 ${isCatabolic ? 'bg-red-500/20 border-red-500' : 'bg-teal-500/20 border-teal-500'}`}>
+                        {isCatabolic ? <AlertTriangle size={40} className="text-red-400" /> : <Zap size={40} className="text-teal-400" />}
                     </div>
                     
                     <p className="font-sans text-[10px] uppercase tracking-widest opacity-60 mb-2">Your Energy Leadership Level</p>
@@ -858,7 +811,7 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
                         <h4 className="font-serif text-white italic mb-2 text-sm flex items-center justify-center gap-2"><Info size={14}/> The Deeper Why</h4>
                         <h4 className="font-serif text-white italic mb-2">The Prescription:</h4>
                         <p className="font-sans text-xs text-white/60">
-                           {data.type === 'Catabolic' 
+                           {isCatabolic 
                              ? "Your engine is running on 'dirty fuel' (fear/anger). This causes burnout. We need to shift you to Level 3 (Responsibility) immediately."
                              : "You are running clean fuel. To sustain this, focus on 'The Vision' protocol to lock in this state."
                            }
