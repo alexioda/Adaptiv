@@ -4,8 +4,8 @@ import {
   ArrowRight, Check, Calendar, Facebook, 
   User, Target, Battery,
   Waves, Volume2, VolumeX, ChevronLeft, AlertCircle, Copy, LogOut, BarChart, RefreshCw,
-  Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail, Map, Compass,
-  Moon, Coffee, MinusCircle, Thermometer, AlertTriangle, Lock, Info
+  Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail, 
+  Moon, Coffee, MinusCircle, Thermometer, Lock, Info
 } from 'lucide-react';
 
 // --- TYPES ---
@@ -455,36 +455,14 @@ const Identity: React.FC<IdentityProps> = ({ userName, setUserName, onComplete }
 );
 
 const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => {
-  // PROTOCOL LOGIC
-  const [activeDay, setActiveDay] = useState(1);
   const [showWorkCheck, setShowWorkCheck] = useState(false);
   
-  useEffect(() => {
-    const savedDay = localStorage.getItem('adaptiv_protocol_day');
-    if (savedDay) setActiveDay(parseInt(savedDay));
-  }, []);
-
   // DETECT WORK KEYWORDS
   useEffect(() => {
     const workKeywords = ['work', 'job', 'boss', 'career', 'project', 'deadline', 'email', 'client', 'business', 'manager', 'shift', 'hospital', 'patient'];
     const hasKeyword = workKeywords.some(keyword => stressor.toLowerCase().includes(keyword));
     setShowWorkCheck(hasKeyword);
   }, [stressor]);
-
-  const days = [
-    { day: 1, title: "The Vessel", focus: "Somatic Map", icon: Map },
-    { day: 2, title: "The Protector", focus: "Parts Work", icon: Shield },
-    { day: 3, title: "The Drain", focus: "Energy Audit", icon: Battery },
-    { day: 4, title: "The Pivot", focus: "Reframing", icon: RefreshCw },
-    { day: 5, title: "The Stillness", focus: "Regulation", icon: Wind },
-    { day: 6, title: "The Vision", focus: "Future Self", icon: Compass },
-    { day: 7, title: "Genesis", focus: "Integration", icon: Mountain },
-  ];
-
-  const startProtocolDay = (day: { day: number; focus: string }) => {
-    setStressor(`Day ${day.day}: ${day.focus}`);
-    setView('somatic');
-  };
 
   return (
     <div className="h-full flex flex-col">
@@ -1799,18 +1777,13 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
   // --- INITIALIZATION ---
   useEffect(() => {
     try {
-      const savedAccess = localStorage.getItem('adaptiv_access');
-      if (savedAccess === 'granted') {
-          setView('welcome');
-      }
-
       const savedUser = localStorage.getItem('adaptiv_user');
       const savedCount = localStorage.getItem('adaptiv_sessions');
       
       if (savedUser) {
         setUserName(savedUser);
         setSessionCount(savedCount ? parseInt(savedCount) : 0);
-        if (savedAccess === 'granted') setView('dashboard');
+        setView('dashboard');
       }
     } catch (e) {
       console.log("Storage access denied or empty, starting fresh.");
@@ -1924,7 +1897,6 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
         <Atmosphere bgState={bgState} />
         <div className="w-full max-w-md h-full relative z-10 p-6">
            {view === 'loading' && <div />}
-           {view === 'gate' && <Gate onUnlock={() => setView('welcome')} />}
            {view === 'welcome' && <Welcome onEnter={() => setView('manifesto')} />}
            {view === 'manifesto' && <Manifesto onContinue={() => setView('profile')} />}
            {view === 'profile' && <Identity userName={userName} setUserName={setUserName} onComplete={saveProfile} />}
