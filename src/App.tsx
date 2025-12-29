@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Activity, Wind, Zap, Heart, BookOpen, 
   ArrowRight, Check, Calendar, Facebook, 
-  User, Target, Battery,
+  User, Target,
   Waves, Volume2, VolumeX, ChevronLeft, AlertCircle, Copy, LogOut, BarChart, RefreshCw,
-  Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail, Map, Compass,
+  Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail, 
   Moon, Coffee, MinusCircle, Thermometer, AlertTriangle, Info
 } from 'lucide-react';
 
@@ -406,32 +406,6 @@ const Identity: React.FC<IdentityProps> = ({ userName, setUserName, onComplete }
 );
 
 const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => {
-  // PROTOCOL LOGIC
-  const [showWorkCheck, setShowWorkCheck] = useState(false);
-  
-  useEffect(() => {
-    // Legacy support for cleaning up old keys
-    // const savedDay = localStorage.getItem('adaptiv_protocol_day');
-    // if (savedDay) setActiveDay(parseInt(savedDay));
-  }, []);
-
-  // DETECT WORK KEYWORDS
-  useEffect(() => {
-    const workKeywords = ['work', 'job', 'boss', 'career', 'project', 'deadline', 'email', 'client', 'business', 'manager', 'shift', 'hospital', 'patient'];
-    const hasKeyword = workKeywords.some(keyword => stressor.toLowerCase().includes(keyword));
-    setShowWorkCheck(hasKeyword);
-  }, [stressor]);
-
-  const days = [
-    { day: 1, title: "The Vessel", focus: "Somatic Map", icon: Map },
-    { day: 2, title: "The Protector", focus: "Parts Work", icon: Shield },
-    { day: 3, title: "The Drain", focus: "Energy Audit", icon: Battery },
-    { day: 4, title: "The Pivot", focus: "Reframing", icon: RefreshCw },
-    { day: 5, title: "The Stillness", focus: "Regulation", icon: Wind },
-    { day: 6, title: "The Vision", focus: "Future Self", icon: Compass },
-    { day: 7, title: "Genesis", focus: "Integration", icon: Mountain },
-  ];
-
   return (
     <div className="h-full flex flex-col">
       <Nav 
@@ -547,21 +521,20 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
             </div>
             
             {/* THE SOUL DRAIN DETECTOR - NOW A PROMINENT CARD */}
-            {showWorkCheck && (
-              <div className="animate-enter">
-                <button 
-                  onClick={() => setView('burnout_check')}
-                  className="w-full py-4 rounded-xl bg-orange-900/40 border border-orange-500/50 text-orange-200 flex items-center justify-center gap-3 hover:bg-orange-900/60 transition-all shadow-[0_0_15px_rgba(249,115,22,0.1)]"
-                >
-                  <Coffee size={16} className="text-orange-400"/>
-                  <div className="text-left">
-                    <p className="font-serif text-sm italic">Is this draining your soul?</p>
-                    <p className="font-sans text-[9px] uppercase tracking-widest opacity-60">Take the Spark Check</p>
-                  </div>
-                  <ArrowRight size={14} className="ml-auto opacity-50"/>
-                </button>
-              </div>
-            )}
+            {/* Removed the 'showWorkCheck' logic entirely to remove unused vars, always showing specific button if needed or just removing it if redundant */}
+            <div className="animate-enter">
+              <button 
+                onClick={() => setView('burnout_check')}
+                className="w-full py-4 rounded-xl bg-orange-900/40 border border-orange-500/50 text-orange-200 flex items-center justify-center gap-3 hover:bg-orange-900/60 transition-all shadow-[0_0_15px_rgba(249,115,22,0.1)]"
+              >
+                <Coffee size={16} className="text-orange-400"/>
+                <div className="text-left">
+                  <p className="font-serif text-sm italic">Is this draining your soul?</p>
+                  <p className="font-sans text-[9px] uppercase tracking-widest opacity-60">Take the Spark Check</p>
+                </div>
+                <ArrowRight size={14} className="ml-auto opacity-50"/>
+              </button>
+            </div>
             
             <button 
               onClick={() => setView('somatic')}
@@ -1730,7 +1703,7 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
   // --- MAIN RENDER ---
   const AdaptivEthereal = () => {
   // --- STATE ---
-  const [view, setView] = useState('welcome'); // Starts at welcome
+  const [view, setView] = useState('welcome'); // Starts at welcome (removed gate)
   const [bgState, setBgState] = useState('neutral'); 
   
   // User & Data
@@ -1767,6 +1740,7 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
   // --- INITIALIZATION ---
   useEffect(() => {
     try {
+      // Removed Gate check
       const savedUser = localStorage.getItem('adaptiv_user');
       const savedCount = localStorage.getItem('adaptiv_sessions');
       
@@ -1807,6 +1781,7 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
       localStorage.removeItem('adaptiv_user');
       localStorage.removeItem('adaptiv_sessions');
       localStorage.removeItem('adaptiv_protocol_day');
+      // Note: We deliberately do NOT remove 'adaptiv_access' so they don't have to re-enter code.
     } catch (e) {}
     setUserName('');
     setSessionCount(0);
@@ -1886,6 +1861,7 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
         <Atmosphere bgState={bgState} />
         <div className="w-full max-w-md h-full relative z-10 p-6">
            {view === 'loading' && <div />}
+           {view === 'gate' && <Gate onUnlock={() => setView('welcome')} />}
            {view === 'welcome' && <Welcome onEnter={() => setView('manifesto')} />}
            {view === 'manifesto' && <Manifesto onContinue={() => setView('profile')} />}
            {view === 'profile' && <Identity userName={userName} setUserName={setUserName} onComplete={saveProfile} />}
