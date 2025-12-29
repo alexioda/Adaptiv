@@ -244,7 +244,7 @@ const Atmosphere: React.FC<{ bgState: string }> = ({ bgState }) => {
   const themes: Record<string, string> = {
     neutral: "from-[#0f172a] via-[#1e1b4b] to-[#0f172a]", 
     friction: "from-[#2a0a12] via-[#1a0505] to-[#2a0a12]", 
-    flow: "from-[#042f2e] via-[#022c22] to-[#042f2e]",     
+    flow: "from-[#042f2e] via-[#022c22] to-[#042f2e]",      
     preservation: "from-[#1c1917] via-[#292524] to-[#0c0a09]",
     laser: "from-[#1e1b4b] via-[#312e81] to-[#1e1b4b]"
   };
@@ -334,7 +334,7 @@ const Welcome: React.FC<WelcomeProps> = ({ onEnter }) => (
 
 const Manifesto: React.FC<ManifestoProps> = ({ onContinue }) => (
   <div className="h-full flex flex-col justify-center animate-enter px-6 overflow-y-auto hide-scrollbar text-center">
-     <div className="max-w-md mx-auto py-10">
+      <div className="max-w-md mx-auto py-10">
        <div className="mb-10">
           <Waves size={48} className="text-teal-400/80 mx-auto mb-6 animate-pulse" strokeWidth={0.8} />
           <h1 className="font-serif text-3xl text-white italic mb-3">Alchemy, not Management.</h1>
@@ -370,7 +370,7 @@ const Manifesto: React.FC<ManifestoProps> = ({ onContinue }) => (
        >
          Begin
        </button>
-     </div>
+      </div>
   </div>
 );
 
@@ -406,6 +406,10 @@ const Identity: React.FC<IdentityProps> = ({ userName, setUserName, onComplete }
 );
 
 const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => {
+  // Logic for the Burnout Trigger
+  const triggers = ['work', 'job', 'boss', 'career', 'team', 'project', 'deadline', 'email', 'monday', 'shift', 'burnout', 'tired', 'exhausted', 'drained', 'overwhelm', 'client'];
+  const showWorkCheck = triggers.some(t => stressor.toLowerCase().includes(t));
+
   return (
     <div className="h-full flex flex-col">
       <Nav 
@@ -425,7 +429,7 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
            <div className="flex justify-between items-center mb-4">
               <h3 className="font-serif text-xl text-teal-100 italic">The Alchemist's Cycle</h3>
               <span className="font-sans text-[10px] uppercase tracking-widest text-teal-400 bg-teal-900/30 px-2 py-1 rounded">
-                 Cycle {(sessionCount % 7) + 1} / 7
+                  Cycle {(sessionCount % 7) + 1} / 7
               </span>
            </div>
            
@@ -521,20 +525,21 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
             </div>
             
             {/* THE SOUL DRAIN DETECTOR - NOW A PROMINENT CARD */}
-            {/* Removed the 'showWorkCheck' logic entirely to remove unused vars, always showing specific button if needed or just removing it if redundant */}
-            <div className="animate-enter">
-              <button 
-                onClick={() => setView('burnout_check')}
-                className="w-full py-4 rounded-xl bg-orange-900/40 border border-orange-500/50 text-orange-200 flex items-center justify-center gap-3 hover:bg-orange-900/60 transition-all shadow-[0_0_15px_rgba(249,115,22,0.1)]"
-              >
-                <Coffee size={16} className="text-orange-400"/>
-                <div className="text-left">
-                  <p className="font-serif text-sm italic">Is this draining your soul?</p>
-                  <p className="font-sans text-[9px] uppercase tracking-widest opacity-60">Take the Spark Check</p>
-                </div>
-                <ArrowRight size={14} className="ml-auto opacity-50"/>
-              </button>
-            </div>
+            {showWorkCheck && (
+              <div className="animate-enter">
+                <button 
+                  onClick={() => setView('burnout_check')}
+                  className="w-full py-4 rounded-xl bg-orange-900/40 border border-orange-500/50 text-orange-200 flex items-center justify-center gap-3 hover:bg-orange-900/60 transition-all shadow-[0_0_15px_rgba(249,115,22,0.1)]"
+                >
+                  <Coffee size={16} className="text-orange-400"/>
+                  <div className="text-left">
+                    <p className="font-serif text-sm italic">Is this draining your soul?</p>
+                    <p className="font-sans text-[9px] uppercase tracking-widest opacity-60">Take the Spark Check</p>
+                  </div>
+                  <ArrowRight size={14} className="ml-auto opacity-50"/>
+                </button>
+              </div>
+            )}
             
             <button 
               onClick={() => setView('somatic')}
@@ -607,7 +612,7 @@ const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, sound
       <div className="h-full flex flex-col justify-center animate-enter px-6 overflow-y-auto hide-scrollbar">
         <div className="flex-1 flex flex-col justify-center items-center text-center py-10">
           <div className={`mb-6 p-6 rounded-full border ${resultData.isBurnout ? 'bg-orange-900/30 border-orange-500/50' : 'bg-teal-900/30 border-teal-500/50'}`}>
-             {resultData.isBurnout ? <Thermometer size={48} className="text-orange-400" /> : <Activity size={48} className="text-teal-400" />}
+              {resultData.isBurnout ? <Thermometer size={48} className="text-orange-400" /> : <Activity size={48} className="text-teal-400" />}
           </div>
           
           <p className="font-sans text-[10px] uppercase tracking-widest opacity-60 mb-2">Diagnostic Result</p>
@@ -650,7 +655,7 @@ const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, sound
           </p>
 
           <div className="w-full space-y-4 shrink-0">
-             <button 
+              <button 
                 onClick={() => setSelected(1)} 
                 className={`w-full py-5 rounded-xl border font-sans text-xs tracking-widest uppercase transition-all ${selected === 1 ? 'bg-orange-500/20 border-orange-500 text-orange-200' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}`}
              >
@@ -658,7 +663,7 @@ const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, sound
              </button>
              <button 
                 onClick={() => setSelected(0)} 
-                className={`w-full py-5 rounded-xl border font-sans text-xs tracking-widest uppercase transition-all ${selected === 0 ? 'bg-teal-500/20 border-teal-500 text-teal-200' : 'bg-transparent border-white/5 text-white/50 hover:bg-white/5'}`}
+                className={`w-full py-5 rounded-xl border font-sans text-xs tracking-widest uppercase transition-all ${selected === 0 ? 'bg-teal-500/20 border-teal-500 text-teal-200' : 'bg-transparent border-white/5 text-white/50 hover:bg-white/10'}`}
              >
                 No, rarely
              </button>
@@ -820,7 +825,7 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
           <div className="animate-enter w-full">
             <div className="mb-8 text-center px-4">
                <div className="w-16 h-16 mx-auto bg-white/5 rounded-full flex items-center justify-center mb-6 border border-white/10">
-                  <Activity size={24} className="text-white/80" strokeWidth={1} />
+                 <Activity size={24} className="text-white/80" strokeWidth={1} />
                </div>
                <p className="font-serif text-2xl text-white/90 italic leading-relaxed mb-4">
                  "How does the {selectedPart} feel right now?"
@@ -836,7 +841,7 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
               placeholder="It feels like..."
               value={sensation}
               onChange={e => setSensation(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && setPartsStep('connect')}
+              onKeyDown={e => e.key === 'Enter' && setPartsStep('connect')} 
             />
             
             <div className="flex flex-wrap justify-center gap-2 mb-8">
@@ -889,7 +894,7 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
           <div className="animate-enter w-full">
              <div className="mb-8 text-center px-4">
                <div className="w-16 h-16 mx-auto bg-white/5 rounded-full flex items-center justify-center mb-6 border border-white/10">
-                  <Shield size={24} className="text-white/80" strokeWidth={1} />
+                 <Shield size={24} className="text-white/80" strokeWidth={1} />
                </div>
                <p className="font-serif text-2xl text-white/90 italic leading-relaxed mb-4">
                  "What did it say?"
@@ -900,32 +905,32 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
                <p className="font-serif text-teal-200/90 italic text-lg mt-6 bg-teal-900/10 p-4 rounded-xl border border-teal-500/20">
                  Acknowledge it by saying: "Thank you for protecting me."
                </p>
-            </div>
+             </div>
 
-            <input 
-              autoFocus
-              className="w-full bg-transparent border-b border-white/20 py-4 text-center text-white font-light text-lg focus:outline-none focus:border-white/60 transition-all placeholder:text-white/20 mb-6"
-              placeholder="It is trying to..."
-              value={protection}
-              onChange={e => setProtection(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && setPartsStep('channel')}
-            />
+             <input 
+               autoFocus
+               className="w-full bg-transparent border-b border-white/20 py-4 text-center text-white font-light text-lg focus:outline-none focus:border-white/60 transition-all placeholder:text-white/20 mb-6"
+               placeholder="It is trying to..."
+               value={protection}
+               onChange={e => setProtection(e.target.value)}
+               onKeyDown={e => e.key === 'Enter' && setPartsStep('channel')}
+             />
 
-            <div className="flex flex-wrap justify-center gap-2 mb-8">
-               {commonProtections.map(p => (
-                 <button key={p} onClick={() => setProtection(p)} className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-[10px] uppercase tracking-wider text-white/90 hover:bg-white/20 hover:text-white transition-all shadow-sm">
-                   {p}
-                 </button>
-               ))}
-            </div>
+             <div className="flex flex-wrap justify-center gap-2 mb-8">
+                {commonProtections.map(p => (
+                  <button key={p} onClick={() => setProtection(p)} className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-[10px] uppercase tracking-wider text-white/90 hover:bg-white/20 hover:text-white transition-all shadow-sm">
+                    {p}
+                  </button>
+                ))}
+             </div>
 
-            <button 
-              onClick={() => setPartsStep('channel')}
-              disabled={!protection}
-              className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-50"
-            >
-              Acknowledge
-            </button>
+             <button 
+               onClick={() => setPartsStep('channel')}
+               disabled={!protection}
+               className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-50"
+             >
+               Acknowledge
+             </button>
           </div>
         )}
 
@@ -933,7 +938,7 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
           <div className="animate-enter w-full">
             <div className="mb-8 text-center px-4">
                <div className="w-16 h-16 mx-auto bg-teal-500/10 rounded-full flex items-center justify-center mb-6 border border-teal-500/20">
-                  <Zap size={24} className="text-teal-200" strokeWidth={1} />
+                 <Zap size={24} className="text-teal-200" strokeWidth={1} />
                </div>
                <p className="font-serif text-2xl text-teal-100 italic leading-relaxed mb-4">
                  "Now, channel the energy."
@@ -1098,21 +1103,21 @@ const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, abilit
              <div className="flex justify-between font-sans text-[10px] tracking-widest text-white/50">
                 <span>THE DEMAND</span>
                 <span>{pressure}%</span>
-              </div>
-              <input 
-                type="range" min="0" max="100" value={pressure} onChange={(e) => setPressure(Number(e.target.value))} 
-                className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer"
-              />
+             </div>
+             <input 
+               type="range" min="0" max="100" value={pressure} onChange={(e) => setPressure(Number(e.target.value))} 
+               className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer"
+             />
           </div>
           <div className="space-y-3">
              <div className="flex justify-between font-sans text-[10px] tracking-widest text-white/50">
                 <span>MY RESOURCES</span>
                 <span>{ability}%</span>
-              </div>
-              <input 
-                type="range" min="0" max="100" value={ability} onChange={(e) => setAbility(Number(e.target.value))} 
-                className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer"
-              />
+             </div>
+             <input 
+               type="range" min="0" max="100" value={ability} onChange={(e) => setAbility(Number(e.target.value))} 
+               className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer"
+             />
           </div>
         </div>
       </div>
@@ -1139,7 +1144,7 @@ const Crossroads: React.FC<CrossroadsProps> = ({ setView, toggleSound, soundEnab
       <div className="mb-10 text-center px-6">
          <p className="font-sans text-xs text-white/40 leading-relaxed uppercase tracking-widest mb-4">How shall we use this energy?</p>
          <p className="font-sans text-xs text-white/30 leading-relaxed">
-            Based on your vitals, your body may prefer <strong>{recommendStillness ? 'Stillness' : 'Motion'}</strong>.
+           Based on your vitals, your body may prefer <strong>{recommendStillness ? 'Stillness' : 'Motion'}</strong>.
          </p>
       </div>
 
@@ -1602,7 +1607,6 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
                   </div>
               ) : (
                   <div className="text-center animate-fade-in relative z-10">
-                      {/* REDESIGNED VISUAL ARTIFACT CARD */}
                       <div className={`mb-8 p-8 rounded-2xl border text-center relative overflow-hidden shadow-2xl ${isBurnoutPath ? 'bg-slate-900 border-orange-900/50' : 'bg-gradient-to-br from-teal-900/40 to-slate-900/80 border-teal-500/30'}`}>
                           <div className="absolute top-0 right-0 p-4 opacity-10">
                               {isBurnoutPath ? <Moon size={80} className="text-orange-200" /> : <Zap size={80} />}
@@ -1687,7 +1691,7 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
                <p className="font-sans text-xs text-white/50 mb-6 leading-relaxed max-w-[80%]">
                   You have begun the shift. Cement this architecture with a 1:1 session at Conscious Growth Coaching.
                </p>
-               <a href="https://www.facebook.com/alexiodacoaching" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-200 hover:bg-blue-600/40 transition-colors text-xs font-bold uppercase tracking-wide">
+               <a href="https://www.facebook.com/alexioda" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-200 hover:bg-blue-600/40 transition-colors text-xs font-bold uppercase tracking-wide">
                   Visit Facebook Page <ArrowRight size={14} />
                </a>
           </div>
@@ -1861,25 +1865,25 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
         <Atmosphere bgState={bgState} />
         <div className="w-full max-w-md h-full relative z-10 p-6">
            {view === 'loading' && <div />}
-           {view === 'gate' && <Gate onUnlock={() => setView('welcome')} />}
+           {/* Gate Removed */}
            {view === 'welcome' && <Welcome onEnter={() => setView('manifesto')} />}
            {view === 'manifesto' && <Manifesto onContinue={() => setView('profile')} />}
            {view === 'profile' && <Identity userName={userName} setUserName={setUserName} onComplete={saveProfile} />}
            {view === 'dashboard' && <Horizon 
-              userName={userName} sessionCount={sessionCount} 
-              stressor={stressor} setStressor={setStressor} 
-              stressLevel={stressLevel} setStressLevel={setStressLevel} 
-              energyLevel={energyLevel} setEnergyLevel={setEnergyLevel} 
-              isBurnout={isBurnout} setView={setView} 
-              toggleSound={toggleSound} soundEnabled={soundEnabled} resetApp={resetApp}
+             userName={userName} sessionCount={sessionCount} 
+             stressor={stressor} setStressor={setStressor} 
+             stressLevel={stressLevel} setStressLevel={setStressLevel} 
+             energyLevel={energyLevel} setEnergyLevel={setEnergyLevel} 
+             isBurnout={isBurnout} setView={setView} 
+             toggleSound={toggleSound} soundEnabled={soundEnabled} resetApp={resetApp}
            />}
            {view === 'preservation' && <Preservation 
-              setView={setView} 
-              toggleSound={toggleSound} 
-              soundEnabled={soundEnabled} 
-              setGoal={setGoal} 
-              setExpandingBelief={setExpandingBelief} 
-              setViewToMolt={() => { setIsLocked(true); setView('molt'); }}
+             setView={setView} 
+             toggleSound={toggleSound} 
+             soundEnabled={soundEnabled} 
+             setGoal={setGoal} 
+             setExpandingBelief={setExpandingBelief} 
+             setViewToMolt={() => { setIsLocked(true); setView('molt'); }}
            />}
            {view === 'burnout_check' && <BurnoutCheck setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setBurnoutPath={setBurnoutPath} />}
            
@@ -1887,12 +1891,12 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
            
            {/* Replaced Narrative with PartsWork */}
            {view === 'partswork' && <PartsWork 
-              selectedPart={somaticZones[0] || 'Part'} 
-              sensation={sensation} setSensation={setSensation}
-              protection={protection} setProtection={setProtection}
-              expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief}
-              partsStep={partsStep} setPartsStep={setPartsStep}
-              setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} 
+             selectedPart={somaticZones[0] || 'Part'} 
+             sensation={sensation} setSensation={setSensation}
+             protection={protection} setProtection={setProtection}
+             expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief}
+             partsStep={partsStep} setPartsStep={setPartsStep}
+             setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} 
            />}
            
            {view === 'laser' && <LaserCoaching stressor={stressor} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setGoal={setGoal} setExpandingBelief={setExpandingBelief} />}
