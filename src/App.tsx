@@ -5,7 +5,7 @@ import {
   User, Target,
   Waves, Volume2, VolumeX, ChevronLeft, AlertCircle, Copy, LogOut, BarChart, RefreshCw,
   Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail, 
-  Moon, Coffee, MinusCircle, Thermometer, AlertTriangle, Info
+  Moon, Coffee, MinusCircle, AlertTriangle, Info, FileText
 } from 'lucide-react';
 
 // --- TYPES ---
@@ -813,7 +813,7 @@ const Vessel: React.FC<VesselProps> = ({ somaticZones, setSomaticZones, setView,
 const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensation, protection, setProtection, expandingBelief, setExpandingBelief, partsStep, setPartsStep, setView, toggleSound, soundEnabled }) => {
   
   const commonSensations = ["Tightness", "Heat", "Heaviness", "Empty", "Buzzing", "Numbness"];
-  const commonProtections = ["Protecting me from failure", "Keeping me safe", "Stopping me from getting hurt", "Trying to control the uncontrollable"];
+  const commonProtections = ["Preventing Failure", "Staying Safe", "Avoiding Criticism", "Control"];
   
   return (
     <div className="h-full flex flex-col">
@@ -841,7 +841,7 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
               placeholder="It feels like..."
               value={sensation}
               onChange={e => setSensation(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && setPartsStep('connect')} 
+              onKeyDown={e => e.key === 'Enter' && setPartsStep('unblend')} 
             />
             
             <div className="flex flex-wrap justify-center gap-2 mb-8">
@@ -853,12 +853,35 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
             </div>
 
             <button 
-              onClick={() => setPartsStep('connect')}
+              onClick={() => setPartsStep('unblend')}
               disabled={!sensation}
               className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-50"
             >
               Next
             </button>
+          </div>
+        )}
+
+        {partsStep === 'unblend' && (
+          <div className="animate-enter w-full text-center px-6 h-full flex flex-col justify-center">
+             <div className="mb-8 relative">
+                <Wind size={64} className="text-teal-200 relative z-10 mx-auto" strokeWidth={1} />
+             </div>
+             
+             <h3 className="font-serif text-2xl text-white italic mb-4">Separation</h3>
+             
+             <p className="font-sans text-sm text-white/70 leading-relaxed mb-8">
+               To hear this part, you must be separate from it.
+               <br/><br/>
+               Can you ask the <strong>{sensation}</strong> to step back just a few inches, so you can look <em>at</em> it, rather than <em>through</em> it?
+             </p>
+
+             <button 
+               onClick={() => setPartsStep('connect')}
+               className="w-full py-4 rounded-full bg-teal-500/10 text-teal-200 font-sans text-xs tracking-widest uppercase hover:bg-teal-500/20 transition-all border border-teal-500/20"
+             >
+               I am unblended
+             </button>
           </div>
         )}
 
@@ -869,14 +892,12 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
                <Waves size={64} className="text-indigo-200 relative z-10 mx-auto" strokeWidth={1} />
              </div>
              
-             <h3 className="font-serif text-2xl text-white italic mb-6">The Connection</h3>
+             <h3 className="font-serif text-2xl text-white italic mb-6">The Inquiry</h3>
              
              <p className="font-sans text-sm text-white/70 leading-relaxed mb-8">
-               Close your eyes. Bring your attention back to that <strong>{sensation}</strong> in your <strong>{selectedPart}</strong>.
+               Now that you are observing it, ask internally:
                <br/><br/>
-               Don't try to fix it. Just be with it.
-               <br/><br/>
-               Ask it internally: <em>"What are you trying to do for me?"</em>
+               <em>"What are you afraid would happen if you didn't do this job?"</em>
                <br/><br/>
                Wait for the answer.
              </p>
@@ -978,10 +999,10 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
   const [answers, setAnswers] = useState({ topic: '', result: '', permission: '', action: '' });
   
   const questions = [
-    { id: 'topic', label: 'The Truth', q: `Looking at "${stressor}" from this new energy, what is the truth now?`, ph: "The truth is..." },
-    { id: 'result', label: 'The Vision', q: "If this problem were already solved, what would be different?", ph: "I would be..." },
-    { id: 'permission', label: 'The Permission', q: "What permission do you need to give yourself to move forward?", ph: "I give myself permission to..." },
-    { id: 'action', label: 'The Move', q: "What is the single boldest step that makes everything else easier?", ph: "I will..." },
+    { id: 'topic', label: 'The Truth', q: `Looking at "${stressor}" from this new energy, what is the truth now?`, ph: "The truth is...", starters: ["I realize that...", "The reality is...", "I am no longer..."] },
+    { id: 'result', label: 'The Vision', q: "If this problem were already solved, what would be different?", ph: "I would be...", starters: ["I would feel...", "I would be free to...", "It would look like..."] },
+    { id: 'permission', label: 'The Permission', q: "What permission do you need to give yourself to move forward?", ph: "I give myself permission to...", starters: ["To let go of...", "To make a mistake...", "To prioritize myself..."] },
+    { id: 'action', label: 'The Move', q: "What is the single boldest step that makes everything else easier?", ph: "I will...", starters: ["I will call...", "I will schedule...", "I will stop..."] },
   ];
   
   const current = questions[step];
@@ -999,11 +1020,16 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
     }
   };
 
+  const handleStarter = (text: string) => {
+      setAnswers({...answers, [current.id]: text});
+  };
+
   if (step === -1) {
     return (
        <div className="h-full flex flex-col">
           <Nav title="Breakthrough Laser" subtitle="Ignition" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={75} />
-          <div className="flex-1 flex flex-col justify-center animate-enter text-center px-6">
+          {/* ADDED: flex-1 overflow-y-auto to allow scrolling if content overflows */}
+          <div className="flex-1 flex flex-col justify-center animate-enter text-center px-6 overflow-y-auto hide-scrollbar">
               <div className="mb-8 relative">
                 <div className="absolute inset-0 bg-amber-500/20 blur-2xl rounded-full animate-pulse"></div>
                 <Flame size={64} className="text-amber-200 relative z-10 mx-auto" strokeWidth={1} />
@@ -1033,8 +1059,8 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
     <div className="h-full flex flex-col">
        <Nav title="Breakthrough Laser" subtitle="Rapid Shift" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={80} />
        
-       <div className="flex-1 flex flex-col justify-center animate-enter">
-          <div className="glass-panel p-8 rounded-[32px] relative overflow-hidden">
+       <div className="flex-1 flex flex-col justify-start animate-enter overflow-y-auto hide-scrollbar pb-8 px-4 pt-4">
+          <div className="glass-panel p-8 rounded-[32px] relative overflow-hidden shrink-0 mb-4">
              <div className="absolute top-0 right-0 p-4 opacity-10">
                <Target size={100} />
              </div>
@@ -1045,12 +1071,25 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
              <input 
                autoFocus
                key={current.id}
-               className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-teal-500/50 transition-colors mb-8 placeholder:text-white/10 text-lg"
+               className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-teal-500/50 transition-colors mb-4 placeholder:text-white/10 text-lg"
                placeholder={current.ph}
                value={answers[current.id as keyof typeof answers]}
                onChange={e => setAnswers({...answers, [current.id]: e.target.value})}
                onKeyDown={e => e.key === 'Enter' && answers[current.id as keyof typeof answers] && handleNext()}
              />
+
+             {/* CHIPS FOR RAPID SELECTION */}
+             <div className="flex flex-wrap gap-2 mb-8">
+                 {current.starters?.map((s) => (
+                    <button 
+                        key={s} 
+                        onClick={() => handleStarter(s)}
+                        className="px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-wider text-white/60 hover:bg-white/10 hover:text-white transition-all"
+                    >
+                        {s}
+                    </button>
+                 ))}
+             </div>
              
              <div className="flex justify-end">
                <button 
@@ -1137,41 +1176,46 @@ const Crossroads: React.FC<CrossroadsProps> = ({ setView, toggleSound, soundEnab
   const recommendStillness = parseInt(stressLevel.toString()) > 70 && parseInt(energyLevel.toString()) < 40;
 
   return (
-    <div className="h-full flex flex-col justify-center animate-enter">
+    // CHANGED: Added h-full flex flex-col to force height
+    <div className="h-full flex flex-col animate-enter">
       <Nav title="The Crossroads" subtitle="Choice Point" onBack={() => setView('lens')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={65} />
-      <h1 className="font-serif text-4xl text-white text-center italic mb-2">Transmutation</h1>
       
-      <div className="mb-10 text-center px-6">
-         <p className="font-sans text-xs text-white/40 leading-relaxed uppercase tracking-widest mb-4">How shall we use this energy?</p>
-         <p className="font-sans text-xs text-white/30 leading-relaxed">
-           Based on your vitals, your body may prefer <strong>{recommendStillness ? 'Stillness' : 'Motion'}</strong>.
-         </p>
-      </div>
+      {/* WRAPPED content in scrollable div */}
+      <div className="flex-1 flex flex-col justify-center overflow-y-auto hide-scrollbar pb-8 px-6">
+          <h1 className="font-serif text-4xl text-white text-center italic mb-2 shrink-0">Transmutation</h1>
+          
+          <div className="mb-10 text-center shrink-0">
+             <p className="font-sans text-xs text-white/40 leading-relaxed uppercase tracking-widest mb-4">How shall we use this energy?</p>
+             <p className="font-sans text-xs text-white/30 leading-relaxed">
+               Based on your vitals, your body may prefer <strong>{recommendStillness ? 'Stillness' : 'Motion'}</strong>.
+             </p>
+          </div>
 
-      <div className="grid gap-4">
-        <button 
-          onClick={() => setView('regulate')} 
-          className={`group relative overflow-hidden p-8 rounded-[32px] glass-panel text-left transition-all hover:bg-white/10 ${recommendStillness ? 'border-teal-500/50 glow-pulse' : ''}`}
-        >
-          <Wind size={32} className="text-teal-200/50 mb-4" strokeWidth={1} />
-          <div className="flex justify-between items-center">
-            <h3 className="font-serif text-2xl text-white italic mb-1">Stillness</h3>
-            {recommendStillness && <span className="text-[10px] uppercase tracking-widest text-teal-400 bg-teal-900/40 px-2 py-1 rounded">Recommended</span>}
+          <div className="grid gap-4 w-full shrink-0">
+            <button 
+              onClick={() => setView('regulate')} 
+              className={`group relative overflow-hidden p-8 rounded-[32px] glass-panel text-left transition-all hover:bg-white/10 ${recommendStillness ? 'border-teal-500/50 glow-pulse' : ''}`}
+            >
+              <Wind size={32} className="text-teal-200/50 mb-4" strokeWidth={1} />
+              <div className="flex justify-between items-center">
+                <h3 className="font-serif text-2xl text-white italic mb-1">Stillness</h3>
+                {recommendStillness && <span className="text-[10px] uppercase tracking-widest text-teal-400 bg-teal-900/40 px-2 py-1 rounded">Recommended</span>}
+              </div>
+              <p className="font-sans text-xs text-white/40 leading-relaxed">I am flooded. I need to ground, breathe, and reset safety.</p>
+            </button>
+            
+            <button 
+              onClick={() => setView('laser')} 
+              className={`group relative overflow-hidden p-8 rounded-[32px] glass-panel text-left transition-all hover:bg-white/10 ${!recommendStillness ? 'border-amber-500/50 glow-pulse' : ''}`}
+            >
+              <Zap size={32} className="text-amber-200/50 mb-4" strokeWidth={1} />
+              <div className="flex justify-between items-center">
+                <h3 className="font-serif text-2xl text-white italic mb-1">Motion</h3>
+                {!recommendStillness && <span className="text-[10px] uppercase tracking-widest text-amber-400 bg-amber-900/40 px-2 py-1 rounded">Recommended</span>}
+              </div>
+              <p className="font-sans text-xs text-white/40 leading-relaxed">I am charged. I need to channel this heat into focus or connection.</p>
+            </button>
           </div>
-          <p className="font-sans text-xs text-white/40 leading-relaxed">I am flooded. I need to ground, breathe, and reset safety.</p>
-        </button>
-        
-        <button 
-          onClick={() => setView('laser')} 
-          className={`group relative overflow-hidden p-8 rounded-[32px] glass-panel text-left transition-all hover:bg-white/10 ${!recommendStillness ? 'border-amber-500/50 glow-pulse' : ''}`}
-        >
-          <Zap size={32} className="text-amber-200/50 mb-4" strokeWidth={1} />
-          <div className="flex justify-between items-center">
-            <h3 className="font-serif text-2xl text-white italic mb-1">Motion</h3>
-            {!recommendStillness && <span className="text-[10px] uppercase tracking-widest text-amber-400 bg-amber-900/40 px-2 py-1 rounded">Recommended</span>}
-          </div>
-          <p className="font-sans text-xs text-white/40 leading-relaxed">I am charged. I need to channel this heat into focus or connection.</p>
-        </button>
       </div>
     </div>
   );
@@ -1187,36 +1231,43 @@ const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, s
       : 1.5 - ((breathCount - 8) / 8) * 0.5;
 
   return (
-    <div className="h-full flex flex-col items-center justify-center relative animate-enter">
-      <Nav title="Regulation" subtitle="Breathe" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
-      <div className="relative mb-16">
-         <div className="absolute inset-0 bg-teal-400/20 blur-[80px] rounded-full transition-transform duration-1000 ease-in-out" style={{ transform: `scale(${breathing ? scale * 1.5 : 1})` }}></div>
-         <div 
-           className="w-64 h-64 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm flex items-center justify-center transition-all duration-1000 ease-in-out shadow-2xl"
-           style={{ transform: `scale(${breathing ? scale : 1})` }}
-         >
-           <span className="font-serif text-2xl text-white italic tracking-wider transition-opacity duration-500">
-             {breathing ? phase : "Stillness"}
-           </span>
-         </div>
+    <div className="h-full flex flex-col items-center justify-center relative animate-enter overflow-y-auto hide-scrollbar">
+      <div className="w-full flex-shrink-0">
+         <Nav title="Regulation" subtitle="Breathe" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
       </div>
       
-      <div className="flex gap-4 items-center relative z-10">
-          <button 
-              onClick={() => { setBreathing(!breathing); if (breathing) setBreathCount(0); }}
-              className={`px-10 py-4 rounded-full font-sans text-xs font-bold tracking-widest uppercase transition-all ${breathing ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-[0_0_30px_rgba(255,255,255,0.2)]'}`}
-          >
-              {breathing ? 'Complete' : 'Begin'}
-          </button>
+      <div className="flex-1 flex flex-col items-center justify-center w-full min-h-[400px]">
+          <div className="relative mb-16">
+             <div className="absolute inset-0 bg-teal-400/20 blur-[80px] rounded-full transition-transform duration-1000 ease-in-out" style={{ transform: `scale(${breathing ? scale * 1.5 : 1})` }}></div>
+             <div 
+               className="w-64 h-64 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm flex items-center justify-center transition-all duration-1000 ease-in-out shadow-2xl"
+               style={{ transform: `scale(${breathing ? scale : 1})` }}
+             >
+               <span className="font-serif text-2xl text-white italic tracking-wider transition-opacity duration-500">
+                 {breathing ? phase : "Stillness"}
+               </span>
+             </div>
+          </div>
+          
+          <div className="flex gap-4 items-center relative z-10">
+              <button 
+                  onClick={() => { setBreathing(!breathing); if (breathing) setBreathCount(0); }}
+                  className={`px-10 py-4 rounded-full font-sans text-xs font-bold tracking-widest uppercase transition-all ${breathing ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-[0_0_30px_rgba(255,255,255,0.2)]'}`}
+              >
+                  {breathing ? 'Complete' : 'Begin'}
+              </button>
+          </div>
       </div>
       
       {/* FIXED: VISIBLE SKIP BUTTON */}
-      <button 
-        onClick={() => setView('molt')} 
-        className="absolute bottom-8 px-6 py-3 rounded-full bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/30 text-[10px] tracking-widest uppercase transition-all"
-      >
-          Skip to Integration
-      </button>
+      <div className="pb-8 shrink-0">
+          <button 
+            onClick={() => setView('molt')} 
+            className="px-6 py-3 rounded-full bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/30 text-[10px] tracking-widest uppercase transition-all"
+          >
+              Skip to Integration
+          </button>
+      </div>
     </div>
   );
 };
@@ -1322,13 +1373,49 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
     };
 
     const getResultText = (level: number) => {
-        const levels: Record<number, { title: string; desc: string; type: string }> = {
-            1: { title: "Level 1: The Victim", type: "Catabolic", desc: "You are identifying as the effect, not the cause. Coaching can help you regain agency." },
-            2: { title: "Level 2: The Fighter", type: "Catabolic", desc: "You have high energy, but it's fueled by conflict. We can transmute this into construction." },
-            3: { title: "Level 3: The Rationalizer", type: "Anabolic", desc: "You are coping well. You take responsibility and rationalize stress to get through the day." },
-            4: { title: "Level 4: The Caregiver", type: "Anabolic", desc: "You are driven by compassion and service. Be careful not to give so much that you deplete yourself." },
-            5: { title: "Level 5: The Opportunist", type: "Anabolic", desc: "You see problems as possibilities. You don't fight stress; you transform it. This is high-performance." },
-            6: { title: "Level 6: The Visionary", type: "Anabolic", desc: "You are connected to a larger purpose. Intuition guides you. This is the zone of genius." }
+        const levels: Record<number, { title: string; desc: string; type: string; shift: string; recommendation: string }> = {
+            1: { 
+                title: "Level 1: The Victim", 
+                type: "Catabolic", 
+                desc: "Core Thought: 'I lose.' You feel at the effect of the situation. Apathy or lethargy is a protective mechanism.", 
+                shift: "Where do I actually have a choice right now, even a small one?",
+                recommendation: "Re-engage agency."
+            },
+            2: { 
+                title: "Level 2: The Fighter", 
+                type: "Catabolic", 
+                desc: "Core Thought: 'I win, you lose.' High energy, but fueled by conflict, defiance, or struggle. It burns dirty.", 
+                shift: "How can I win without making anyone else wrong?",
+                recommendation: "Shift from conflict to construction."
+            },
+            3: { 
+                title: "Level 3: The Rationalizer", 
+                type: "Anabolic", 
+                desc: "Core Thought: 'I win.' You are taking responsibility and coping well, but may be tolerating things to keep the peace.", 
+                shift: "What is the emotion I am explaining away?",
+                recommendation: "Move from coping to feeling."
+            },
+            4: { 
+                title: "Level 4: The Caregiver", 
+                type: "Anabolic", 
+                desc: "Core Thought: 'You win.' Driven by compassion and service. Great for teams, but dangerous if you give until you deplete.", 
+                shift: "If I said 'No' to them, what would I be saying 'Yes' to for myself?",
+                recommendation: "Balance service with self-preservation."
+            },
+            5: { 
+                title: "Level 5: The Opportunist", 
+                type: "Anabolic", 
+                desc: "Core Thought: 'We both win.' You see problems strictly as opportunities. High performance, low stress.", 
+                shift: "What is the gift in this challenge?",
+                recommendation: "Lock in this perspective."
+            },
+            6: { 
+                title: "Level 6: The Visionary", 
+                type: "Anabolic", 
+                desc: "Core Thought: 'Everyone wins.' Connected to intuition and purpose. The 'Zone of Genius'.", 
+                shift: "What does my intuition know that my logic hasn't caught up to?",
+                recommendation: "Create from this space."
+            }
         };
         return levels[level] || levels[3]; 
     };
@@ -1350,18 +1437,10 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
                     
                     <p className="font-sans text-sm text-white/70 mb-10 leading-relaxed max-w-xs mx-auto">{data.desc}</p>
                     
-                    <div className="bg-white/5 rounded-xl p-6 mb-8 text-left">
-                        <h4 className="font-serif text-white italic mb-2 text-sm flex items-center justify-center gap-2"><Info size={14}/> The Deeper Why</h4>
-                        <h4 className="font-serif text-white italic mb-2">The Prescription:</h4>
-                        <p className="font-sans text-xs text-white/60">
-                           {isCatabolic 
-                             ? "Your engine is running on 'dirty fuel' (fear/anger). This causes burnout. We need to shift you to Level 3 (Responsibility) immediately."
-                             : "You are running clean fuel. To sustain this, focus on 'The Vision' protocol to lock in this state."
-                           }
-                        </p>
-                        <p className="font-sans text-[10px] text-white/40 mt-4 leading-relaxed border-t border-white/5 pt-4">
-                           This quick scan captures your current state. To understand the root cause—your Energy Leadership levels—and fix this permanently, the full ELI Assessment is required.
-                        </p>
+                    <div className="bg-white/5 rounded-xl p-6 mb-8 text-left border border-white/10">
+                        <h4 className="font-serif text-white italic mb-2 text-sm flex items-center justify-center gap-2"><Info size={14}/> Shift Tactic</h4>
+                        <p className="font-sans text-[10px] uppercase tracking-widest text-white/50 mb-4 text-center">{data.recommendation}</p>
+                        <p className="font-serif text-lg text-teal-200 italic text-center">"{data.shift}"</p>
                     </div>
 
                     <a href="https://calendly.com/alexioda" target="_blank" rel="noopener noreferrer" className="w-full block py-4 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] transition-all">
@@ -1493,8 +1572,17 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
 
   const generateLink = () => `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Adaptiv: ' + (goal.action || 'Action'))}&details=${encodeURIComponent('Goal: ' + (goal.outcome || 'Outcome') + '\n\nMindset: ' + expandingBelief)}`;
   
+  // NEW MANIFESTO TEXT GENERATOR
+  const manifestoText = `
+I acknowledge the tension in my ${somaticZones[0] || 'body'} regarding "${stressor}".
+I release the old pattern. 
+My new operating truth is: "${expandingBelief}".
+From this place of power, I commit to: ${goal.outcome}.
+I seal this by: ${goal.action} (${goal.when}).
+`.trim();
+
   const copyArtifact = () => {
-      const artifact = `ADAPTIV SESSION #${sessionCount + 1}\n\nSTRESSOR: ${stressor}\nENERGY RECLAIMED FROM: ${partName}\nNEW TRUTH: ${expandingBelief}\nGOAL: ${goal.outcome}\nACTION: ${goal.action} (by ${goal.when})\n\nGenerated by Adaptiv.`;
+      const artifact = `ADAPTIV SESSION #${sessionCount + 1}\n\n${manifestoText}\n\nGenerated by Adaptiv.`;
       navigator.clipboard.writeText(artifact);
       completeSession();
       alert("Session Artifact copied to clipboard. Share it on your story.");
@@ -1502,7 +1590,7 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
 
   const generateEmailLink = () => {
       const subject = `Adaptiv Session #${sessionCount + 1}: ${stressor}`;
-      const body = `ADAPTIV SESSION ARTIFACT\n\nSTRESSOR: ${stressor}\nENERGY RECLAIMED FROM: ${partName}\n\nTHE NEW TRUTH: "${expandingBelief}"\n\nGOAL: ${goal.outcome}\nACTION: ${goal.action}\nWHEN: ${goal.when}\n\n(CC save@alexioda.com to log this session)`;
+      const body = `ADAPTIV SESSION ARTIFACT\n\n${manifestoText}\n\n(CC save@alexioda.com to log this session)`;
       return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
@@ -1511,8 +1599,8 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
   // DYNAMIC WORKBOOK LOGIC
   const isBurnout = isBurnoutPath;
   const workbookTitle = isBurnout ? "Burnout Rescue Kit" : "The Alchemist's Field Guide";
-  const workbookDesc = isBurnout ? "Emergency Protocol + Audio ($27)" : "Get the 7-Day Protocol ($27)";
-  const workbookLink = "https://alexioda.gumroad.com/l/hltqhb";
+  const workbookDesc = isBurnout ? "Emergency Protocol + Audio ($27)" : "Get the Interactive Guide ($27)";
+  const workbookLink = "https://alexioda.gumroad.com/l/roxaxf";
 
   // RENDER LOGIC FOR PRIMING VS SUMMARY
   if (isLocked && !primingDone && !isBurnoutPath) { // No priming needed for burnout path (already done in preservation)
@@ -1541,15 +1629,17 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
           toggleSound={toggleSound} 
           progress={100}
        />
-       <div className="text-center pt-2 mb-8 animate-enter">
-          <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 border border-white/10 ${isBurnoutPath ? 'bg-orange-500/20' : 'bg-gradient-to-tr from-indigo-500/20 to-teal-500/20'}`}>
-              {isBurnoutPath ? <Moon className="text-orange-200" size={24}/> : <Check className="text-white" size={24} />}
+       {/* CHANGED: Moved title block inside the scrollable container for better layout */}
+       <div className="flex-1 overflow-y-auto hide-scrollbar pb-20 animate-enter px-2">
+          
+          <div className="text-center pt-2 mb-8 animate-enter">
+              <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 border border-white/10 ${isBurnoutPath ? 'bg-orange-500/20' : 'bg-gradient-to-tr from-indigo-500/20 to-teal-500/20'}`}>
+                  {isBurnoutPath ? <Moon className="text-orange-200" size={24}/> : <Check className="text-white" size={24} />}
+              </div>
+              <h1 className="font-serif text-3xl text-white italic">Integration</h1>
+              <p className="font-sans text-[10px] uppercase tracking-widest text-white/40 mt-2">The Molt is Complete</p>
           </div>
-          <h1 className="font-serif text-3xl text-white italic">Integration</h1>
-          <p className="font-sans text-[10px] uppercase tracking-widest text-white/40 mt-2">The Molt is Complete</p>
-       </div>
 
-       <div className="flex-1 overflow-y-auto hide-scrollbar pb-20 animate-enter delay-100">
           <div className={`glass-panel p-8 rounded-[32px] mb-6 relative overflow-hidden transition-all duration-1000 ${isLocked ? 'animate-flash' : ''}`}>
               {!isLocked ? (
                   <div className="animate-fade-in relative z-10">
@@ -1607,27 +1697,25 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
                   </div>
               ) : (
                   <div className="text-center animate-fade-in relative z-10">
+                      {/* REDESIGNED VISUAL ARTIFACT CARD (DECREE) */}
                       <div className={`mb-8 p-8 rounded-2xl border text-center relative overflow-hidden shadow-2xl ${isBurnoutPath ? 'bg-slate-900 border-orange-900/50' : 'bg-gradient-to-br from-teal-900/40 to-slate-900/80 border-teal-500/30'}`}>
                           <div className="absolute top-0 right-0 p-4 opacity-10">
-                              {isBurnoutPath ? <Moon size={80} className="text-orange-200" /> : <Zap size={80} />}
-                          </div>
-                          <div className="absolute top-4 left-4">
-                              <Activity size={16} className={isBurnoutPath ? "text-orange-400" : "text-teal-400"} />
+                              <FileText size={100} className={isBurnoutPath ? "text-orange-200" : "text-teal-200"} />
                           </div>
                           
                           <p className={`font-sans text-[9px] uppercase tracking-[0.3em] mb-6 mt-2 ${isBurnoutPath ? 'text-orange-200/60' : 'text-teal-200/60'}`}>
-                            {isBurnoutPath ? 'Permission Slip' : 'Adaptiv Artifact'}
+                            {isBurnoutPath ? 'Permission Slip' : 'Alchemist Decree'}
                           </p>
                           
-                          <h2 className="font-serif text-2xl text-white italic leading-snug mb-2">"{expandingBelief}"</h2>
-                          <div className={`w-12 h-[1px] mx-auto mb-6 ${isBurnoutPath ? 'bg-orange-500/50' : 'bg-teal-500/50'}`}></div>
-                          
-                          <div className="space-y-2">
-                             <p className="font-sans text-[10px] text-white/40 uppercase tracking-widest">
-                                {isBurnoutPath ? 'Current Status' : 'Goal'}
-                             </p>
-                             <p className={`font-serif text-lg italic ${isBurnoutPath ? 'text-orange-100' : 'text-teal-100'}`}>"{goal.outcome}"</p>
+                          {/* MANIFESTO TEXT DISPLAY */}
+                          <div className="font-serif text-lg leading-relaxed text-white/90 italic mb-6">
+                            "I acknowledge the tension in my {somaticZones[0] || 'body'} regarding {stressor}.
+                            I release the old pattern. My new operating truth is: <span className="text-teal-200">{expandingBelief}</span>.
+                            From this place of power, I commit to {goal.outcome}.
+                            I seal this by {goal.action} ({goal.when})."
                           </div>
+
+                          <div className={`w-12 h-[1px] mx-auto mb-4 ${isBurnoutPath ? 'bg-orange-500/50' : 'bg-teal-500/50'}`}></div>
                       </div>
                       
                       <div className="text-center space-y-4 mb-8">
@@ -1640,7 +1728,7 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
                       <div className="grid grid-cols-2 gap-3 mb-4">
                           <button onClick={copyArtifact} className="flex flex-col items-center justify-center p-4 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors gap-2">
                               <Copy size={20}/> 
-                              <span className="text-[10px] font-bold uppercase tracking-wide">Copy Text</span>
+                              <span className="text-[10px] font-bold uppercase tracking-wide">Copy Decree</span>
                           </button>
                           
                           {/* NEW EMAIL TO SELF FEATURE */}
@@ -1674,13 +1762,25 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
             <ArrowRight size={16} className={`group-hover:translate-x-1 transition-all ${isBurnoutPath ? "text-orange-300/50 group-hover:text-orange-300" : "text-indigo-300/50 group-hover:text-indigo-300"}`}/>
           </a>
 
-          {isLocked && (
-              <button 
-                onClick={() => setView('energy')}
-                className="w-full mb-6 py-5 rounded-[24px] bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-100 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_30px_rgba(245,158,11,0.2)] transition-all flex items-center justify-center gap-3"
-              >
-                  <BarChart size={16} /> Unlock Energy Profile
-              </button>
+          {/* SMART "DEEP DIVE" INVITATION */}
+          {isLocked && !isBurnoutPath && (
+             <div className="mb-8">
+                 <p className="font-sans text-[10px] text-white/30 text-center uppercase tracking-widest mb-4">How is the internal weather?</p>
+                 <div className="flex gap-3">
+                     <button className="flex-1 py-4 rounded-xl border border-white/5 bg-white/5 text-white/50 hover:bg-white/10 transition-all text-xs uppercase tracking-wider">
+                        Clear
+                     </button>
+                     <button 
+                        onClick={() => setView('energy')}
+                        className="flex-1 py-4 rounded-xl border border-indigo-500/30 bg-indigo-900/20 text-indigo-200 hover:bg-indigo-900/40 transition-all text-xs uppercase tracking-wider font-bold shadow-[0_0_15px_rgba(99,102,241,0.2)]"
+                     >
+                        Still Heavy
+                     </button>
+                 </div>
+                 <p className="font-sans text-[9px] text-white/20 text-center mt-3 max-w-[200px] mx-auto">
+                    If heaviness remains, we must check the lens.
+                 </p>
+             </div>
           )}
 
           <div className="relative overflow-hidden p-8 rounded-[32px] glass-panel group cursor-pointer transition-all hover:bg-white/5">
@@ -1703,9 +1803,9 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
     </div>
   );
 };
-  
-  // --- MAIN RENDER ---
-  const AdaptivEthereal = () => {
+
+// --- MAIN RENDER ---
+const App = () => {
   // --- STATE ---
   const [view, setView] = useState('welcome'); // Starts at welcome (removed gate)
   const [bgState, setBgState] = useState('neutral'); 
@@ -1912,4 +2012,4 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
   );
 };
 
-export default AdaptivEthereal;
+export default App;
