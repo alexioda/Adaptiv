@@ -4,8 +4,8 @@ import {
   ArrowRight, Check, Calendar, Facebook, 
   User, Target, Battery,
   Waves, Volume2, VolumeX, ChevronLeft, AlertCircle, Copy, LogOut, BarChart, RefreshCw,
-  Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail, Map, Compass,
-  Moon, Coffee, MinusCircle, Thermometer, AlertTriangle, Lock, Info
+  Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Clock, Mountain, Mail, Map, Compass,
+  Moon, Coffee, MinusCircle, Thermometer, TrendingUp, AlertTriangle, Lock, Info
 } from 'lucide-react';
 
 // --- TYPES ---
@@ -754,574 +754,7 @@ const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, sound
   );
 };
 
-// --- PRESERVATION (BURNOUT RECOVERY) ---
-const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToMolt }) => {
-  const [step, setStep] = useState(0);
-
-  const recoverySteps = [
-    {
-      title: "Emergency Brake",
-      icon: Anchor,
-      desc: "We cannot 'push' through burnout. We must stop. Locate one part of your body that feels neutral (hands, feet). Focus there only.",
-      action: "I am anchored."
-    },
-    {
-      title: "Boundary Alchemy",
-      icon: MinusCircle,
-      desc: "Burnout is cured by subtraction. What is one thing you will REFUSE to do today?",
-      action: "I let it go."
-    },
-    {
-      title: "Identity Shift",
-      icon: User,
-      desc: "You are not the worker. You are the Asset. If the Asset breaks, the work stops. Protecting the Asset IS the work.",
-      action: "I am the Asset."
-    }
-  ];
-
-  const current = recoverySteps[step];
-
-  const handleNext = () => {
-    if (step < 2) {
-      setStep(step + 1);
-    } else {
-      // Finish Preservation -> Go to Molt with specific Burnout context
-      setExpandingBelief("I am the Asset. Rest is my strategy.");
-      setGoal({ 
-        outcome: "Status: Unavailable", 
-        action: "I am offline to realign.", 
-        when: "Now" 
-      });
-      setViewToMolt();
-    }
-  };
-
-  return (
-    <div className="h-full flex flex-col">
-       <Nav title="Preservation Mode" subtitle="Recovery Loop" onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={33 * (step+1)} />
-       
-       <div className="flex-1 flex flex-col justify-center items-center animate-enter text-center px-4 overflow-y-auto hide-scrollbar">
-          <div className="mb-8 relative mx-auto">
-             <div className="absolute inset-0 bg-orange-500/20 blur-2xl rounded-full"></div>
-             <current.icon size={64} className="text-orange-200 relative z-10" strokeWidth={1} />
-          </div>
-
-          <h2 className="font-serif text-3xl text-white italic mb-4">{current.title}</h2>
-          <p className="font-sans text-sm text-orange-100/70 leading-relaxed mb-12 max-w-xs mx-auto">
-             {current.desc}
-          </p>
-
-          <button 
-            onClick={handleNext}
-            className="w-full py-5 rounded-full bg-gradient-to-r from-orange-900/60 to-amber-900/60 border border-orange-500/30 text-orange-100 font-sans text-xs tracking-widest uppercase hover:border-orange-500/50 transition-all"
-          >
-             {current.action}
-          </button>
-       </div>
-    </div>
-  );
-};
-
-const Vessel: React.FC<VesselProps> = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnabled }) => {
-  const zones = [
-    { id: 'Head', label: 'Head', sub: 'Racing thoughts • Fog', icon: Brain },
-    { id: 'Eyes', label: 'Eyes', sub: 'Strain • Tiredness', icon: Eye },
-    { id: 'Throat', label: 'Throat', sub: 'Unspoken words', icon: MessageCircle },
-    { id: 'Chest', label: 'Chest', sub: 'Heavy heart • Protection', icon: Shield },
-    { id: 'Solar', label: 'Solar Plexus', sub: 'Willpower • Anxiety', icon: Sun },
-    { id: 'Gut', label: 'Gut/Belly', sub: 'Fear • Intuition', icon: Disc },
-    { id: 'Back', label: 'Back', sub: 'Burden • Support', icon: Anchor },
-    { id: 'Hands', label: 'Hands', sub: 'Grasping • Fighting', icon: Hand },
-  ];
-  
-  const selectZone = (id: string) => {
-    setSomaticZones([id]); 
-  };
-
-  return (
-    <div className="h-full flex flex-col">
-      <Nav title="The Vessel" subtitle="Locate the Part" onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={15} />
-      
-      <div className="mb-4 animate-enter shrink-0 px-4">
-        <p className="font-serif text-lg text-white/80 italic leading-relaxed">
-          "Where does the tension live?"
-        </p>
-        <p className="font-sans text-xs text-white/40 mt-1 leading-relaxed max-w-[90%]">
-          Select the physical part that is calling for attention right now.
-        </p>
-      </div>
-      
-      <div className="flex-1 grid grid-cols-2 gap-3 content-start overflow-y-auto hide-scrollbar pb-4 min-h-0 animate-enter delay-100">
-        {zones.map(z => {
-          const active = somaticZones.includes(z.id);
-          return (
-            <button
-              key={z.id}
-              onClick={() => selectZone(z.id)}
-              className={`group relative overflow-hidden p-4 rounded-2xl border transition-all duration-300 w-full flex flex-col items-center justify-center text-center gap-2 min-h-[140px] h-auto ${
-                active ? 'bg-slate-800/90 border-white/60' : 'glass-panel hover:bg-white/10'
-              }`}
-            >
-              <z.icon className={`${active ? 'text-white' : 'text-white/40'} mb-1`} size={28} strokeWidth={1}/>
-              <div>
-                <h3 className={`font-serif text-lg italic leading-none mb-2 transition-colors ${active ? 'text-white' : 'text-white/90'}`}>{z.label}</h3>
-                <p className={`font-sans text-[9px] tracking-wider uppercase leading-snug ${active ? 'text-indigo-100' : 'text-slate-400'}`}>{z.sub}</p>
-              </div>
-            </button>
-          )
-        })}
-      </div>
-
-      <button 
-        onClick={() => setView('partswork')}
-        disabled={somaticZones.length === 0}
-        className="mt-4 w-full py-5 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase border border-white/10 hover:bg-white/20 transition-all disabled:opacity-0 disabled:translate-y-4 shrink-0 animate-enter delay-200"
-      >
-        Connect with Part
-      </button>
-    </div>
-  );
-};
-
-const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensation, protection, setProtection, expandingBelief, setExpandingBelief, partsStep, setPartsStep, setView, toggleSound, soundEnabled }) => {
-  
-  const commonSensations = ["Tightness", "Heat", "Heaviness", "Empty", "Buzzing", "Numbness"];
-  const commonProtections = ["Protecting me from failure", "Keeping me safe", "Stopping me from getting hurt", "Trying to control the uncontrollable"];
-  
-  return (
-    <div className="h-full flex flex-col">
-      <Nav title="Parts Dialogue" subtitle={selectedPart} onBack={() => setView('somatic')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={30} />
-      
-      <div className="flex-1 flex flex-col justify-start pt-8 space-y-6 animate-enter overflow-y-auto hide-scrollbar pb-20">
-        
-        {partsStep === 'experience' && (
-          <div className="animate-enter w-full">
-            <div className="mb-8 text-center px-4">
-               <div className="w-16 h-16 mx-auto bg-white/5 rounded-full flex items-center justify-center mb-6 border border-white/10">
-                  <Activity size={24} className="text-white/80" strokeWidth={1} />
-               </div>
-               <p className="font-serif text-2xl text-white/90 italic leading-relaxed mb-4">
-                 "How does the {selectedPart} feel right now?"
-               </p>
-               <p className="font-sans text-sm text-white/70 leading-relaxed">
-                 Describe the sensation. Is it hot, cold, tight, heavy?
-               </p>
-            </div>
-
-            <input 
-              autoFocus
-              className="w-full bg-transparent border-b border-white/20 py-4 text-center text-white font-light text-lg focus:outline-none focus:border-white/60 transition-all placeholder:text-white/20 mb-6"
-              placeholder="It feels like..."
-              value={sensation}
-              onChange={e => setSensation(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && setPartsStep('connect')}
-            />
-            
-            <div className="flex flex-wrap justify-center gap-2 mb-8">
-               {commonSensations.map(s => (
-                 <button key={s} onClick={() => setSensation(s)} className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-[10px] uppercase tracking-wider text-white/90 hover:bg-white/20 hover:text-white transition-all shadow-sm">
-                   {s}
-                 </button>
-               ))}
-            </div>
-
-            <button 
-              onClick={() => setPartsStep('connect')}
-              disabled={!sensation}
-              className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        )}
-
-        {partsStep === 'connect' && (
-          <div className="animate-enter w-full text-center px-6 h-full flex flex-col justify-center">
-             <div className="mb-8 relative">
-               <div className="absolute inset-0 bg-indigo-500/20 blur-2xl rounded-full animate-pulse"></div>
-               <Waves size={64} className="text-indigo-200 relative z-10 mx-auto" strokeWidth={1} />
-             </div>
-             
-             <h3 className="font-serif text-2xl text-white italic mb-6">The Connection</h3>
-             
-             <p className="font-sans text-sm text-white/70 leading-relaxed mb-8">
-               Close your eyes. Bring your attention back to that <strong>{sensation}</strong> in your <strong>{selectedPart}</strong>.
-               <br/><br/>
-               Don't try to fix it. Just be with it.
-               <br/><br/>
-               Ask it internally: <em>"What are you trying to do for me?"</em>
-               <br/><br/>
-               Wait for the answer.
-             </p>
-
-             <button 
-               onClick={() => setPartsStep('message')}
-               className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all border border-white/5"
-             >
-               I have the answer
-             </button>
-          </div>
-        )}
-
-        {partsStep === 'message' && (
-          <div className="animate-enter w-full">
-             <div className="mb-8 text-center px-4">
-               <div className="w-16 h-16 mx-auto bg-white/5 rounded-full flex items-center justify-center mb-6 border border-white/10">
-                  <Shield size={24} className="text-white/80" strokeWidth={1} />
-               </div>
-               <p className="font-serif text-2xl text-white/90 italic leading-relaxed mb-4">
-                 "What did it say?"
-               </p>
-               <p className="font-sans text-sm text-white/70 leading-relaxed">
-                 When you asked "What are you doing for me?", what came up?
-               </p>
-               <p className="font-serif text-teal-200/90 italic text-lg mt-6 bg-teal-900/10 p-4 rounded-xl border border-teal-500/20">
-                 Acknowledge it by saying: "Thank you for protecting me."
-               </p>
-            </div>
-
-            <input 
-              autoFocus
-              className="w-full bg-transparent border-b border-white/20 py-4 text-center text-white font-light text-lg focus:outline-none focus:border-white/60 transition-all placeholder:text-white/20 mb-6"
-              placeholder="It is trying to..."
-              value={protection}
-              onChange={e => setProtection(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && setPartsStep('channel')}
-            />
-
-            <div className="flex flex-wrap justify-center gap-2 mb-8">
-               {commonProtections.map(p => (
-                 <button key={p} onClick={() => setProtection(p)} className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-[10px] uppercase tracking-wider text-white/90 hover:bg-white/20 hover:text-white transition-all shadow-sm">
-                   {p}
-                 </button>
-               ))}
-            </div>
-
-            <button 
-              onClick={() => setPartsStep('channel')}
-              disabled={!protection}
-              className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-50"
-            >
-              Acknowledge
-            </button>
-          </div>
-        )}
-
-        {partsStep === 'channel' && (
-          <div className="animate-enter w-full">
-            <div className="mb-8 text-center px-4">
-               <div className="w-16 h-16 mx-auto bg-teal-500/10 rounded-full flex items-center justify-center mb-6 border border-teal-500/20">
-                  <Zap size={24} className="text-teal-200" strokeWidth={1} />
-               </div>
-               <p className="font-serif text-2xl text-teal-100 italic leading-relaxed mb-4">
-                 "Now, channel the energy."
-               </p>
-               <p className="font-sans text-sm text-teal-200/70 leading-relaxed mb-4">
-                 Tell the part: "I appreciate your protection, but I can handle this now."
-               </p>
-               <p className="font-serif text-white/80 italic text-lg">
-                 "Let's use your energy for..."
-               </p>
-            </div>
-
-            <input 
-              autoFocus
-              className="w-full bg-transparent border-b border-teal-500/30 py-4 text-center text-teal-50 font-light text-lg focus:outline-none focus:border-teal-500/60 transition-all placeholder:text-teal-500/20 mb-8"
-              placeholder="I will use this energy to..."
-              value={expandingBelief}
-              onChange={e => setExpandingBelief(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && setView('lens')}
-            />
-            <button 
-               onClick={() => setView('lens')}
-               disabled={!expandingBelief}
-               className="w-full py-4 rounded-full bg-teal-500/10 text-teal-200 border border-teal-500/20 font-sans text-xs tracking-widest uppercase hover:bg-teal-500/20 transition-all disabled:opacity-0"
-            >
-              Integrate
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief }) => {
-  const [step, setStep] = useState(-1);
-  const [answers, setAnswers] = useState({ topic: '', result: '', permission: '', action: '' });
-  
-  const questions = [
-    { id: 'topic', label: 'The Truth', q: `Looking at "${stressor}" from this new energy, what is the truth now?`, ph: "The truth is..." },
-    { id: 'result', label: 'The Vision', q: "If this problem were already solved, what would be different?", ph: "I would be..." },
-    { id: 'permission', label: 'The Permission', q: "What permission do you need to give yourself to move forward?", ph: "I give myself permission to..." },
-    { id: 'action', label: 'The Move', q: "What is the single boldest step that makes everything else easier?", ph: "I will..." },
-  ];
-  
-  const current = questions[step];
-
-  const handleNext = () => {
-    if (step < 3) setStep(step + 1);
-    else {
-      setExpandingBelief(answers.topic);
-      setGoal((prev: any) => ({ 
-        ...prev, 
-        outcome: answers.result, 
-        action: answers.action 
-      }));
-      setView('molt');
-    }
-  };
-
-  if (step === -1) {
-    return (
-       <div className="h-full flex flex-col">
-          <Nav title="Breakthrough Laser" subtitle="Ignition" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={75} />
-          <div className="flex-1 flex flex-col justify-center animate-enter text-center px-6">
-              <div className="mb-8 relative">
-                <div className="absolute inset-0 bg-amber-500/20 blur-2xl rounded-full animate-pulse"></div>
-                <Flame size={64} className="text-amber-200 relative z-10 mx-auto" strokeWidth={1} />
-              </div>
-              <h3 className="font-serif text-2xl text-white italic mb-4">Ignition</h3>
-              <p className="font-sans text-sm text-white/70 leading-relaxed mb-8">
-                Energy is not found; it is generated. 
-                <br/><br/>
-                Before we pivot, we must pulse.
-                <br/><br/>
-                <strong>1. Sit forward.</strong><br/>
-                <strong>2. Take a sharp, double inhale.</strong><br/>
-                <strong>3. Say "Go."</strong>
-              </p>
-              <button 
-                onClick={() => setStep(0)}
-                className="w-full py-4 rounded-full bg-amber-500 text-slate-900 font-sans text-xs font-bold tracking-widest uppercase hover:bg-amber-400 transition-all shadow-[0_0_20px_rgba(245,158,11,0.3)]"
-              >
-                I am Activated
-              </button>
-          </div>
-       </div>
-    );
-  }
-
-  return (
-    <div className="h-full flex flex-col">
-       <Nav title="Breakthrough Laser" subtitle="Rapid Shift" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={80} />
-       
-       <div className="flex-1 flex flex-col justify-center animate-enter">
-          <div className="glass-panel p-8 rounded-[32px] relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-4 opacity-10">
-               <Target size={100} />
-             </div>
-             
-             <span className="font-sans text-[10px] uppercase tracking-widest text-white/40 mb-2 block">{current.label as string}</span>
-             <h3 className="font-serif text-2xl text-white italic mb-8 leading-snug">{current.q}</h3>
-             
-             <input 
-               autoFocus
-               key={current.id}
-               className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-teal-500/50 transition-colors mb-8 placeholder:text-white/10 text-lg"
-               placeholder={current.ph}
-               value={answers[current.id as keyof typeof answers]}
-               onChange={e => setAnswers({...answers, [current.id]: e.target.value})}
-               onKeyDown={e => e.key === 'Enter' && answers[current.id as keyof typeof answers] && handleNext()}
-             />
-             
-             <div className="flex justify-end">
-               <button 
-                 onClick={handleNext}
-                 disabled={!answers[current.id as keyof typeof answers]}
-                 className="px-8 py-3 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all disabled:opacity-50"
-               >
-                 {step === 3 ? 'Lock It In' : 'Next'}
-               </button>
-             </div>
-          </div>
-          
-          <div className="flex justify-center gap-2 mt-8">
-            {questions.map((_, i) => (
-              <div key={i} className={`h-1 rounded-full transition-all duration-500 ${i <= step ? 'w-8 bg-white' : 'w-2 bg-white/20'}`}></div>
-            ))}
-          </div>
-       </div>
-    </div>
-  );
-};
-
-const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }) => {
-  const flowState = ability >= pressure;
-  return (
-    <div className="h-full flex flex-col">
-      <Nav title="The Perspective" subtitle="Calibration" onBack={() => setView('partswork')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={50} />
-      
-      <div className="mb-4 animate-enter text-center px-4 shrink-0">
-        <p className="font-sans text-xs text-white/60 leading-relaxed">
-          Stress is simply a ratio. High pressure is safe if capacity is high. Be honest about your current reserves.
-        </p>
-      </div>
-
-      <div className="flex-1 flex flex-col items-center justify-start relative overflow-y-auto hide-scrollbar min-h-0 pt-4 animate-enter delay-100">
-        <div className={`relative w-48 h-48 rounded-full border border-white/10 flex items-center justify-center transition-all duration-1000 shrink-0 ${flowState ? 'shadow-[0_0_100px_rgba(20,184,166,0.2)]' : 'shadow-[0_0_100px_rgba(244,63,94,0.2)]'}`}>
-           <div className={`absolute inset-0 rounded-full blur-3xl opacity-20 transition-colors duration-1000 ${flowState ? 'bg-teal-500' : 'bg-rose-500'}`}></div>
-           <div className="text-center relative z-10 px-4">
-             <h2 className={`font-serif text-3xl italic transition-colors duration-500 ${flowState ? 'text-teal-100' : 'text-rose-100'}`}>
-               {flowState ? 'Flow' : 'Friction'}
-             </h2>
-             <p className="font-sans text-[10px] tracking-widest uppercase text-white/60 mt-2 leading-relaxed">
-               {flowState ? 'Challenge accepted. Systems go.' : 'System under-resourced. Bracing for impact.'}
-             </p>
-           </div>
-        </div>
-
-        <div className="w-full space-y-6 mt-8 px-2 shrink-0 pb-4">
-          <div className="space-y-3">
-             <div className="flex justify-between font-sans text-[10px] tracking-widest text-white/50">
-                <span>THE DEMAND</span>
-                <span>{pressure}%</span>
-              </div>
-              <input 
-                type="range" min="0" max="100" value={pressure} onChange={(e) => setPressure(Number(e.target.value))} 
-                className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer"
-              />
-          </div>
-          <div className="space-y-3">
-             <div className="flex justify-between font-sans text-[10px] tracking-widest text-white/50">
-                <span>MY RESOURCES</span>
-                <span>{ability}%</span>
-              </div>
-              <input 
-                type="range" min="0" max="100" value={ability} onChange={(e) => setAbility(Number(e.target.value))} 
-                className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer"
-              />
-          </div>
-        </div>
-      </div>
-
-      <button 
-         onClick={() => setView('fork')}
-         className="mt-6 w-full py-5 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] transition-all shrink-0 animate-enter delay-200"
-      >
-        Direct the Energy
-      </button>
-    </div>
-  );
-}
-
-const Crossroads: React.FC<CrossroadsProps> = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel }) => {
-  // INTELLIGENT CROSSROADS LOGIC
-  const recommendStillness = parseInt(stressLevel.toString()) > 70 && parseInt(energyLevel.toString()) < 40;
-
-  return (
-    <div className="h-full flex flex-col justify-center animate-enter">
-      <Nav title="The Crossroads" subtitle="Choice Point" onBack={() => setView('lens')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={65} />
-      <h1 className="font-serif text-4xl text-white text-center italic mb-2">Transmutation</h1>
-      
-      <div className="mb-10 text-center px-6">
-         <p className="font-sans text-xs text-white/40 leading-relaxed uppercase tracking-widest mb-4">How shall we use this energy?</p>
-         <p className="font-sans text-xs text-white/30 leading-relaxed">
-            Based on your vitals, your body may prefer <strong>{recommendStillness ? 'Stillness' : 'Motion'}</strong>.
-         </p>
-      </div>
-
-      <div className="grid gap-4">
-        <button 
-          onClick={() => setView('regulate')} 
-          className={`group relative overflow-hidden p-8 rounded-[32px] glass-panel text-left transition-all hover:bg-white/10 ${recommendStillness ? 'border-teal-500/50 glow-pulse' : ''}`}
-        >
-          <Wind size={32} className="text-teal-200/50 mb-4" strokeWidth={1} />
-          <div className="flex justify-between items-center">
-            <h3 className="font-serif text-2xl text-white italic mb-1">Stillness</h3>
-            {recommendStillness && <span className="text-[10px] uppercase tracking-widest text-teal-400 bg-teal-900/40 px-2 py-1 rounded">Recommended</span>}
-          </div>
-          <p className="font-sans text-xs text-white/40 leading-relaxed">I am flooded. I need to ground, breathe, and reset safety.</p>
-        </button>
-        
-        <button 
-          onClick={() => setView('laser')} 
-          className={`group relative overflow-hidden p-8 rounded-[32px] glass-panel text-left transition-all hover:bg-white/10 ${!recommendStillness ? 'border-amber-500/50 glow-pulse' : ''}`}
-        >
-          <Zap size={32} className="text-amber-200/50 mb-4" strokeWidth={1} />
-          <div className="flex justify-between items-center">
-            <h3 className="font-serif text-2xl text-white italic mb-1">Motion</h3>
-            {!recommendStillness && <span className="text-[10px] uppercase tracking-widest text-amber-400 bg-amber-900/40 px-2 py-1 rounded">Recommended</span>}
-          </div>
-          <p className="font-sans text-xs text-white/40 leading-relaxed">I am charged. I need to channel this heat into focus or connection.</p>
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }) => {
-  const phase = breathCount < 4 ? "Inhale" : breathCount < 8 ? "Hold" : "Exhale";
-  // Smooth 4-4-8 rhythm scaling
-  const scale = breathCount < 4 
-    ? 1 + (breathCount / 4) * 0.5 
-    : breathCount < 8 
-      ? 1.5 
-      : 1.5 - ((breathCount - 8) / 8) * 0.5;
-
-  return (
-    <div className="h-full flex flex-col items-center justify-center relative animate-enter">
-      <Nav title="Regulation" subtitle="Breathe" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
-      <div className="relative mb-16">
-         <div className="absolute inset-0 bg-teal-400/20 blur-[80px] rounded-full transition-transform duration-1000 ease-in-out" style={{ transform: `scale(${breathing ? scale * 1.5 : 1})` }}></div>
-         <div 
-           className="w-64 h-64 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm flex items-center justify-center transition-all duration-1000 ease-in-out shadow-2xl"
-           style={{ transform: `scale(${breathing ? scale : 1})` }}
-         >
-           <span className="font-serif text-2xl text-white italic tracking-wider transition-opacity duration-500">
-             {breathing ? phase : "Stillness"}
-           </span>
-         </div>
-      </div>
-      
-      <div className="flex gap-4 items-center relative z-10">
-          <button 
-              onClick={() => { setBreathing(!breathing); if (breathing) setBreathCount(0); }}
-              className={`px-10 py-4 rounded-full font-sans text-xs font-bold tracking-widest uppercase transition-all ${breathing ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-[0_0_30px_rgba(255,255,255,0.2)]'}`}
-          >
-              {breathing ? 'Complete' : 'Begin'}
-          </button>
-      </div>
-      
-      {/* FIXED: VISIBLE SKIP BUTTON */}
-      <button 
-        onClick={() => setView('molt')} 
-        className="absolute bottom-8 px-6 py-3 rounded-full bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/30 text-[10px] tracking-widest uppercase transition-all"
-      >
-          Skip to Integration
-      </button>
-    </div>
-  );
-};
-
-const Alchemy: React.FC<AlchemyProps> = ({ setView, toggleSound, soundEnabled }) => (
-  <div className="h-full flex flex-col animate-enter">
-    <Nav title="Vitality Alchemy" subtitle="Select Chemistry" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
-    <div className="flex-1 space-y-4 overflow-y-auto hide-scrollbar pb-4">
-      {[
-          { id: 'perform', label: 'Performance', sub: 'Adrenaline', desc: 'Sharpen focus. Slow time.', icon: Zap, color: 'text-amber-200' },
-          { id: 'connect', label: 'Connection', sub: 'Oxytocin', desc: 'Soften defense. Open heart.', icon: Heart, color: 'text-rose-200' },
-          { id: 'learn', label: 'Expansion', sub: 'DHEA', desc: 'Molt the shell. Build new paths.', icon: BookOpen, color: 'text-indigo-200' },
-      ].map(i => (
-          <button 
-              key={i.id}
-              onClick={() => setView('molt')}
-              className="w-full p-6 rounded-[24px] glass-panel text-left hover:bg-white/5 transition-all group"
-          >
-              <div className="flex justify-between items-start mb-2">
-                  <i.icon className={`${i.color} opacity-80`} size={24} strokeWidth={1} />
-                  <ArrowRight className="text-white/20 group-hover:text-white transition-colors" size={20} />
-              </div>
-              <h3 className="font-serif text-2xl text-white italic">{i.label}</h3>
-              <p className="font-sans text-[10px] tracking-widest uppercase text-white/40 mb-2">{i.sub}</p>
-              <p className="font-serif text-white/60 italic text-sm">{i.desc}</p>
-          </button>
-      ))}
-    </div>
-  </div>
-);
-
-// --- ENERGY ANALYZER ---
+// --- ENERGY ANALYZER (UPDATED: 6 QUESTIONS + RESULTS CARD + SCROLL) ---
 const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
     const [step, setStep] = useState(0);
     const [score, setScore] = useState(0);
@@ -1384,7 +817,7 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
         
         const newScore = score + selected;
         setScore(newScore);
-        setSelected(null); // Reset selection
+        setSelected(null);
 
         if (step < questions.length - 1) {
             setStep(step + 1);
@@ -1409,32 +842,52 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
     if (result) {
         const data = getResultText(result);
         return (
-            <div className="h-full flex flex-col justify-center animate-enter text-center">
-                <div className="w-20 h-20 mx-auto bg-gradient-to-tr from-amber-400 to-orange-500 rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(251,191,36,0.4)]">
-                    <Zap size={40} className="text-white" />
+            <div className="h-full flex flex-col justify-center animate-enter text-center px-4 overflow-y-auto hide-scrollbar">
+                <div className="py-10">
+                    <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(255,255,255,0.1)] border-2 ${data.type === 'Catabolic' ? 'bg-red-500/20 border-red-500' : 'bg-teal-500/20 border-teal-500'}`}>
+                        {data.type === 'Catabolic' ? <AlertTriangle size={40} className="text-red-400" /> : <Zap size={40} className="text-teal-400" />}
+                    </div>
+                    
+                    <p className="font-sans text-[10px] uppercase tracking-widest opacity-60 mb-2">Your Energy Leadership Level</p>
+                    <h2 className="font-serif text-3xl text-white italic mb-2">{data.title}</h2>
+                    <p className="font-sans text-xs text-white/50 uppercase tracking-widest mb-6 border border-white/10 inline-block px-3 py-1 rounded-full">{data.type} Energy</p>
+                    
+                    <p className="font-sans text-sm text-white/70 mb-10 leading-relaxed max-w-xs mx-auto">{data.desc}</p>
+                    
+                    <div className="bg-white/5 rounded-xl p-6 mb-8 text-left">
+                        <h4 className="font-serif text-white italic mb-2 text-sm flex items-center justify-center gap-2"><Info size={14}/> The Deeper Why</h4>
+                        <h4 className="font-serif text-white italic mb-2">The Prescription:</h4>
+                        <p className="font-sans text-xs text-white/60">
+                           {data.type === 'Catabolic' 
+                             ? "Your engine is running on 'dirty fuel' (fear/anger). This causes burnout. We need to shift you to Level 3 (Responsibility) immediately."
+                             : "You are running clean fuel. To sustain this, focus on 'The Vision' protocol to lock in this state."
+                           }
+                        </p>
+                        <p className="font-sans text-[10px] text-white/40 mt-4 leading-relaxed border-t border-white/5 pt-4">
+                           This quick scan captures your current state. To understand the root cause—your Energy Leadership levels—and fix this permanently, the full ELI Assessment is required.
+                        </p>
+                    </div>
+
+                    <a href="https://calendly.com/alexioda" target="_blank" rel="noopener noreferrer" className="w-full block py-4 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] transition-all">
+                        Book Full Energy Audit (ELI)
+                    </a>
+                    <button onClick={() => setView('dashboard')} className="mt-6 text-xs text-white/30 hover:text-white uppercase tracking-widest">Return to Horizon</button>
                 </div>
-                <h2 className="font-serif text-3xl text-white italic mb-2">{data.title}</h2>
-                <p className="font-sans text-sm text-white/60 mb-8 leading-relaxed px-4">{data.desc}</p>
-                
-                <a href="https://calendly.com/alexioda" target="_blank" rel="noopener noreferrer" className="w-full py-4 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] transition-all">
-                    Stabilize at Level {result + 1} (Book Session)
-                </a>
-                <button onClick={() => setView('dashboard')} className="mt-6 text-xs text-white/30 hover:text-white uppercase tracking-widest">Return to Horizon</button>
             </div>
         );
     }
 
     return (
         <div className="h-full flex flex-col justify-center animate-enter">
-            <Nav title="Energy Scan" subtitle={`Question ${step + 1} / 3`} onBack={() => setView('molt')} toggleSound={() => {}} soundEnabled={false} />
-            <div className="flex-1 flex flex-col justify-center items-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-2">
+            <Nav title="Energy Lens" subtitle={`Question ${step + 1} / 6`} onBack={() => setView('molt')} toggleSound={() => {}} soundEnabled={false} progress={((step + 1) / 6) * 100} />
+            <div className="flex-1 flex flex-col justify-start items-center text-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-2 pt-8">
                 <h2 className="font-serif text-2xl text-white italic mb-8 text-center px-4">{questions[step].q}</h2>
-                <div className="grid gap-3 w-full">
+                <div className="grid gap-3 w-full shrink-0">
                     {questions[step].options.map((opt, i) => (
                         <button 
                             key={i} 
                             onClick={() => setSelected(opt.val)}
-                            className={`p-5 rounded-2xl border text-left transition-all font-sans text-sm ${selected === opt.val ? 'bg-amber-500/20 border-amber-500 text-amber-100' : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'}`}
+                            className={`p-5 rounded-2xl border text-left transition-all font-sans text-sm ${selected === opt.val ? 'bg-indigo-500/20 border-indigo-400 text-indigo-100' : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'}`}
                         >
                             {opt.text}
                         </button>
@@ -1444,7 +897,7 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
                 <button 
                     onClick={confirmAnswer}
                     disabled={selected === null}
-                    className="w-full mt-6 py-4 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-widest uppercase transition-all disabled:opacity-0 disabled:translate-y-2"
+                    className="w-full mt-8 py-4 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-widest uppercase transition-all disabled:opacity-0 disabled:translate-y-2 shrink-0"
                 >
                     Next
                 </button>
