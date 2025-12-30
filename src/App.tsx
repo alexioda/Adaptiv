@@ -1610,7 +1610,6 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
   }, [goal.outcome, goal.action, goalStep]);
 
   const current = steps[Math.min(goalStep, steps.length - 1)];
-  const partName = somaticZones[0] || 'Body';
 
   const generateLink = () => `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Adaptiv: ' + (goal.action || 'Action'))}&details=${encodeURIComponent('Goal: ' + (goal.outcome || 'Outcome') + '\n\nMindset: ' + expandingBelief)}`;
   
