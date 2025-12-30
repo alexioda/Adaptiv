@@ -5,7 +5,7 @@ import {
   User, Target,
   Waves, Volume2, VolumeX, ChevronLeft, AlertCircle, Copy, LogOut, RefreshCw,
   Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail, 
-  Moon, Coffee, MinusCircle, AlertTriangle, Info, FileText, Thermometer
+  Moon, Coffee, MinusCircle, AlertTriangle, Info, FileText, Thermometer, Sparkles
 } from 'lucide-react';
 
 // --- TYPES ---
@@ -122,6 +122,14 @@ interface BreathProps {
   setBreathing: (val: boolean) => void;
   breathCount: number;
   setBreathCount: (val: number) => void;
+  setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
+}
+
+interface InsightProps {
+  expandingBelief: string;
+  setExpandingBelief: (val: string) => void;
   setView: (view: string) => void;
   toggleSound: () => void;
   soundEnabled: boolean;
@@ -1221,6 +1229,41 @@ const Crossroads: React.FC<CrossroadsProps> = ({ setView, toggleSound, soundEnab
   );
 };
 
+// --- INSIGHT (THE SOFT QUESTION) ---
+const Insight: React.FC<InsightProps> = ({ expandingBelief, setExpandingBelief, setView, toggleSound, soundEnabled }) => {
+    return (
+       <div className="h-full flex flex-col justify-center animate-enter text-center px-6">
+           <Nav title="The Clarity" subtitle="Harvesting" onBack={() => setView('regulate')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
+           
+           <div className="flex-1 flex flex-col justify-center items-center">
+                <div className="mb-8 relative">
+                   <div className="absolute inset-0 bg-white/10 blur-2xl rounded-full"></div>
+                   <Sparkles size={64} className="text-white relative z-10 opacity-80" strokeWidth={1} />
+                </div>
+                
+                <h3 className="font-serif text-2xl text-white italic mb-6">"In the stillness, what became clear?"</h3>
+                
+                <input 
+                  autoFocus
+                  className="w-full bg-transparent border-b border-white/20 py-4 text-center text-white font-light text-lg focus:outline-none focus:border-white/60 transition-all placeholder:text-white/20 mb-12"
+                  placeholder="The truth is..."
+                  value={expandingBelief}
+                  onChange={e => setExpandingBelief(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && setView('alchemy')} 
+                />
+                
+                <button 
+                  onClick={() => setView('alchemy')}
+                  disabled={!expandingBelief}
+                  className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-0"
+                >
+                  Direct this Energy
+                </button>
+           </div>
+       </div>
+    );
+};
+
 const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }) => {
   const phase = breathCount < 4 ? "Inhale" : breathCount < 8 ? "Hold" : "Exhale";
   // Smooth 4-4-8 rhythm scaling
@@ -1249,24 +1292,23 @@ const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, s
              </div>
           </div>
           
-          <div className="flex gap-4 items-center relative z-10">
+          <div className="flex flex-col gap-4 items-center relative z-10 w-full px-6">
               <button 
                   onClick={() => { setBreathing(!breathing); if (breathing) setBreathCount(0); }}
-                  className={`px-10 py-4 rounded-full font-sans text-xs font-bold tracking-widest uppercase transition-all ${breathing ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-[0_0_30px_rgba(255,255,255,0.2)]'}`}
+                  className={`w-full max-w-xs px-10 py-4 rounded-full font-sans text-xs font-bold tracking-widest uppercase transition-all ${breathing ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-[0_0_30px_rgba(255,255,255,0.2)]'}`}
               >
                   {breathing ? 'Complete' : 'Begin'}
               </button>
+              
+              {!breathing && (
+                  <button 
+                    onClick={() => setView('insight')} 
+                    className="w-full max-w-xs px-10 py-4 rounded-full bg-teal-500/20 text-teal-200 border border-teal-500/30 font-sans text-xs font-bold tracking-widest uppercase hover:bg-teal-500/30 transition-all animate-enter"
+                  >
+                      Capture Insight
+                  </button>
+              )}
           </div>
-      </div>
-      
-      {/* FIXED: VISIBLE SKIP BUTTON */}
-      <div className="pb-8 shrink-0">
-          <button 
-            onClick={() => setView('molt')} 
-            className="px-6 py-3 rounded-full bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/30 text-[10px] tracking-widest uppercase transition-all"
-          >
-              Skip to Integration
-          </button>
       </div>
     </div>
   );
@@ -1568,6 +1610,7 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
   }, [goal.outcome, goal.action, goalStep]);
 
   const current = steps[Math.min(goalStep, steps.length - 1)];
+  const partName = somaticZones[0] || 'Body';
 
   const generateLink = () => `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Adaptiv: ' + (goal.action || 'Action'))}&details=${encodeURIComponent('Goal: ' + (goal.outcome || 'Outcome') + '\n\nMindset: ' + expandingBelief)}`;
   
@@ -1790,7 +1833,7 @@ I seal this by: ${goal.action} (${goal.when}).
                <p className="font-sans text-xs text-white/50 mb-6 leading-relaxed max-w-[80%]">
                   You have begun the shift. Cement this architecture with a 1:1 session at Conscious Growth Coaching.
                </p>
-               <a href="https://www.facebook.com/alexioda" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-200 hover:bg-blue-600/40 transition-colors text-xs font-bold uppercase tracking-wide">
+               <a href="https://www.facebook.com/share/1RmJbo4Gdt/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-200 hover:bg-blue-600/40 transition-colors text-xs font-bold uppercase tracking-wide">
                   Visit Facebook Page <ArrowRight size={14} />
                </a>
           </div>
@@ -2004,6 +2047,7 @@ const App = () => {
            {view === 'regulate' && <Breath breathing={breathing} setBreathing={setBreathing} breathCount={breathCount} setBreathCount={setBreathCount} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'alchemy' && <Alchemy setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'molt' && <Molt goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} isLocked={isLocked} setIsLocked={setIsLocked} expandingBelief={expandingBelief} stressor={stressor} sessionCount={sessionCount} completeSession={completeSession} resetApp={resetApp} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} somaticZones={somaticZones} isBurnoutPath={isBurnoutPath} />}
+           {view === 'insight' && <Insight expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'energy' && <EnergyAnalyzer setView={setView} />}
         </div>
       </div>
