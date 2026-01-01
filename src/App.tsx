@@ -271,7 +271,11 @@ const Nav: React.FC<NavProps> = ({ title, subtitle, onBack, isDashboard, soundEn
     <div className="flex justify-between items-start">
       <div>
         <h2 className="font-sans text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mb-1">{subtitle}</h2>
-        <h1 className="font-serif text-3xl text-white/90 italic">{title}</h1>
+        <div className="flex items-center gap-2">
+            {/* Small Activity Icon in Header */}
+            {!isDashboard && <Activity size={20} className="text-white/80" />}
+            <h1 className="font-serif text-3xl text-white/90 italic">{title}</h1>
+        </div>
       </div>
       <div className="flex gap-2">
         {!isDashboard && (
@@ -311,31 +315,49 @@ const Nav: React.FC<NavProps> = ({ title, subtitle, onBack, isDashboard, soundEn
 // --- VIEW COMPONENTS ---
 
 const Welcome: React.FC<WelcomeProps> = ({ onEnter }) => (
-  <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
-    <div className="min-h-full flex flex-col justify-center items-center py-10">
-      <div className="mb-10 relative">
-        <div className="absolute inset-0 bg-teal-500/10 blur-xl rounded-full"></div>
-        <Activity size={56} className="text-teal-200/80 relative z-10" strokeWidth={0.8} />
-      </div>
+  <div className="h-full flex flex-col px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
+    <div className="min-h-full flex flex-col items-center py-10">
       
-      <div className="space-y-6 max-w-sm">
-        <h2 className="font-sans text-[10px] font-bold text-white/30 uppercase tracking-[0.3em] animate-enter">Adaptiv</h2>
+      {/* Spacer pushes content to middle when space allows, shrinks when scrolling needed */}
+      <div className="flex-1"></div>
+
+      <div className="flex flex-col items-center">
+        <div className="mb-6 relative">
+            <div className="absolute inset-0 bg-teal-500/10 blur-xl rounded-full"></div>
+            {/* REPLACED LOGO WITH ACTIVITY ICON - SCALED DOWN */}
+            <Activity size={64} className="text-teal-200/80 relative z-10 animate-breathe" strokeWidth={0.8} />
+        </div>
         
-        <h1 className="font-serif text-5xl text-white italic tracking-wide leading-tight animate-enter delay-100">
-          Architecture for <br/> the Soul.
-        </h1>
+        <div className="space-y-4 max-w-sm">
+            {/* SWAPPED HIERARCHY: Adaptiv is now the Hero Title */}
+            <h1 className="font-serif text-5xl text-white italic tracking-wide leading-tight animate-enter">
+            Adaptiv
+            </h1>
+            
+            <p className="font-sans text-xs text-white/50 uppercase tracking-[0.3em] animate-enter delay-100">
+            Alchemy for the Soul
+            </p>
+            
+            <p className="font-sans text-[10px] text-white/30 leading-relaxed max-w-[280px] mx-auto animate-enter delay-200 pt-4">
+            Kinetic Resilience for the Modern Leader.
+            </p>
+        </div>
         
-        <p className="font-sans text-sm text-white/50 leading-relaxed max-w-[280px] mx-auto animate-enter delay-200">
-          Kinetic Resilience for the Modern Leader.
-        </p>
+        <button 
+            onClick={onEnter}
+            className="mt-12 px-8 py-4 rounded-full bg-white/10 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-white/20 hover:scale-105 transition-all animate-enter delay-300 border border-white/5"
+        >
+            Enter the Space
+        </button>
       </div>
-      
-      <button 
-        onClick={onEnter}
-        className="mt-12 px-8 py-4 rounded-full bg-white/10 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-white/20 hover:scale-105 transition-all animate-enter delay-300 border border-white/5"
-      >
-        Enter the Crucible
-      </button>
+
+      <div className="flex-1"></div>
+
+      {/* FOOTER BRANDING */}
+      <div className="mt-8 flex flex-col items-center opacity-60 shrink-0">
+        <p className="font-sans text-[8px] text-white/30 uppercase tracking-widest mb-2">Powered By</p>
+        <p className="font-serif italic text-white/80 text-xs">Conscious Growth Coaching</p>
+      </div>
     </div>
   </div>
 );
@@ -359,7 +381,7 @@ const Manifesto: React.FC<ManifestoProps> = ({ onContinue }) => (
            Most tools ask you to <em>think</em> your way out. Adaptiv asks you to <em>feel</em> your way through.
          </p>
          <p className="text-white">
-           In the next few minutes, we will locate the friction in the body, listen to its message, and transmute it into fuel.
+           In the next few minutes, we will locate the friction in the body, listen to its message, and shift it into fuel.
          </p>
        </div>
 
@@ -383,32 +405,39 @@ const Manifesto: React.FC<ManifestoProps> = ({ onContinue }) => (
 );
 
 const Identity: React.FC<IdentityProps> = ({ userName, setUserName, onComplete }) => (
-  <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
-    <div className="min-h-full flex flex-col justify-center items-center py-10 w-full">
-      <div className="mb-8 relative">
-        <div className="absolute inset-0 bg-white/10 blur-xl rounded-full"></div>
-        <Activity size={48} className="text-white/80 relative z-10" strokeWidth={1} />
+  <div className="h-full flex flex-col px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
+    <div className="min-h-full flex flex-col items-center py-10 w-full">
+      <div className="flex-1"></div>
+
+      <div className="w-full max-w-xs flex flex-col items-center">
+        <div className="mb-8 relative">
+            <div className="absolute inset-0 bg-white/10 blur-xl rounded-full"></div>
+            {/* REPLACED LOGO WITH ACTIVITY ICON - SCALED DOWN */}
+            <Activity size={40} className="text-white/80 relative z-10" strokeWidth={1} />
+        </div>
+        <h1 className="font-serif text-4xl text-white mb-2 italic tracking-wide">Adaptiv</h1>
+        <p className="font-sans text-white/40 text-xs tracking-[0.2em] uppercase mb-12">Alchemy for the Soul</p>
+        
+        <div className="w-full space-y-6 relative z-50">
+            <input 
+            type="text" 
+            value={userName}
+            onChange={(e) => setUserName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && userName && onComplete()}
+            placeholder="Enter Name / Alias"
+            className="w-full bg-transparent border-b border-white/20 py-3 text-center text-white text-xl font-serif placeholder:text-white/20 focus:outline-none focus:border-white/60 transition-colors"
+            />
+            <button 
+            onClick={onComplete}
+            disabled={!userName}
+            className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs font-medium tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+            Begin
+            </button>
+        </div>
       </div>
-      <h1 className="font-serif text-5xl text-white mb-2 italic tracking-wide">Adaptiv</h1>
-      <p className="font-sans text-white/40 text-xs tracking-[0.2em] uppercase mb-12">Architecture for the Soul</p>
       
-      <div className="w-full max-w-xs space-y-6 relative z-50">
-        <input 
-          type="text" 
-          value={userName}
-          onChange={(e) => setUserName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && userName && onComplete()}
-          placeholder="Enter Name / Alias"
-          className="w-full bg-transparent border-b border-white/20 py-3 text-center text-white text-xl font-serif placeholder:text-white/20 focus:outline-none focus:border-white/60 transition-colors"
-        />
-        <button 
-          onClick={onComplete}
-          disabled={!userName}
-          className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs font-medium tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Begin
-        </button>
-      </div>
+      <div className="flex-1"></div>
     </div>
   </div>
 );
@@ -473,7 +502,7 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
              }}
              className="w-full py-3 rounded-xl bg-teal-500 text-slate-900 font-sans text-xs font-bold tracking-widest uppercase hover:bg-teal-400 transition-all shadow-[0_0_20px_rgba(20,184,166,0.2)]"
            >
-             Begin Cycle
+             Begin Alchemist Cycle
            </button>
         </div>
 
@@ -579,6 +608,16 @@ const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, sound
     { q: "Recovery Lag", text: "Does it take you longer than a weekend to feel like yourself again?" }
   ];
 
+  const handleBack = () => {
+      if (step > 0) {
+          setStep(step - 1);
+          setScore(score - (selected !== null ? selected : 0)); // Very basic rollback (imperfect but functional)
+          setSelected(null);
+      } else {
+          setView('dashboard');
+      }
+  };
+
   const confirmAnswer = () => {
     if (selected === null) return;
     const newScore = score + selected;
@@ -641,7 +680,12 @@ const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, sound
           <button 
             onClick={() => {
               setBurnoutPath(resultData.isBurnout);
-              setView(resultData.isBurnout ? 'preservation' : 'laser');
+              // FIXED FLOW: Even "Friction" results now go to Somatic check first
+              if (resultData.isBurnout) {
+                  setView('preservation');
+              } else {
+                  setView('somatic');
+              }
             }}
             className={`w-full py-4 rounded-full font-sans text-xs font-bold tracking-widest uppercase transition-all ${resultData.isBurnout ? 'bg-orange-500 text-slate-900 hover:bg-orange-400' : 'bg-teal-500 text-slate-900 hover:bg-teal-400'}`}
           >
@@ -654,7 +698,7 @@ const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, sound
 
   return (
     <div className="h-full flex flex-col">
-       <Nav title="The Spark Audit" subtitle={`Question ${step + 1} / 6`} onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={((step + 1) / 6) * 100} />
+       <Nav title="The Spark Audit" subtitle={`Question ${step + 1} / 6`} onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={((step + 1) / 6) * 100} />
        
        <div className="flex-1 flex flex-col justify-start items-center text-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-6 pt-8">
           <h3 className="font-serif text-2xl text-white italic mb-2 shrink-0">{questions[step].q}</h3>
@@ -730,10 +774,15 @@ const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, sound
       setViewToMolt();
     }
   };
+  
+  const handleBack = () => {
+      if (step > 0) setStep(step - 1);
+      else setView('dashboard');
+  }
 
   return (
     <div className="h-full flex flex-col">
-       <Nav title="Preservation Mode" subtitle="Recovery Loop" onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={33 * (step+1)} />
+       <Nav title="Preservation Mode" subtitle="Recovery Loop" onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={33 * (step+1)} />
        
        <div className="flex-1 flex flex-col justify-center items-center animate-enter text-center px-4 overflow-y-auto hide-scrollbar">
           <div className="mb-8 relative mx-auto">
@@ -822,10 +871,18 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
   
   const commonSensations = ["Tightness", "Heat", "Heaviness", "Empty", "Buzzing", "Numbness"];
   const commonProtections = ["Preventing Failure", "Staying Safe", "Avoiding Criticism", "Control"];
+
+  const handleBack = () => {
+    if (partsStep === 'experience') setView('somatic');
+    else if (partsStep === 'unblend') setPartsStep('experience');
+    else if (partsStep === 'connect') setPartsStep('unblend');
+    else if (partsStep === 'message') setPartsStep('connect');
+    else if (partsStep === 'channel') setPartsStep('message');
+  };
   
   return (
     <div className="h-full flex flex-col">
-      <Nav title="Parts Dialogue" subtitle={selectedPart} onBack={() => setView('somatic')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={30} />
+      <Nav title="Parts Dialogue" subtitle={selectedPart} onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={30} />
       
       <div className="flex-1 flex flex-col justify-start pt-8 space-y-6 animate-enter overflow-y-auto hide-scrollbar pb-20">
         
@@ -852,6 +909,7 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
               onKeyDown={e => e.key === 'Enter' && setPartsStep('unblend')} 
             />
             
+            {/* CHIPS FOR SENSATION */}
             <div className="flex flex-wrap justify-center gap-2 mb-8">
                {commonSensations.map(s => (
                  <button key={s} onClick={() => setSensation(s)} className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-[10px] uppercase tracking-wider text-white/90 hover:bg-white/20 hover:text-white transition-all shadow-sm">
@@ -945,6 +1003,7 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
                onKeyDown={e => e.key === 'Enter' && setPartsStep('channel')}
              />
 
+             {/* CHIPS FOR PROTECTION */}
              <div className="flex flex-wrap justify-center gap-2 mb-8">
                 {commonProtections.map(p => (
                   <button key={p} onClick={() => setProtection(p)} className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-[10px] uppercase tracking-wider text-white/90 hover:bg-white/20 hover:text-white transition-all shadow-sm">
@@ -970,7 +1029,7 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
                  <Zap size={24} className="text-teal-200" strokeWidth={1} />
                </div>
                <p className="font-serif text-2xl text-teal-100 italic leading-relaxed mb-4">
-                 "Now, channel the energy."
+                 "Now, shift the energy."
                </p>
                <p className="font-sans text-sm text-teal-200/70 leading-relaxed mb-4">
                  Tell the part: "I appreciate your protection, but I can handle this now."
@@ -1028,6 +1087,12 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
     }
   };
 
+  const handleBack = () => {
+    if (step === -1) setView('fork');
+    else if (step > 0) setStep(step - 1);
+    else setStep(-1);
+  };
+
   const handleStarter = (text: string) => {
       setAnswers({...answers, [current.id]: text});
   };
@@ -1035,7 +1100,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
   if (step === -1) {
     return (
        <div className="h-full flex flex-col">
-          <Nav title="Breakthrough Laser" subtitle="Ignition" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={75} />
+          <Nav title="Breakthrough Laser" subtitle="Ignition" onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={75} />
           {/* ADDED: flex-1 overflow-y-auto to allow scrolling if content overflows */}
           <div className="flex-1 flex flex-col justify-center animate-enter text-center px-6 overflow-y-auto hide-scrollbar">
               <div className="mb-8 relative">
@@ -1046,7 +1111,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
               <p className="font-sans text-sm text-white/70 leading-relaxed mb-8">
                 Energy is not found; it is generated. 
                 <br/><br/>
-                Before we pivot, we must pulse.
+                Before we shift, we must pulse.
                 <br/><br/>
                 <strong>1. Sit forward.</strong><br/>
                 <strong>2. Take a sharp, double inhale.</strong><br/>
@@ -1065,7 +1130,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
 
   return (
     <div className="h-full flex flex-col">
-       <Nav title="Breakthrough Laser" subtitle="Rapid Shift" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={80} />
+       <Nav title="Breakthrough Laser" subtitle="Rapid Shift" onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={80} />
        
        <div className="flex-1 flex flex-col justify-start animate-enter overflow-y-auto hide-scrollbar pb-8 px-4 pt-4">
           <div className="glass-panel p-8 rounded-[32px] relative overflow-hidden shrink-0 mb-4">
@@ -1347,6 +1412,7 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
     const [score, setScore] = useState(0);
     const [result, setResult] = useState<number | null>(null);
     const [selected, setSelected] = useState<number | null>(null);
+    const [showInfo, setShowInfo] = useState<number | null>(null);
 
     const questions = [
         {
@@ -1473,9 +1539,23 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
                         {isCatabolic ? <AlertTriangle size={40} className="text-red-400" /> : <Zap size={40} className="text-teal-400" />}
                     </div>
                     
-                    <p className="font-sans text-[10px] uppercase tracking-widest opacity-60 mb-2">Your Energy Leadership Level</p>
+                    <p className="font-sans text-[10px] uppercase tracking-widest opacity-60 mb-2">Conscious Growth Energy Profile</p>
                     <h2 className="font-serif text-3xl text-white italic mb-2">{data.title}</h2>
-                    <p className="font-sans text-xs text-white/50 uppercase tracking-widest mb-6 border border-white/10 inline-block px-3 py-1 rounded-full">{data.type} Energy</p>
+                    <div className="flex items-center justify-center gap-2 mb-6">
+                        <p className="font-sans text-xs text-white/50 uppercase tracking-widest border border-white/10 inline-block px-3 py-1 rounded-full">{data.type} Energy</p>
+                         <button onClick={() => setShowInfo(showInfo ? null : 1)} className="text-white/40 hover:text-white transition-colors"><Info size={14}/></button>
+                    </div>
+                    
+                    {showInfo && (
+                        <div className="bg-slate-800 p-4 rounded-xl mb-6 text-left border border-white/10 animate-enter">
+                            <p className="text-xs text-white/80 mb-2 font-bold">{data.type === 'Catabolic' ? 'Catabolic Energy:' : 'Anabolic Energy:'}</p>
+                            <p className="text-xs text-white/60 leading-relaxed">
+                                {data.type === 'Catabolic' 
+                                 ? "Draining, destructive energy. Useful for short-term survival (fight/flight) but causes burnout long-term."
+                                 : "Fueling, constructive energy. Creates growth, solution-finding, and sustainable high performance."}
+                            </p>
+                        </div>
+                    )}
                     
                     <p className="font-sans text-sm text-white/70 mb-10 leading-relaxed max-w-xs mx-auto">{data.desc}</p>
                     
@@ -1660,11 +1740,17 @@ I seal this by: ${goal.action} (${goal.when}).
     );
   }
 
+  // Handle Back Button in Molt form
+  const handleBack = () => {
+      if (goalStep > 0) setGoalStep(goalStep - 1);
+      else setView('alchemy');
+  }
+
   return (
     <div className="h-full flex flex-col relative z-20">
        <Nav 
           title="Integration" 
-          subtitle="Molt Complete" 
+          subtitle="Blueprint Complete" 
           onBack={() => setView('fork')} 
           soundEnabled={soundEnabled} 
           toggleSound={toggleSound} 
@@ -1678,7 +1764,7 @@ I seal this by: ${goal.action} (${goal.when}).
                   {isBurnoutPath ? <Moon className="text-orange-200" size={24}/> : <Check className="text-white" size={24} />}
               </div>
               <h1 className="font-serif text-3xl text-white italic">Integration</h1>
-              <p className="font-sans text-[10px] uppercase tracking-widest text-white/40 mt-2">The Molt is Complete</p>
+              <p className="font-sans text-[10px] uppercase tracking-widest text-white/40 mt-2">The Blueprint is Complete</p>
           </div>
 
           <div className={`glass-panel p-8 rounded-[32px] mb-6 relative overflow-hidden transition-all duration-1000 ${isLocked ? 'animate-flash' : ''}`}>
@@ -1724,7 +1810,7 @@ I seal this by: ${goal.action} (${goal.when}).
                              }}
                           />
                           <div className="flex gap-3">
-                               {goalStep > 0 && <button onClick={() => setGoalStep(goalStep - 1)} className="px-4 py-3 rounded-xl border border-white/10 text-white/40">Back</button>}
+                               <button onClick={handleBack} className="px-4 py-3 rounded-xl border border-white/10 text-white/40 hover:text-white transition-colors">Back</button>
                                <button 
                                   disabled={!goal[current.id as keyof typeof goal]}
                                   onClick={() => { if (goalStep < 2) setGoalStep(goalStep + 1); else setIsLocked(true); }}
@@ -1757,12 +1843,18 @@ I seal this by: ${goal.action} (${goal.when}).
                           </div>
 
                           <div className={`w-12 h-[1px] mx-auto mb-4 ${isBurnoutPath ? 'bg-orange-500/50' : 'bg-teal-500/50'}`}></div>
+                          
+                           {/* The Signature Block */}
+                           <div className="flex flex-col items-center justify-center gap-1 opacity-80 relative z-10">
+                              <span className="font-sans text-[8px] uppercase tracking-widest text-white/40 mb-1">Certified By</span>
+                              <span className="font-serif text-lg italic text-white">Conscious Growth Coaching</span>
+                           </div>
                       </div>
                       
                       <div className="text-center space-y-4 mb-8">
                          <p className="font-serif text-white/90 italic">Mission Complete.</p>
                          <p className="font-sans text-xs text-white/60 leading-relaxed max-w-[280px] mx-auto">
-                            You have mapped the friction and forged a new truth. Carry this state into your next task. You are the Architect.
+                            You have mapped the friction and shifted your energy. Carry this state into your next task. You are the Architect.
                          </p>
                       </div>
 
