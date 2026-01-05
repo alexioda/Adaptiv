@@ -7,11 +7,7 @@ import {
   Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail, 
   Moon, Coffee, MinusCircle, AlertTriangle, Info, FileText, Thermometer, Sparkles, Loader2
 } from 'lucide-react';
-
-// --- CONFIGURATION ---
-// PASTE YOUR GEMINI API KEY INSIDE THE QUOTES BELOW
-// Example: const GLOBAL_API_KEY = "AIzaSy...";
-const GLOBAL_API_KEY = "AIzaSyACTaD9NSvxxsrZE7Qfx2K5JfZL_A8eutU"; 
+import { generateCoachingQuestions } from './aiService';
 
 // --- TYPES ---
 
