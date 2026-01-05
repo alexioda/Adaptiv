@@ -5,12 +5,12 @@ import {
   User, Target,
   Waves, Volume2, VolumeX, ChevronLeft, AlertCircle, Copy, LogOut, RefreshCw,
   Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail, 
-  Moon, Coffee, MinusCircle, AlertTriangle, Info, FileText, Thermometer, Sparkles, Settings, Loader2
+  Moon, Coffee, MinusCircle, AlertTriangle, Info, FileText, Thermometer, Sparkles, Loader2
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
-// PASTE YOUR GEMINI API KEY HERE TO ENABLE AI FOR ALL CLIENTS
-// If left empty (""), the app will use "Simulated" generic responses.
+// PASTE YOUR GEMINI API KEY INSIDE THE QUOTES BELOW
+// Example: const GLOBAL_API_KEY = "AIzaSy...";
 const GLOBAL_API_KEY = "AIzaSyACTaD9NSvxxsrZE7Qfx2K5JfZL_A8eutU"; 
 
 // --- BRANDING ASSETS ---
@@ -61,7 +61,6 @@ interface NavProps {
   toggleSound: () => void;
   resetApp?: () => void;
   progress?: number;
-  openSettings?: () => void;
 }
 
 interface WelcomeProps {
@@ -92,7 +91,6 @@ interface HorizonProps {
   toggleSound: () => void;
   soundEnabled: boolean;
   resetApp: () => void;
-  setShowSettings: (val: boolean) => void;
 }
 
 interface BurnoutCheckProps {
@@ -214,12 +212,6 @@ interface PrimingProps {
   onComplete: () => void;
 }
 
-interface SettingsProps {
-    apiKey: string;
-    setApiKey: (key: string) => void;
-    onClose: () => void;
-}
-
 // --- API HELPER ---
 const generateAIResponse = async (prompt: string, apiKey: string) => {
     if (!apiKey) return null; 
@@ -321,13 +313,12 @@ const Atmosphere: React.FC<{ bgState: string }> = ({ bgState }) => {
   );
 };
 
-const Nav: React.FC<NavProps> = ({ title, subtitle, onBack, isDashboard, soundEnabled, toggleSound, resetApp, openSettings, progress }) => (
+const Nav: React.FC<NavProps> = ({ title, subtitle, onBack, isDashboard, soundEnabled, toggleSound, resetApp, progress }) => (
   <div className="flex flex-col mb-4 pt-4 animate-enter shrink-0 relative z-50">
     <div className="flex justify-between items-start">
       <div>
         <h2 className="font-sans text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mb-1">{subtitle}</h2>
         <div className="flex items-center gap-2">
-            {/* Small Activity Icon in Header */}
             {!isDashboard && <Activity size={20} className="text-white/80" />}
             <h1 className="font-serif text-3xl text-white/90 italic">{title}</h1>
         </div>
@@ -339,12 +330,6 @@ const Nav: React.FC<NavProps> = ({ title, subtitle, onBack, isDashboard, soundEn
           </button>
         )}
         
-        {isDashboard && openSettings && (
-           <button onClick={openSettings} className="p-3 rounded-full glass-button text-white/40 hover:text-white hover:bg-white/20 transition-all">
-             <Settings size={20} />
-           </button>
-        )}
-
         {isDashboard && resetApp && (
            <button onClick={resetApp} className="p-3 rounded-full glass-button text-white/40 hover:text-white hover:bg-white/20 transition-all" title="Reset Identity">
              <LogOut size={20} />
@@ -489,7 +474,7 @@ const Identity: React.FC<IdentityProps> = ({ userName, setUserName, onComplete }
   </div>
 );
 
-const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp, setShowSettings }) => {
+const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => {
   // Logic for the Burnout Trigger
   const triggers = ['work', 'job', 'boss', 'career', 'team', 'project', 'deadline', 'email', 'monday', 'shift', 'burnout', 'tired', 'exhausted', 'drained', 'overwhelm', 'client'];
   const showWorkCheck = triggers.some(t => stressor.toLowerCase().includes(t));
@@ -504,7 +489,6 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
           toggleSound={toggleSound}
           soundEnabled={soundEnabled}
           progress={0}
-          openSettings={() => setShowSettings(true)}
       />
       
       <div className="flex-1 flex flex-col gap-6 overflow-y-auto hide-scrollbar animate-enter pb-8">
@@ -550,7 +534,7 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
              }}
              className="w-full py-3 rounded-xl bg-teal-500 text-slate-900 font-sans text-xs font-bold tracking-widest uppercase hover:bg-teal-400 transition-all shadow-[0_0_20px_rgba(20,184,166,0.2)]"
            >
-             Begin Alchemist Cycle
+             Begin Session
            </button>
         </div>
 
@@ -1309,7 +1293,7 @@ const Crossroads: React.FC<CrossroadsProps> = ({ setView, toggleSound, soundEnab
       
       {/* WRAPPED content in scrollable div */}
       <div className="flex-1 flex flex-col justify-center overflow-y-auto hide-scrollbar pb-8 px-6">
-          <h1 className="font-serif text-4xl text-white text-center italic mb-2 shrink-0">Transmutation</h1>
+          <h1 className="font-serif text-4xl text-white text-center italic mb-2 shrink-0">Transformation</h1>
           
           <div className="mb-10 text-center shrink-0">
              <p className="font-sans text-xs text-white/40 leading-relaxed uppercase tracking-widest mb-4">How shall we use this energy?</p>
@@ -1440,7 +1424,7 @@ const Alchemy: React.FC<AlchemyProps> = ({ setView, toggleSound, soundEnabled })
       {[
           { id: 'perform', label: 'Performance', sub: 'Adrenaline', desc: 'Sharpen focus. Slow time.', icon: Zap, color: 'text-amber-200' },
           { id: 'connect', label: 'Connection', sub: 'Oxytocin', desc: 'Soften defense. Open heart.', icon: Heart, color: 'text-rose-200' },
-          { id: 'learn', label: 'Expansion', sub: 'DHEA', desc: 'Molt the shell. Build new paths.', icon: BookOpen, color: 'text-indigo-200' },
+          { id: 'learn', label: 'Expansion', sub: 'DHEA', desc: 'Shed the limitation. Build new paths.', icon: BookOpen, color: 'text-indigo-200' },
       ].map(i => (
           <button 
               key={i.id}
@@ -1657,6 +1641,74 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
     )
 };
 
+const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
+  const [step, setStep] = useState(0);
+
+  const steps = [
+    {
+      icon: Mountain,
+      title: "Physiology",
+      instruction: "Change your state immediately. Stand up. Shoulders back. Deep breath. Look up.",
+      action: "I am ready."
+    },
+    {
+      icon: Anchor,
+      title: "Somatic Anchor",
+      instruction: "Where do you feel this new power in your body? Put your hand there now.",
+      action: "I feel it."
+    },
+    {
+      icon: Eye,
+      title: "Visualization",
+      instruction: "Close your eyes. See the goal achieved. Feel the emotion of the win in your body.",
+      action: "Seal it."
+    }
+  ];
+
+  const current = steps[step];
+
+  const next = () => {
+    if (step < steps.length - 1) {
+      setStep(step + 1);
+    } else {
+      onComplete();
+    }
+  };
+
+  return (
+    // ADDED overflow-y-auto to this view as well
+    <div className="h-full flex flex-col justify-center items-center text-center animate-enter overflow-y-auto hide-scrollbar">
+      <div className="min-h-full flex flex-col justify-center items-center py-10 w-full">
+        <div className="mb-8 relative">
+          <div className="absolute inset-0 bg-teal-500/20 blur-xl rounded-full"></div>
+          <current.icon size={64} className="text-white relative z-10 animate-pulse" strokeWidth={1} />
+        </div>
+        
+        <h2 className="font-serif text-3xl text-white italic mb-4 animate-enter" key={`t-${step}`}>
+          {current.title}
+        </h2>
+        
+        <p className="font-sans text-lg text-white/80 leading-relaxed max-w-[280px] mx-auto mb-12 animate-enter delay-100" key={`i-${step}`}>
+          {current.instruction}
+        </p>
+
+        <button 
+          onClick={next}
+          className="px-10 py-5 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-[0.2em] uppercase hover:scale-105 hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] transition-all animate-enter delay-200"
+        >
+          {current.action}
+        </button>
+
+        <div className="flex gap-2 mt-8">
+          {steps.map((_, i) => (
+            <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i === step ? 'w-8 bg-white' : 'w-2 bg-white/20'}`}></div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath, apiKey }) => {
   const [primingDone, setPrimingDone] = useState(false);
   const [generatedManifesto, setGeneratedManifesto] = useState("");
@@ -1688,18 +1740,21 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
   }, [goal.outcome, goal.action, goalStep]);
 
   const current = steps[Math.min(goalStep, steps.length - 1)];
-  const quickTimes = ["Now", "Within 1 Hr", "Today", "Tomorrow"];
-  const workbookTitle = isBurnoutPath ? "Burnout Rescue Kit" : "The Alchemist's Field Guide";
-  const workbookDesc = isBurnoutPath ? "Emergency Protocol + Audio ($27)" : "Get the Interactive Guide ($27)";
-  const workbookLink = "https://alexioda.gumroad.com/l/roxaxf";
-  
-  // Default text if AI fails or no key
-  const defaultText = `I acknowledge the tension in my ${somaticZones[0] || 'body'} regarding "${stressor}". I release the old pattern. My new operating truth is: "${expandingBelief}". From this place of power, I commit to: ${goal.outcome}. I seal this by: ${goal.action} (${goal.when}).`;
 
-  const finalText = generatedManifesto || defaultText;
+  const generateLink = () => `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Adaptiv: ' + (goal.action || 'Action'))}&details=${encodeURIComponent('Goal: ' + (goal.outcome || 'Outcome') + '\n\nMindset: ' + expandingBelief)}`;
+  
+  // NEW MANIFESTO TEXT GENERATOR
+  const manifestoText = `
+I acknowledge the tension in my ${somaticZones[0] || 'body'} regarding "${stressor}".
+I release the old pattern. 
+My new operating truth is: "${expandingBelief}".
+From this place of power, I commit to: ${goal.outcome}.
+I seal this by: ${goal.action} (${goal.when}).
+`.trim();
 
   const copyArtifact = () => {
-      navigator.clipboard.writeText(`ADAPTIV SESSION #${sessionCount + 1}\n\n${finalText}\n\nGenerated by Adaptiv.`);
+      const artifact = `ADAPTIV SESSION #${sessionCount + 1}\n\n${manifestoText}\n\nGenerated by Adaptiv.`;
+      navigator.clipboard.writeText(artifact);
       completeSession();
       alert("Session Artifact copied to clipboard.");
   };
@@ -1709,6 +1764,19 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
       const body = `ADAPTIV SESSION ARTIFACT\n\n${finalText}\n\n(CC save@alexioda.com to log this session)`;
       return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
+
+  const quickTimes = ["Now", "Within 1 Hr", "Today", "Tomorrow"];
+  
+  // DYNAMIC WORKBOOK LOGIC
+  const isBurnout = isBurnoutPath;
+  const workbookTitle = isBurnout ? "Burnout Rescue Kit" : "The Alchemist's Field Guide";
+  const workbookDesc = isBurnout ? "Emergency Protocol + Audio ($27)" : "Get the Interactive Guide ($27)";
+  const workbookLink = "https://alexioda.gumroad.com/l/roxaxf";
+  
+  // Default text if AI fails or no key
+  const defaultText = `I acknowledge the tension in my ${somaticZones[0] || 'body'} regarding "${stressor}". I release the old pattern. My new operating truth is: "${expandingBelief}". From this place of power, I commit to: ${goal.outcome}. I seal this by: ${goal.action} (${goal.when}).`;
+
+  const finalText = generatedManifesto || defaultText;
 
   if (isLocked && !primingDone && !isBurnoutPath) { 
     return (
@@ -1857,7 +1925,9 @@ const App = () => {
   const [breathCount, setBreathCount] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [apiKey, setApiKey] = useState(''); // Store user API Key
+  
+  // Set API Key from Global Const
+  const apiKey = GLOBAL_API_KEY;
 
   const audioContextRef = useRef<any>(null);
   const noiseNodeRef = useRef<any>(null);
@@ -1866,14 +1936,12 @@ const App = () => {
     try {
       const savedUser = localStorage.getItem('adaptiv_user');
       const savedCount = localStorage.getItem('adaptiv_sessions');
-      const savedKey = localStorage.getItem('adaptiv_api_key');
       
       if (savedUser) {
         setUserName(savedUser);
         setSessionCount(savedCount ? parseInt(savedCount) : 0);
         setView('dashboard');
       }
-      if (savedKey) setApiKey(savedKey);
     } catch (e) {
       console.log("Storage access denied or empty, starting fresh.");
     }
@@ -1887,11 +1955,6 @@ const App = () => {
     } catch (e) {}
     setView('dashboard');
   };
-  
-  const handleSetApiKey = (key: string) => {
-      setApiKey(key);
-      localStorage.setItem('adaptiv_api_key', key);
-  }
 
   const completeSession = () => {
     const newCount = sessionCount + 1;
@@ -1986,7 +2049,6 @@ const App = () => {
       <div className="fixed inset-0 bg-slate-950 text-white font-sans overflow-hidden flex justify-center">
         <Atmosphere bgState={bgState} />
         <div className="w-full max-w-md h-full relative z-10 p-6">
-           {showSettings && <SettingsModal apiKey={apiKey} setApiKey={handleSetApiKey} onClose={() => setShowSettings(false)} />}
            {view === 'loading' && <div />}
            {view === 'welcome' && <Welcome onEnter={() => setView('manifesto')} />}
            {view === 'manifesto' && <Manifesto onContinue={() => setView('profile')} />}
