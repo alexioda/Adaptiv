@@ -179,6 +179,7 @@ interface PrimingProps {
 const generateAIResponse = async (prompt: string, apiKey: string) => {
     if (!apiKey) return null; 
     try {
+        // Use a standard Gemini model for production stability
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -327,10 +328,12 @@ const Welcome: React.FC<WelcomeProps> = ({ onEnter }) => (
     <div className="min-h-full flex flex-col justify-center items-center py-10">
       <div className="mb-10 relative">
         <div className="absolute inset-0 bg-teal-500/10 blur-xl rounded-full"></div>
+        {/* REPLACED LOGO WITH ACTIVITY ICON */}
         <Activity size={72} className="text-teal-200/80 relative z-10 animate-breathe" strokeWidth={0.8} />
       </div>
       
       <div className="space-y-4 max-w-sm">
+        {/* SWAPPED HIERARCHY: Adaptiv is now the Hero Title */}
         <h1 className="font-serif text-6xl text-white italic tracking-wide leading-tight animate-enter">
           Adaptiv
         </h1>
@@ -407,6 +410,7 @@ const Identity: React.FC<IdentityProps> = ({ userName, setUserName, onComplete }
     <div className="min-h-full flex flex-col justify-center items-center py-10 w-full">
       <div className="mb-8 relative">
         <div className="absolute inset-0 bg-white/10 blur-xl rounded-full"></div>
+        {/* REPLACED LOGO WITH ACTIVITY ICON */}
         <Activity size={48} className="text-white/80 relative z-10" strokeWidth={1} />
       </div>
       <h1 className="font-serif text-5xl text-white mb-2 italic tracking-wide">Adaptiv</h1>
@@ -434,6 +438,7 @@ const Identity: React.FC<IdentityProps> = ({ userName, setUserName, onComplete }
 );
 
 const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => {
+  // Logic for the Burnout Trigger
   const triggers = ['work', 'job', 'boss', 'career', 'team', 'project', 'deadline', 'email', 'monday', 'shift', 'burnout', 'tired', 'exhausted', 'drained', 'overwhelm', 'client'];
   const showWorkCheck = triggers.some(t => stressor.toLowerCase().includes(t));
 
@@ -1153,7 +1158,6 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
   return (
     <div className="h-full flex flex-col">
        <Nav title="Breakthrough Laser" subtitle="Rapid Shift" onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={80} />
-       
        <div className="flex-1 flex flex-col justify-start animate-enter overflow-y-auto hide-scrollbar pb-8 px-4 pt-4">
           <div className="glass-panel p-8 rounded-[32px] relative overflow-hidden shrink-0 mb-4">
              <div className="absolute top-0 right-0 p-4 opacity-10"><Target size={100} /></div>
@@ -1600,74 +1604,6 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
     )
 };
 
-const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
-  const [step, setStep] = useState(0);
-
-  const steps = [
-    {
-      icon: Mountain,
-      title: "Physiology",
-      instruction: "Change your state immediately. Stand up. Shoulders back. Deep breath. Look up.",
-      action: "I am ready."
-    },
-    {
-      icon: Anchor,
-      title: "Somatic Anchor",
-      instruction: "Where do you feel this new power in your body? Put your hand there now.",
-      action: "I feel it."
-    },
-    {
-      icon: Eye,
-      title: "Visualization",
-      instruction: "Close your eyes. See the goal achieved. Feel the emotion of the win in your body.",
-      action: "Seal it."
-    }
-  ];
-
-  const current = steps[step];
-
-  const next = () => {
-    if (step < steps.length - 1) {
-      setStep(step + 1);
-    } else {
-      onComplete();
-    }
-  };
-
-  return (
-    // ADDED overflow-y-auto to this view as well
-    <div className="h-full flex flex-col justify-center items-center text-center animate-enter overflow-y-auto hide-scrollbar">
-      <div className="min-h-full flex flex-col justify-center items-center py-10 w-full">
-        <div className="mb-8 relative">
-          <div className="absolute inset-0 bg-teal-500/20 blur-xl rounded-full"></div>
-          <current.icon size={64} className="text-white relative z-10 animate-pulse" strokeWidth={1} />
-        </div>
-        
-        <h2 className="font-serif text-3xl text-white italic mb-4 animate-enter" key={`t-${step}`}>
-          {current.title}
-        </h2>
-        
-        <p className="font-sans text-lg text-white/80 leading-relaxed max-w-[280px] mx-auto mb-12 animate-enter delay-100" key={`i-${step}`}>
-          {current.instruction}
-        </p>
-
-        <button 
-          onClick={next}
-          className="px-10 py-5 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-[0.2em] uppercase hover:scale-105 hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] transition-all animate-enter delay-200"
-        >
-          {current.action}
-        </button>
-
-        <div className="flex gap-2 mt-8">
-          {steps.map((_, i) => (
-            <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i === step ? 'w-8 bg-white' : 'w-2 bg-white/20'}`}></div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath, apiKey }) => {
   const [primingDone, setPrimingDone] = useState(false);
   const [generatedManifesto, setGeneratedManifesto] = useState("");
@@ -1883,7 +1819,7 @@ const App = () => {
   const [breathing, setBreathing] = useState(false);
   const [breathCount, setBreathCount] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(false);
-  const [apiKey, setApiKey] = useState(GLOBAL_API_KEY);
+  const apiKey = GLOBAL_API_KEY;
 
   const audioContextRef = useRef<any>(null);
   const noiseNodeRef = useRef<any>(null);
@@ -1911,7 +1847,7 @@ const App = () => {
     } catch (e) {}
     setView('dashboard');
   };
-  
+
   const completeSession = () => {
     const newCount = sessionCount + 1;
     setSessionCount(newCount);
