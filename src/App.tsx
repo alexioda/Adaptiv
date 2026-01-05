@@ -5,11 +5,11 @@ import {
   User, Target,
   Waves, Volume2, VolumeX, ChevronLeft, AlertCircle, Copy, LogOut, RefreshCw,
   Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail, 
-  Moon, Coffee, MinusCircle, AlertTriangle, Info, FileText, Thermometer, Sparkles
+  Moon, Coffee, MinusCircle, AlertTriangle, Info, FileText, Thermometer, Sparkles, Loader2
 } from 'lucide-react';
 
 // Import the AI Brain
-import { generateCoachingQuestions } from './aiService';
+import { generateCoachingQuestions, generateManifesto } from './aiService';
 
 // --- TYPES ---
 
@@ -67,7 +67,7 @@ interface PreservationProps {
   soundEnabled: boolean;
   setGoal: (goal: any) => void;
   setExpandingBelief: (belief: string) => void;
-  setViewToMolt: () => void;
+  setViewToIntegration: () => void;
 }
 
 interface VesselProps {
@@ -146,11 +146,9 @@ interface AlchemyProps {
 
 interface EnergyAnalyzerProps {
   setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
 }
 
-interface MoltProps {
+interface IntegrationProps {
   goal: { what: string; measure: string; when: string; outcome: string; action?: string };
   setGoal: (val: any) => void;
   goalStep: number;
@@ -277,7 +275,6 @@ const Nav: React.FC<NavProps> = ({ title, subtitle, onBack, isDashboard, soundEn
       <div>
         <h2 className="font-sans text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mb-1">{subtitle}</h2>
         <div className="flex items-center gap-2">
-            {/* Small Activity Icon in Header */}
             {!isDashboard && <Activity size={20} className="text-white/80" />}
             <h1 className="font-serif text-3xl text-white/90 italic">{title}</h1>
         </div>
@@ -323,18 +320,15 @@ const Welcome: React.FC<WelcomeProps> = ({ onEnter }) => (
   <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
     <div className="min-h-full flex flex-col justify-center items-center py-10">
       
-      {/* Spacer pushes content to middle when space allows, shrinks when scrolling needed */}
       <div className="flex-1"></div>
 
       <div className="flex flex-col items-center">
         <div className="mb-6 relative">
             <div className="absolute inset-0 bg-teal-500/10 blur-xl rounded-full"></div>
-            {/* REPLACED LOGO WITH ACTIVITY ICON - SCALED DOWN */}
             <Activity size={64} className="text-teal-200/80 relative z-10 animate-breathe" strokeWidth={0.8} />
         </div>
         
         <div className="space-y-4 max-w-sm">
-            {/* SWAPPED HIERARCHY: Adaptiv is now the Hero Title */}
             <h1 className="font-serif text-5xl text-white italic tracking-wide leading-tight animate-enter">
             Adaptiv
             </h1>
@@ -358,7 +352,6 @@ const Welcome: React.FC<WelcomeProps> = ({ onEnter }) => (
 
       <div className="flex-1"></div>
 
-      {/* FOOTER BRANDING */}
       <div className="mt-8 flex flex-col items-center opacity-60 shrink-0">
         <p className="font-sans text-[8px] text-white/30 uppercase tracking-widest mb-2">Powered By</p>
         <p className="font-serif italic text-white/80 text-xs">Conscious Growth Coaching</p>
@@ -417,7 +410,6 @@ const Identity: React.FC<IdentityProps> = ({ userName, setUserName, onComplete }
       <div className="w-full max-w-xs flex flex-col items-center">
         <div className="mb-8 relative">
             <div className="absolute inset-0 bg-white/10 blur-xl rounded-full"></div>
-            {/* REPLACED LOGO WITH ACTIVITY ICON - SCALED DOWN */}
             <Activity size={40} className="text-white/80 relative z-10" strokeWidth={1} />
         </div>
         <h1 className="font-serif text-4xl text-white mb-2 italic tracking-wide">Adaptiv</h1>
@@ -448,7 +440,6 @@ const Identity: React.FC<IdentityProps> = ({ userName, setUserName, onComplete }
 );
 
 const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => {
-  // Logic for the Burnout Trigger
   const triggers = ['work', 'job', 'boss', 'career', 'team', 'project', 'deadline', 'email', 'monday', 'shift', 'burnout', 'tired', 'exhausted', 'drained', 'overwhelm', 'client'];
   const showWorkCheck = triggers.some(t => stressor.toLowerCase().includes(t));
 
@@ -466,7 +457,6 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
       
       <div className="flex-1 flex flex-col gap-6 overflow-y-auto hide-scrollbar animate-enter pb-8">
         
-        {/* PROTOCOL TRACKER */}
         <div className="glass-panel p-6 rounded-[32px] border-teal-500/20 relative overflow-hidden">
            <div className="flex justify-between items-center mb-4">
               <h3 className="font-serif text-xl text-teal-100 italic">The Alchemist's Cycle</h3>
@@ -511,7 +501,6 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
            </button>
         </div>
 
-        {/* CHECK-IN */}
         <div className={`glass-panel p-8 rounded-[32px] transition-all duration-700 ${isBurnout ? 'border-orange-500/20' : ''}`}>
           <div className="flex justify-between items-start mb-2">
             <h3 className="font-serif text-xl text-white/90 italic">Internal Weather</h3>
@@ -566,7 +555,6 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
               />
             </div>
             
-            {/* THE SOUL DRAIN DETECTOR - NOW A PROMINENT CARD */}
             {showWorkCheck && (
               <div className="animate-enter">
                 <button 
@@ -597,11 +585,10 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
   );
 };
 
-// --- BURNOUT ASSESSMENT (UPDATED: 6 QUESTIONS + RESULTS CARD + SCROLL) ---
 const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, soundEnabled, setBurnoutPath }) => {
   const [step, setStep] = useState(0);
-  const [score, setScore] = useState(0); // Using score instead of simple count
-  const [selected, setSelected] = useState<number | null>(null); // 0 = No, 1 = Yes
+  const [score, setScore] = useState(0);
+  const [selected, setSelected] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
 
   const questions = [
@@ -616,7 +603,7 @@ const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, sound
   const handleBack = () => {
       if (step > 0) {
           setStep(step - 1);
-          setScore(score - (selected !== null ? selected : 0)); // Very basic rollback (imperfect but functional)
+          setScore(score - (selected !== null ? selected : 0));
           setSelected(null);
       } else {
           setView('dashboard');
@@ -685,7 +672,6 @@ const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, sound
           <button 
             onClick={() => {
               setBurnoutPath(resultData.isBurnout);
-              // FIXED FLOW: Even "Friction" results now go to Somatic check first
               if (resultData.isBurnout) {
                   setView('preservation');
               } else {
@@ -738,8 +724,7 @@ const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, sound
   );
 };
 
-// --- PRESERVATION (BURNOUT RECOVERY) ---
-const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToMolt }) => {
+const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToIntegration }) => {
   const [step, setStep] = useState(0);
 
   const recoverySteps = [
@@ -769,14 +754,13 @@ const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, sound
     if (step < 2) {
       setStep(step + 1);
     } else {
-      // Finish Preservation -> Go to Molt with specific Burnout context
       setExpandingBelief("I am the Asset. Rest is my strategy.");
       setGoal({ 
         outcome: "Status: Unavailable", 
         action: "I am offline to realign.", 
         when: "Now" 
       });
-      setViewToMolt();
+      setViewToIntegration();
     }
   };
   
@@ -2150,3 +2134,5 @@ const App = () => {
     </>
   );
 };
+
+export default App;
