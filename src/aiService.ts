@@ -1,10 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// 1. SETUP: Initialize the Gemini API
+// 1. SETUP: Initialize the Gemini API safely
 // This looks for the key in your Vercel Environment Variables
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
-const genAI = new GoogleGenerativeAI(API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
 // 2. THE MASTER PROMPT (The "Brain" Configuration)
 const SYSTEM_INSTRUCTION = `
@@ -19,9 +17,23 @@ GUIDELINES:
 5. Focus on the "Energy Lens": Identify the filter they are using and offer a higher-level filter immediately.
 `;
 
+// Helper to get model instance only when needed
+// This prevents the app from crashing if the API key is missing on load
+const getModel = () => {
+  if (!API_KEY) return null;
+  try {
+    const genAI = new GoogleGenerativeAI(API_KEY);
+    return genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+  } catch (e) {
+    console.error("AI Init Error:", e);
+    return null;
+  }
+};
+
 // --- FUNCTION 1: LASER COACHING (Dynamic Questions) ---
 export const generateCoachingQuestions = async (stressor: string, somatic: string) => {
-  if (!API_KEY) return null; // Fallback to static if no key
+  const model = getModel();
+  if (!model) return null;
 
   const prompt = `
     CONTEXT:
@@ -52,7 +64,8 @@ export const generateCoachingQuestions = async (stressor: string, somatic: strin
 
 // --- FUNCTION 2: THE ALCHEMIST'S DECREE (Manifesto Generator) ---
 export const generateManifesto = async (stressor: string, truth: string, action: string) => {
-  if (!API_KEY) return null;
+  const model = getModel();
+  if (!model) return null;
 
   const prompt = `
     CONTEXT:
@@ -70,6 +83,7 @@ export const generateManifesto = async (stressor: string, truth: string, action:
     const result = await model.generateContent([SYSTEM_INSTRUCTION, prompt]);
     return result.response.text();
   } catch (error) {
+    console.error("Manifesto Generation Failed:", error);
     return null;
   }
 };
