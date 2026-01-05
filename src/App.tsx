@@ -13,43 +13,6 @@ import {
 // Example: const GLOBAL_API_KEY = "AIzaSy...";
 const GLOBAL_API_KEY = "AIzaSyACTaD9NSvxxsrZE7Qfx2K5JfZL_A8eutU"; 
 
-// --- BRANDING ASSETS ---
-
-// "The Conscious Tree" Logo (V6 - Literal & Organic)
-const BrandLogo = ({ className = "", size = 40, color = "currentColor" }) => (
-  <svg 
-    width={size} 
-    height={size} 
-    viewBox="0 0 100 100" 
-    fill="none" 
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-    style={{ color: color }}
-  >
-    {/* 1. The Container */}
-    <circle cx="50" cy="50" r="48" stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.3" />
-
-    {/* 2. The Roots */}
-    <path d="M35 80 C 35 80, 30 90, 25 95" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    <path d="M65 80 C 65 80, 70 90, 75 95" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    <path d="M50 80 L 50 98" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    <path d="M50 85 L 42 92 M 50 88 L 58 94" stroke="currentColor" strokeWidth="1" opacity="0.6"/>
-
-    {/* 3. The Person */}
-    <circle cx="50" cy="48" r="6" fill="currentColor" />
-    <path d="M50 56 L 40 58 Q 35 60 35 68 L 35 75 Q 35 80 50 80 Q 65 80 65 75 L 65 68 Q 65 60 60 58 L 50 56 Z" fill="currentColor" />
-    <path d="M35 75 Q 20 80 30 85 L 50 85 L 70 85 Q 80 80 65 75" stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none" />
-
-    {/* 4. The Brain Crown */}
-    <path d="M50 40 C 30 40, 15 35, 15 25 C 15 10, 35 2, 50 5 C 65 2, 85 10, 85 25 C 85 35, 70 40, 50 40 Z" stroke="currentColor" strokeWidth="2" fill="none" />
-    <path d="M30 25 C 30 20, 35 15, 45 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    <path d="M70 25 C 70 20, 65 15, 55 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-
-    {/* 5. The Connector */}
-    <path d="M50 48 L 50 35" stroke="currentColor" strokeWidth="1.5" strokeDasharray="2 2" />
-  </svg>
-);
-
 // --- TYPES ---
 
 interface NavProps {
@@ -106,7 +69,7 @@ interface PreservationProps {
   soundEnabled: boolean;
   setGoal: (goal: any) => void;
   setExpandingBelief: (belief: string) => void;
-  setViewToMolt: () => void;
+  setViewToIntegration: () => void;
 }
 
 interface VesselProps {
@@ -188,7 +151,7 @@ interface EnergyAnalyzerProps {
   setView: (view: string) => void;
 }
 
-interface MoltProps {
+interface IntegrationProps {
   goal: { what: string; measure: string; when: string; outcome: string; action?: string };
   setGoal: (val: any) => void;
   goalStep: number;
@@ -216,7 +179,6 @@ interface PrimingProps {
 const generateAIResponse = async (prompt: string, apiKey: string) => {
     if (!apiKey) return null; 
     try {
-        // Use a standard Gemini model for production stability
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -365,12 +327,10 @@ const Welcome: React.FC<WelcomeProps> = ({ onEnter }) => (
     <div className="min-h-full flex flex-col justify-center items-center py-10">
       <div className="mb-10 relative">
         <div className="absolute inset-0 bg-teal-500/10 blur-xl rounded-full"></div>
-        {/* REPLACED LOGO WITH ACTIVITY ICON */}
         <Activity size={72} className="text-teal-200/80 relative z-10 animate-breathe" strokeWidth={0.8} />
       </div>
       
       <div className="space-y-4 max-w-sm">
-        {/* SWAPPED HIERARCHY: Adaptiv is now the Hero Title */}
         <h1 className="font-serif text-6xl text-white italic tracking-wide leading-tight animate-enter">
           Adaptiv
         </h1>
@@ -447,7 +407,6 @@ const Identity: React.FC<IdentityProps> = ({ userName, setUserName, onComplete }
     <div className="min-h-full flex flex-col justify-center items-center py-10 w-full">
       <div className="mb-8 relative">
         <div className="absolute inset-0 bg-white/10 blur-xl rounded-full"></div>
-        {/* REPLACED LOGO WITH ACTIVITY ICON */}
         <Activity size={48} className="text-white/80 relative z-10" strokeWidth={1} />
       </div>
       <h1 className="font-serif text-5xl text-white mb-2 italic tracking-wide">Adaptiv</h1>
@@ -475,7 +434,6 @@ const Identity: React.FC<IdentityProps> = ({ userName, setUserName, onComplete }
 );
 
 const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => {
-  // Logic for the Burnout Trigger
   const triggers = ['work', 'job', 'boss', 'career', 'team', 'project', 'deadline', 'email', 'monday', 'shift', 'burnout', 'tired', 'exhausted', 'drained', 'overwhelm', 'client'];
   const showWorkCheck = triggers.some(t => stressor.toLowerCase().includes(t));
 
@@ -572,7 +530,7 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
 
         {isBurnout ? (
           <div className="animate-enter delay-100">
-            <p className="font-serif text-2xl text-orange-100/90 text-center italic mb-2">The vessel is depleted.</p>
+            <p className="font-serif text-2xl text-orange-100/90 text-center italic mb-2">System Overload.</p>
             <p className="font-sans text-xs text-orange-200/50 text-center mb-6 max-w-[280px] mx-auto">
               Ambition without fuel is destruction. We must preserve.
             </p>
@@ -771,7 +729,7 @@ const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, sound
 };
 
 // --- PRESERVATION (BURNOUT RECOVERY) ---
-const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToMolt }) => {
+const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToIntegration }) => {
   const [step, setStep] = useState(0);
 
   const recoverySteps = [
@@ -801,14 +759,14 @@ const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, sound
     if (step < 2) {
       setStep(step + 1);
     } else {
-      // Finish Preservation -> Go to Molt with specific Burnout context
+      // Finish Preservation -> Go to Integration with specific Burnout context
       setExpandingBelief("I am the Asset. Rest is my strategy.");
       setGoal({ 
         outcome: "Status: Unavailable", 
         action: "I am offline to realign.", 
         when: "Now" 
       });
-      setViewToMolt();
+      setViewToIntegration();
     }
   };
   
@@ -1124,7 +1082,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
             const result = await generateAIResponse(prompt, apiKey);
             if (result) {
                 // Basic parsing of AI list response
-                const lines = result.split('\n').filter(l => l.includes('The truth is')).map(l => l.replace(/^[*-] /, '').trim()).slice(0, 3);
+                const lines = result.split('\n').filter((l: string) => l.includes('The truth is')).map((l: string) => l.replace(/^[*-] /, '').trim()).slice(0, 3);
                 setSuggestions(lines);
             }
             setIsLoading(false);
@@ -1157,7 +1115,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
     else {
       setExpandingBelief(answers.topic);
       setGoal((prev: any) => ({ ...prev, outcome: answers.result, action: answers.action }));
-      setView('molt');
+      setView('integration');
     }
   };
 
@@ -1195,6 +1153,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
   return (
     <div className="h-full flex flex-col">
        <Nav title="Breakthrough Laser" subtitle="Rapid Shift" onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={80} />
+       
        <div className="flex-1 flex flex-col justify-start animate-enter overflow-y-auto hide-scrollbar pb-8 px-4 pt-4">
           <div className="glass-panel p-8 rounded-[32px] relative overflow-hidden shrink-0 mb-4">
              <div className="absolute top-0 right-0 p-4 opacity-10"><Target size={100} /></div>
@@ -1428,7 +1387,7 @@ const Alchemy: React.FC<AlchemyProps> = ({ setView, toggleSound, soundEnabled })
       ].map(i => (
           <button 
               key={i.id}
-              onClick={() => setView('molt')}
+              onClick={() => setView('integration')}
               className="w-full p-6 rounded-[24px] glass-panel text-left hover:bg-white/5 transition-all group"
           >
               <div className="flex justify-between items-start mb-2">
@@ -1614,7 +1573,7 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
 
     return (
         <div className="h-full flex flex-col justify-center animate-enter">
-            <Nav title="Energy Lens" subtitle={`Question ${step + 1} / 6`} onBack={() => setView('molt')} toggleSound={() => {}} soundEnabled={false} progress={((step + 1) / 6) * 100} />
+            <Nav title="Energy Lens" subtitle={`Question ${step + 1} / 6`} onBack={() => setView('integration')} toggleSound={() => {}} soundEnabled={false} progress={((step + 1) / 6) * 100} />
             <div className="flex-1 flex flex-col justify-start items-center text-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-2 pt-8">
                 <h2 className="font-serif text-2xl text-white italic mb-8 text-center px-4">{questions[step].q}</h2>
                 <div className="grid gap-3 w-full shrink-0">
@@ -1709,7 +1668,7 @@ const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
   );
 };
 
-const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath, apiKey }) => {
+const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath, apiKey }) => {
   const [primingDone, setPrimingDone] = useState(false);
   const [generatedManifesto, setGeneratedManifesto] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -1787,7 +1746,7 @@ I seal this by: ${goal.action} (${goal.when}).
     );
   }
 
-  // Handle Back Button in Molt form
+  // Handle Back Button in Integration form
   const handleBack = () => {
       if (goalStep > 0) setGoalStep(goalStep - 1);
       else setView('alchemy');
@@ -1924,10 +1883,7 @@ const App = () => {
   const [breathing, setBreathing] = useState(false);
   const [breathCount, setBreathCount] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  
-  // Set API Key from Global Const
-  const apiKey = GLOBAL_API_KEY;
+  const [apiKey, setApiKey] = useState(GLOBAL_API_KEY);
 
   const audioContextRef = useRef<any>(null);
   const noiseNodeRef = useRef<any>(null);
@@ -1955,7 +1911,7 @@ const App = () => {
     } catch (e) {}
     setView('dashboard');
   };
-
+  
   const completeSession = () => {
     const newCount = sessionCount + 1;
     setSessionCount(newCount);
@@ -2060,7 +2016,6 @@ const App = () => {
              energyLevel={energyLevel} setEnergyLevel={setEnergyLevel} 
              isBurnout={isBurnout} setView={setView} 
              toggleSound={toggleSound} soundEnabled={soundEnabled} resetApp={resetApp}
-             setShowSettings={setShowSettings}
            />}
            {view === 'preservation' && <Preservation 
              setView={setView} 
@@ -2068,7 +2023,7 @@ const App = () => {
              soundEnabled={soundEnabled} 
              setGoal={setGoal} 
              setExpandingBelief={setExpandingBelief} 
-             setViewToMolt={() => { setIsLocked(true); setView('molt'); }}
+             setViewToIntegration={() => { setIsLocked(true); setView('integration'); }}
            />}
            {view === 'burnout_check' && <BurnoutCheck setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setBurnoutPath={setBurnoutPath} />}
            
@@ -2088,7 +2043,7 @@ const App = () => {
            {view === 'fork' && <Crossroads stressLevel={stressLevel} energyLevel={energyLevel} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'regulate' && <Breath breathing={breathing} setBreathing={setBreathing} breathCount={breathCount} setBreathCount={setBreathCount} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'alchemy' && <Alchemy setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
-           {view === 'molt' && <Molt goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} isLocked={isLocked} setIsLocked={setIsLocked} expandingBelief={expandingBelief} stressor={stressor} sessionCount={sessionCount} completeSession={completeSession} resetApp={resetApp} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} somaticZones={somaticZones} isBurnoutPath={isBurnoutPath} apiKey={apiKey} />}
+           {view === 'integration' && <Integration goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} isLocked={isLocked} setIsLocked={setIsLocked} expandingBelief={expandingBelief} stressor={stressor} sessionCount={sessionCount} completeSession={completeSession} resetApp={resetApp} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} somaticZones={somaticZones} isBurnoutPath={isBurnoutPath} apiKey={apiKey} />}
            {view === 'insight' && <Insight expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'energy' && <EnergyAnalyzer setView={setView} />}
         </div>
