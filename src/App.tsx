@@ -1068,55 +1068,57 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
   );
 };
 
-const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, apiKey }) => {
+const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief }) => {
   const [step, setStep] = useState(-1);
-  const [answers, setAnswers] = useState({ topic: '', result: '', permission: '', action: '' });
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
-  // AI Generation Trigger
-  useEffect(() => {
-    const fetchSuggestions = async () => {
-        if (step === 0 && !suggestions.length && apiKey) {
-            setIsLoading(true);
-            const prompt = `You are a genius life coach and expert Energy Leadership practitioner. The user is stressed about: "${stressor}". Generate 3 short, powerful, "anabolic" reframes (Energy Leadership Level 5/6) that start with "The truth is...". Keep them under 15 words.`;
-            const result = await generateAIResponse(prompt, apiKey);
-            if (result) {
-                // Basic parsing of AI list response
-                const lines = result.split('\n').filter((l: string) => l.includes('The truth is')).map((l: string) => l.replace(/^[*-] /, '').trim()).slice(0, 3);
-                setSuggestions(lines);
-            }
-            setIsLoading(false);
-        }
-    };
-    fetchSuggestions();
-  }, [step, apiKey, stressor]);
-
-  // Fallback Static Starters
-  const staticStarters = {
-      0: ["I realize that...", "The reality is...", "I am no longer..."],
-      1: ["I would feel...", "I would be free to...", "It would look like..."],
-      2: ["To let go of...", "To make a mistake...", "To prioritize myself..."],
-      3: ["I will call...", "I will schedule...", "I will stop..."]
-  };
+  const [answers, setAnswers] = useState({ topic: '', result: '', permission: '', action: '' });
   
-  const currentQuestions = [
-    { id: 'topic', label: 'The Truth', q: `Looking at "${stressor}" from this new energy, what is the truth now?`, ph: "The truth is..." },
-    { id: 'result', label: 'The Vision', q: "If this problem were already solved, what would be different?", ph: "I would be..." },
-    { id: 'permission', label: 'The Permission', q: "What permission do you need to give yourself to move forward?", ph: "I give myself permission to..." },
-    { id: 'action', label: 'The Move', q: "What is the single boldest step that makes everything else easier?", ph: "I will..." },
+  // Default Static Questions (Fallback if AI fails or no key)
+  const defaultQuestions = [
+    { id: 'topic', label: 'The Truth', q: `Looking at "${stressor}" from this new energy, what is the truth now?`, ph: "The truth is...", starters: ["I realize that...", "The reality is...", "I am no longer..."] },
+    { id: 'result', label: 'The Vision', q: "If this problem were already solved, what would be different?", ph: "I would be...", starters: ["I would feel...", "I would be free to...", "It would look like..."] },
+    { id: 'permission', label: 'The Permission', q: "What permission do you need to give yourself to move forward?", ph: "I give myself permission to...", starters: ["To let go of...", "To make a mistake...", "To prioritize myself..."] },
+    { id: 'action', label: 'The Move', q: "What is the single boldest step that makes everything else easier?", ph: "I will...", starters: ["I will call...", "I will schedule...", "I will stop..."] },
   ];
+
+  const [questions, setQuestions] = useState(defaultQuestions);
   
-  const current = currentQuestions[step];
-  // Use AI suggestions if available for Step 0, else static
-  const displayChips = (step === 0 && suggestions.length > 0) ? suggestions : staticStarters[step as keyof typeof staticStarters];
+  // AI LOADING EFFECT
+  useEffect(() => {
+    const loadAIQuestions = async () => {
+      if (step === -1) return; // Don't load until they click "Ignition"
+      
+      setIsLoading(true);
+      // Call the AI Service we created
+      const aiResponse = await generateCoachingQuestions(stressor, "Body Tension"); // Passing context
+      
+      if (aiResponse && aiResponse.length === 3) {
+        // Update state with AI brilliance
+        setQuestions(prev => [
+            { ...prev[0], q: aiResponse[0] }, // AI Reframe
+            { ...prev[1], q: aiResponse[1] }, // AI Vision
+            { ...prev[3], q: aiResponse[2] }, // AI Action
+            prev[2] // Keep Permission static as it's usually standard
+        ]);
+      }
+      setIsLoading(false);
+    };
+
+    if (step === 0) loadAIQuestions();
+  }, [step, stressor]);
+
+  const current = questions[step] || questions[0];
 
   const handleNext = () => {
     if (step < 3) setStep(step + 1);
     else {
       setExpandingBelief(answers.topic);
-      setGoal((prev: any) => ({ ...prev, outcome: answers.result, action: answers.action }));
-      setView('integration');
+      setGoal((prev: any) => ({ 
+        ...prev, 
+        outcome: answers.result, 
+        action: answers.action 
+      }));
+      setView('molt');
     }
   };
 
@@ -1126,13 +1128,14 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
     else setStep(-1);
   };
 
-  const handleStarter = (text: string) => { setAnswers({...answers, [current.id]: text}); };
+  const handleStarter = (text: string) => {
+      setAnswers({...answers, [current.id]: text});
+  };
 
   if (step === -1) {
     return (
        <div className="h-full flex flex-col">
           <Nav title="Breakthrough Laser" subtitle="Ignition" onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={75} />
-          {/* ADDED: flex-1 overflow-y-auto to allow scrolling if content overflows */}
           <div className="flex-1 flex flex-col justify-center animate-enter text-center px-6 overflow-y-auto hide-scrollbar">
               <div className="mb-8 relative">
                 <div className="absolute inset-0 bg-amber-500/20 blur-2xl rounded-full animate-pulse"></div>
@@ -1140,12 +1143,20 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
               </div>
               <h3 className="font-serif text-2xl text-white italic mb-4">Ignition</h3>
               <p className="font-sans text-sm text-white/70 leading-relaxed mb-8">
-                Energy is not found; it is generated. <br/><br/> Before we shift, we must pulse. <br/><br/>
+                Energy is not found; it is generated. 
+                <br/><br/>
+                Before we shift, we must pulse.
+                <br/><br/>
                 <strong>1. Sit forward.</strong><br/>
                 <strong>2. Take a sharp, double inhale.</strong><br/>
                 <strong>3. Say "Go."</strong>
               </p>
-              <button onClick={() => setStep(0)} className="w-full py-4 rounded-full bg-amber-500 text-slate-900 font-sans text-xs font-bold tracking-widest uppercase hover:bg-amber-400 transition-all shadow-[0_0_20px_rgba(245,158,11,0.3)]">I am Activated</button>
+              <button 
+                onClick={() => setStep(0)}
+                className="w-full py-4 rounded-full bg-amber-500 text-slate-900 font-sans text-xs font-bold tracking-widest uppercase hover:bg-amber-400 transition-all shadow-[0_0_20px_rgba(245,158,11,0.3)]"
+              >
+                I am Activated
+              </button>
           </div>
        </div>
     );
@@ -1154,33 +1165,69 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
   return (
     <div className="h-full flex flex-col">
        <Nav title="Breakthrough Laser" subtitle="Rapid Shift" onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={80} />
+       
        <div className="flex-1 flex flex-col justify-start animate-enter overflow-y-auto hide-scrollbar pb-8 px-4 pt-4">
           <div className="glass-panel p-8 rounded-[32px] relative overflow-hidden shrink-0 mb-4">
-             <div className="absolute top-0 right-0 p-4 opacity-10"><Target size={100} /></div>
-             <span className="font-sans text-[10px] uppercase tracking-widest text-white/40 mb-2 block">{current.label}</span>
-             <h3 className="font-serif text-2xl text-white italic mb-8 leading-snug">{current.q}</h3>
-             <input autoFocus key={current.id} className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-teal-500/50 transition-colors mb-4 placeholder:text-white/10 text-lg" placeholder={current.ph} value={answers[current.id as keyof typeof answers]} onChange={e => setAnswers({...answers, [current.id]: e.target.value})} onKeyDown={e => e.key === 'Enter' && answers[current.id as keyof typeof answers] && handleNext()} />
-             
-             {/* CHIPS */}
-             <div className="flex flex-wrap gap-2 mb-8">
-                 {isLoading ? (
-                     <div className="flex items-center gap-2 text-xs text-white/50"><Loader2 className="animate-spin" size={14}/> Generating Reframes...</div>
-                 ) : (
-                     displayChips?.map((s) => (
-                        <button key={s} onClick={() => handleStarter(s)} className="px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-wider text-white/60 hover:bg-white/10 hover:text-white transition-all text-left">{s}</button>
-                     ))
-                 )}
+             <div className="absolute top-0 right-0 p-4 opacity-10">
+               <Target size={100} />
              </div>
+             
+             {isLoading ? (
+                 // AI LOADING STATE
+                 <div className="flex flex-col items-center justify-center h-40 space-y-4">
+                     <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                     <p className="font-serif text-white/50 italic animate-pulse">Consulting the Alchemist...</p>
+                 </div>
+             ) : (
+                 <>
+                    <span className="font-sans text-[10px] uppercase tracking-widest text-white/40 mb-2 block">{current.label}</span>
+                    <h3 className="font-serif text-2xl text-white italic mb-8 leading-snug">{current.q}</h3>
+                    
+                    <input 
+                    autoFocus
+                    key={current.id}
+                    className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-teal-500/50 transition-colors mb-4 placeholder:text-white/10 text-lg"
+                    placeholder={current.ph}
+                    value={answers[current.id as keyof typeof answers]}
+                    onChange={e => setAnswers({...answers, [current.id]: e.target.value})}
+                    onKeyDown={e => e.key === 'Enter' && answers[current.id as keyof typeof answers] && handleNext()}
+                    />
+
+                    {/* CHIPS */}
+                    <div className="flex flex-wrap gap-2 mb-8">
+                        {current.starters?.map((s) => (
+                            <button 
+                                key={s} 
+                                onClick={() => handleStarter(s)}
+                                className="px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-wider text-white/60 hover:bg-white/10 hover:text-white transition-all"
+                            >
+                                {s}
+                            </button>
+                        ))}
+                    </div>
+                 </>
+             )}
              
              <div className="flex justify-end">
-               <button onClick={handleNext} disabled={!answers[current.id as keyof typeof answers]} className="px-8 py-3 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all disabled:opacity-50">{step === 3 ? 'Lock It In' : 'Next'}</button>
+               <button 
+                 onClick={handleNext}
+                 disabled={!answers[current.id as keyof typeof answers] || isLoading}
+                 className="px-8 py-3 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all disabled:opacity-50"
+               >
+                 {step === 3 ? 'Lock It In' : 'Next'}
+               </button>
              </div>
+          </div>
+          
+          <div className="flex justify-center gap-2 mt-8">
+            {questions.map((_, i) => (
+              <div key={i} className={`h-1 rounded-full transition-all duration-500 ${i <= step ? 'w-8 bg-white' : 'w-2 bg-white/20'}`}></div>
+            ))}
           </div>
        </div>
     </div>
   );
 };
-
 // --- PERSPECTIVE (FLOW MATRIX UPDATE) ---
 const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }) => {
   const flowState = ability >= pressure;
