@@ -5,8 +5,10 @@ import {
   User, Target,
   Waves, Volume2, VolumeX, ChevronLeft, AlertCircle, Copy, LogOut, RefreshCw,
   Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail, 
-  Moon, Coffee, MinusCircle, AlertTriangle, Info, FileText, Thermometer, Sparkles, Loader2
+  Moon, Coffee, MinusCircle, AlertTriangle, Info, FileText, Thermometer, Sparkles
 } from 'lucide-react';
+
+// Import the AI Brain
 import { generateCoachingQuestions } from './aiService';
 
 // --- TYPES ---
@@ -65,7 +67,7 @@ interface PreservationProps {
   soundEnabled: boolean;
   setGoal: (goal: any) => void;
   setExpandingBelief: (belief: string) => void;
-  setViewToIntegration: () => void;
+  setViewToMolt: () => void;
 }
 
 interface VesselProps {
@@ -98,7 +100,6 @@ interface LaserCoachingProps {
   soundEnabled: boolean;
   setGoal: (val: any) => void;
   setExpandingBelief: (val: string) => void;
-  apiKey: string;
 }
 
 interface PerspectiveProps {
@@ -145,9 +146,11 @@ interface AlchemyProps {
 
 interface EnergyAnalyzerProps {
   setView: (view: string) => void;
+  toggleSound: () => void;
+  soundEnabled: boolean;
 }
 
-interface IntegrationProps {
+interface MoltProps {
   goal: { what: string; measure: string; when: string; outcome: string; action?: string };
   setGoal: (val: any) => void;
   goalStep: number;
@@ -164,30 +167,11 @@ interface IntegrationProps {
   soundEnabled: boolean;
   somaticZones: string[];
   isBurnoutPath: boolean;
-  apiKey: string;
 }
 
 interface PrimingProps {
   onComplete: () => void;
 }
-
-// --- API HELPER ---
-const generateAIResponse = async (prompt: string, apiKey: string) => {
-    if (!apiKey) return null; 
-    try {
-        // Use a standard Gemini model for production stability
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-        const data = await response.json();
-        return data.candidates?.[0]?.content?.parts?.[0]?.text;
-    } catch (e) {
-        console.error("AI Error", e);
-        return null;
-    }
-};
 
 // --- STYLES & FONTS ---
 const FontStyles = () => (
@@ -218,11 +202,26 @@ const FontStyles = () => (
       50% { transform: scale(1.1); opacity: 0.8; }
     }
 
-    .animate-enter { animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+    .animate-subconscious { animation: subconscious 6s ease-in-out infinite; }
+    @keyframes subconscious {
+      0%, 100% { transform: scale(1); opacity: 0.4; }
+      50% { transform: scale(1.05); opacity: 0.6; }
+    }
+
+    .animate-flash { animation: flashRelease 1.5s ease-out forwards; }
+    @keyframes flashRelease {
+      0% { background-color: rgba(255, 255, 255, 0.8); }
+      100% { background-color: transparent; }
+    }
+
     @keyframes fadeInUp {
       from { opacity: 0; transform: translateY(20px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    .animate-enter { animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+    
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .animate-fade-in { animation: fadeIn 1s ease-out forwards; }
 
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -278,6 +277,7 @@ const Nav: React.FC<NavProps> = ({ title, subtitle, onBack, isDashboard, soundEn
       <div>
         <h2 className="font-sans text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mb-1">{subtitle}</h2>
         <div className="flex items-center gap-2">
+            {/* Small Activity Icon in Header */}
             {!isDashboard && <Activity size={20} className="text-white/80" />}
             <h1 className="font-serif text-3xl text-white/90 italic">{title}</h1>
         </div>
@@ -322,36 +322,44 @@ const Nav: React.FC<NavProps> = ({ title, subtitle, onBack, isDashboard, soundEn
 const Welcome: React.FC<WelcomeProps> = ({ onEnter }) => (
   <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
     <div className="min-h-full flex flex-col justify-center items-center py-10">
-      <div className="mb-10 relative">
-        <div className="absolute inset-0 bg-teal-500/10 blur-xl rounded-full"></div>
-        {/* REPLACED LOGO WITH ACTIVITY ICON */}
-        <Activity size={72} className="text-teal-200/80 relative z-10 animate-breathe" strokeWidth={0.8} />
-      </div>
       
-      <div className="space-y-4 max-w-sm">
-        {/* SWAPPED HIERARCHY: Adaptiv is now the Hero Title */}
-        <h1 className="font-serif text-6xl text-white italic tracking-wide leading-tight animate-enter">
-          Adaptiv
-        </h1>
+      {/* Spacer pushes content to middle when space allows, shrinks when scrolling needed */}
+      <div className="flex-1"></div>
+
+      <div className="flex flex-col items-center">
+        <div className="mb-6 relative">
+            <div className="absolute inset-0 bg-teal-500/10 blur-xl rounded-full"></div>
+            {/* REPLACED LOGO WITH ACTIVITY ICON - SCALED DOWN */}
+            <Activity size={64} className="text-teal-200/80 relative z-10 animate-breathe" strokeWidth={0.8} />
+        </div>
         
-        <p className="font-sans text-xs text-white/50 uppercase tracking-[0.3em] animate-enter delay-100">
-          Alchemy for the Soul
-        </p>
+        <div className="space-y-4 max-w-sm">
+            {/* SWAPPED HIERARCHY: Adaptiv is now the Hero Title */}
+            <h1 className="font-serif text-5xl text-white italic tracking-wide leading-tight animate-enter">
+            Adaptiv
+            </h1>
+            
+            <p className="font-sans text-xs text-white/50 uppercase tracking-[0.3em] animate-enter delay-100">
+            Alchemy for the Soul
+            </p>
+            
+            <p className="font-sans text-[10px] text-white/30 leading-relaxed max-w-[280px] mx-auto animate-enter delay-200 pt-4">
+            Kinetic Resilience for the Modern Leader.
+            </p>
+        </div>
         
-        <p className="font-sans text-[10px] text-white/30 leading-relaxed max-w-[280px] mx-auto animate-enter delay-200 pt-4">
-          Kinetic Resilience for the Modern Leader.
-        </p>
+        <button 
+            onClick={onEnter}
+            className="mt-12 px-8 py-4 rounded-full bg-white/10 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-white/20 hover:scale-105 transition-all animate-enter delay-300 border border-white/5"
+        >
+            Enter the Space
+        </button>
       </div>
-      
-      <button 
-        onClick={onEnter}
-        className="mt-12 px-8 py-4 rounded-full bg-white/10 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-white/20 hover:scale-105 transition-all animate-enter delay-300 border border-white/5"
-      >
-        Enter the Space
-      </button>
+
+      <div className="flex-1"></div>
 
       {/* FOOTER BRANDING */}
-      <div className="mt-16 flex flex-col items-center opacity-60">
+      <div className="mt-8 flex flex-col items-center opacity-60 shrink-0">
         <p className="font-sans text-[8px] text-white/30 uppercase tracking-widest mb-2">Powered By</p>
         <p className="font-serif italic text-white/80 text-xs">Conscious Growth Coaching</p>
       </div>
@@ -402,33 +410,39 @@ const Manifesto: React.FC<ManifestoProps> = ({ onContinue }) => (
 );
 
 const Identity: React.FC<IdentityProps> = ({ userName, setUserName, onComplete }) => (
-  <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
-    <div className="min-h-full flex flex-col justify-center items-center py-10 w-full">
-      <div className="mb-8 relative">
-        <div className="absolute inset-0 bg-white/10 blur-xl rounded-full"></div>
-        {/* REPLACED LOGO WITH ACTIVITY ICON */}
-        <Activity size={48} className="text-white/80 relative z-10" strokeWidth={1} />
+  <div className="h-full flex flex-col px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
+    <div className="min-h-full flex flex-col items-center py-10 w-full">
+      <div className="flex-1"></div>
+
+      <div className="w-full max-w-xs flex flex-col items-center">
+        <div className="mb-8 relative">
+            <div className="absolute inset-0 bg-white/10 blur-xl rounded-full"></div>
+            {/* REPLACED LOGO WITH ACTIVITY ICON - SCALED DOWN */}
+            <Activity size={40} className="text-white/80 relative z-10" strokeWidth={1} />
+        </div>
+        <h1 className="font-serif text-4xl text-white mb-2 italic tracking-wide">Adaptiv</h1>
+        <p className="font-sans text-white/40 text-xs tracking-[0.2em] uppercase mb-12">Alchemy for the Soul</p>
+        
+        <div className="w-full space-y-6 relative z-50">
+            <input 
+            type="text" 
+            value={userName}
+            onChange={(e) => setUserName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && userName && onComplete()}
+            placeholder="Enter Name / Alias"
+            className="w-full bg-transparent border-b border-white/20 py-3 text-center text-white text-xl font-serif placeholder:text-white/20 focus:outline-none focus:border-white/60 transition-colors"
+            />
+            <button 
+            onClick={onComplete}
+            disabled={!userName}
+            className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs font-medium tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+            Begin
+            </button>
+        </div>
       </div>
-      <h1 className="font-serif text-5xl text-white mb-2 italic tracking-wide">Adaptiv</h1>
-      <p className="font-sans text-white/40 text-xs tracking-[0.2em] uppercase mb-12">Alchemy for the Soul</p>
       
-      <div className="w-full max-w-xs space-y-6 relative z-50">
-        <input 
-          type="text" 
-          value={userName}
-          onChange={(e) => setUserName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && userName && onComplete()}
-          placeholder="Enter Name / Alias"
-          className="w-full bg-transparent border-b border-white/20 py-3 text-center text-white text-xl font-serif placeholder:text-white/20 focus:outline-none focus:border-white/60 transition-colors"
-        />
-        <button 
-          onClick={onComplete}
-          disabled={!userName}
-          className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs font-medium tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Begin
-        </button>
-      </div>
+      <div className="flex-1"></div>
     </div>
   </div>
 );
@@ -493,7 +507,7 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
              }}
              className="w-full py-3 rounded-xl bg-teal-500 text-slate-900 font-sans text-xs font-bold tracking-widest uppercase hover:bg-teal-400 transition-all shadow-[0_0_20px_rgba(20,184,166,0.2)]"
            >
-             Begin Session
+             Begin Alchemist Cycle
            </button>
         </div>
 
@@ -503,28 +517,23 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
             <h3 className="font-serif text-xl text-white/90 italic">Internal Weather</h3>
             {isBurnout && <AlertCircle size={18} className="text-orange-400/80 animate-pulse"/>}
           </div>
-          
-          <div className="space-y-6 mt-6">
-            <div className="space-y-2">
-                <p className="font-sans text-[10px] tracking-widest text-white/50 uppercase">How is your mental energy?</p>
-                <div className="grid grid-cols-4 gap-2">
-                    {[10, 30, 70, 90].map((val, i) => (
-                        <button key={i} onClick={() => setEnergyLevel(val)} className={`py-2 rounded-lg text-[10px] uppercase font-bold border transition-all ${energyLevel === val ? 'bg-white text-slate-900 border-white' : 'bg-white/5 text-white/40 border-transparent hover:bg-white/10'}`}>
-                            {['Empty', 'Low', 'Stable', 'Full'][i]}
-                        </button>
-                    ))}
-                </div>
+          <p className="font-sans text-xs text-white/50 mb-8 leading-relaxed">
+            Calibrate your current state.
+          </p>
+          <div className="space-y-8">
+            <div className="space-y-3">
+              <div className="flex justify-between font-sans text-[10px] tracking-widest text-white/50">
+                <span>PRESSURE</span>
+                <span>{stressLevel}%</span>
+              </div>
+              <input type="range" min="0" max="100" value={stressLevel} onChange={(e) => setStressLevel(Number(e.target.value))} className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer" />
             </div>
-            
-            <div className="space-y-2">
-                <p className="font-sans text-[10px] tracking-widest text-white/50 uppercase">How does the pressure feel?</p>
-                <div className="grid grid-cols-4 gap-2">
-                    {[20, 40, 70, 90].map((val, i) => (
-                        <button key={i} onClick={() => setStressLevel(val)} className={`py-2 rounded-lg text-[10px] uppercase font-bold border transition-all ${stressLevel === val ? 'bg-white text-slate-900 border-white' : 'bg-white/5 text-white/40 border-transparent hover:bg-white/10'}`}>
-                            {['Fun', 'Okay', 'Heavy', 'Crushing'][i]}
-                        </button>
-                    ))}
-                </div>
+            <div className="space-y-3">
+              <div className="flex justify-between font-sans text-[10px] tracking-widest text-white/50">
+                <span>VITALITY</span>
+                <span>{energyLevel}%</span>
+              </div>
+              <input type="range" min="0" max="100" value={energyLevel} onChange={(e) => setEnergyLevel(Number(e.target.value))} className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer" />
             </div>
           </div>
         </div>
@@ -730,7 +739,7 @@ const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, toggleSound, sound
 };
 
 // --- PRESERVATION (BURNOUT RECOVERY) ---
-const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToIntegration }) => {
+const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToMolt }) => {
   const [step, setStep] = useState(0);
 
   const recoverySteps = [
@@ -760,14 +769,14 @@ const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, sound
     if (step < 2) {
       setStep(step + 1);
     } else {
-      // Finish Preservation -> Go to Integration with specific Burnout context
+      // Finish Preservation -> Go to Molt with specific Burnout context
       setExpandingBelief("I am the Asset. Rest is my strategy.");
       setGoal({ 
         outcome: "Status: Unavailable", 
         action: "I am offline to realign.", 
         when: "Now" 
       });
-      setViewToIntegration();
+      setViewToMolt();
     }
   };
   
@@ -867,7 +876,6 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
   
   const commonSensations = ["Tightness", "Heat", "Heaviness", "Empty", "Buzzing", "Numbness"];
   const commonProtections = ["Preventing Failure", "Staying Safe", "Avoiding Criticism", "Control"];
-  const channelExamples = ["Set a boundary", "Fuel my focus", "Speak my truth", "Rest and recover", "Take bold action"];
 
   const handleBack = () => {
     if (partsStep === 'experience') setView('somatic');
@@ -984,7 +992,7 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
                  "What did it say?"
                </p>
                <p className="font-sans text-sm text-white/70 leading-relaxed">
-                  Every part has a role. Often, it is a Protector trying to keep you safe from failure or pain.
+                 When you asked "What are you doing for me?", what came up?
                </p>
                <p className="font-serif text-teal-200/90 italic text-lg mt-6 bg-teal-900/10 p-4 rounded-xl border border-teal-500/20">
                  Acknowledge it by saying: "Thank you for protecting me."
@@ -1044,16 +1052,6 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
               onChange={e => setExpandingBelief(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && setView('lens')}
             />
-
-            {/* CHIPS FOR CHANNELING */}
-            <div className="flex flex-wrap justify-center gap-2 mb-8">
-               {channelExamples.map(ex => (
-                 <button key={ex} onClick={() => setExpandingBelief(ex)} className="px-4 py-2 rounded-full border border-teal-500/30 bg-teal-500/10 text-[10px] uppercase tracking-wider text-teal-200 hover:bg-teal-500/20 transition-all shadow-sm">
-                   {ex}
-                 </button>
-               ))}
-            </div>
-
             <button 
                onClick={() => setView('lens')}
                disabled={!expandingBelief}
@@ -1070,44 +1068,16 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
 
 const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief }) => {
   const [step, setStep] = useState(-1);
-  const [isLoading, setIsLoading] = useState(false);
   const [answers, setAnswers] = useState({ topic: '', result: '', permission: '', action: '' });
   
-  // Default Static Questions (Fallback if AI fails or no key)
-  const defaultQuestions = [
+  const questions = [
     { id: 'topic', label: 'The Truth', q: `Looking at "${stressor}" from this new energy, what is the truth now?`, ph: "The truth is...", starters: ["I realize that...", "The reality is...", "I am no longer..."] },
     { id: 'result', label: 'The Vision', q: "If this problem were already solved, what would be different?", ph: "I would be...", starters: ["I would feel...", "I would be free to...", "It would look like..."] },
     { id: 'permission', label: 'The Permission', q: "What permission do you need to give yourself to move forward?", ph: "I give myself permission to...", starters: ["To let go of...", "To make a mistake...", "To prioritize myself..."] },
     { id: 'action', label: 'The Move', q: "What is the single boldest step that makes everything else easier?", ph: "I will...", starters: ["I will call...", "I will schedule...", "I will stop..."] },
   ];
-
-  const [questions, setQuestions] = useState(defaultQuestions);
   
-  // AI LOADING EFFECT
-  useEffect(() => {
-    const loadAIQuestions = async () => {
-      if (step === -1) return; // Don't load until they click "Ignition"
-      
-      setIsLoading(true);
-      // Call the AI Service we created
-      const aiResponse = await generateCoachingQuestions(stressor, "Body Tension"); // Passing context
-      
-      if (aiResponse && aiResponse.length === 3) {
-        // Update state with AI brilliance
-        setQuestions(prev => [
-            { ...prev[0], q: aiResponse[0] }, // AI Reframe
-            { ...prev[1], q: aiResponse[1] }, // AI Vision
-            { ...prev[3], q: aiResponse[2] }, // AI Action
-            prev[2] // Keep Permission static as it's usually standard
-        ]);
-      }
-      setIsLoading(false);
-    };
-
-    if (step === 0) loadAIQuestions();
-  }, [step, stressor]);
-
-  const current = questions[step] || questions[0];
+  const current = questions[step];
 
   const handleNext = () => {
     if (step < 3) setStep(step + 1);
@@ -1136,6 +1106,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
     return (
        <div className="h-full flex flex-col">
           <Nav title="Breakthrough Laser" subtitle="Ignition" onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={75} />
+          {/* ADDED: flex-1 overflow-y-auto to allow scrolling if content overflows */}
           <div className="flex-1 flex flex-col justify-center animate-enter text-center px-6 overflow-y-auto hide-scrollbar">
               <div className="mb-8 relative">
                 <div className="absolute inset-0 bg-amber-500/20 blur-2xl rounded-full animate-pulse"></div>
@@ -1172,46 +1143,36 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
                <Target size={100} />
              </div>
              
-             {isLoading ? (
-                 // AI LOADING STATE
-                 <div className="flex flex-col items-center justify-center h-40 space-y-4">
-                     <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
-                     <p className="font-serif text-white/50 italic animate-pulse">Consulting the Alchemist...</p>
-                 </div>
-             ) : (
-                 <>
-                    <span className="font-sans text-[10px] uppercase tracking-widest text-white/40 mb-2 block">{current.label}</span>
-                    <h3 className="font-serif text-2xl text-white italic mb-8 leading-snug">{current.q}</h3>
-                    
-                    <input 
-                    autoFocus
-                    key={current.id}
-                    className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-teal-500/50 transition-colors mb-4 placeholder:text-white/10 text-lg"
-                    placeholder={current.ph}
-                    value={answers[current.id as keyof typeof answers]}
-                    onChange={e => setAnswers({...answers, [current.id]: e.target.value})}
-                    onKeyDown={e => e.key === 'Enter' && answers[current.id as keyof typeof answers] && handleNext()}
-                    />
+             <span className="font-sans text-[10px] uppercase tracking-widest text-white/40 mb-2 block">{current.label as string}</span>
+             <h3 className="font-serif text-2xl text-white italic mb-8 leading-snug">{current.q}</h3>
+             
+             <input 
+               autoFocus
+               key={current.id}
+               className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-teal-500/50 transition-colors mb-4 placeholder:text-white/10 text-lg"
+               placeholder={current.ph}
+               value={answers[current.id as keyof typeof answers]}
+               onChange={e => setAnswers({...answers, [current.id]: e.target.value})}
+               onKeyDown={e => e.key === 'Enter' && answers[current.id as keyof typeof answers] && handleNext()}
+             />
 
-                    {/* CHIPS */}
-                    <div className="flex flex-wrap gap-2 mb-8">
-                        {current.starters?.map((s) => (
-                            <button 
-                                key={s} 
-                                onClick={() => handleStarter(s)}
-                                className="px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-wider text-white/60 hover:bg-white/10 hover:text-white transition-all"
-                            >
-                                {s}
-                            </button>
-                        ))}
-                    </div>
-                 </>
-             )}
+             {/* CHIPS FOR RAPID SELECTION */}
+             <div className="flex flex-wrap gap-2 mb-8">
+                 {current.starters?.map((s) => (
+                    <button 
+                        key={s} 
+                        onClick={() => handleStarter(s)}
+                        className="px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-wider text-white/60 hover:bg-white/10 hover:text-white transition-all"
+                    >
+                        {s}
+                    </button>
+                 ))}
+             </div>
              
              <div className="flex justify-end">
                <button 
                  onClick={handleNext}
-                 disabled={!answers[current.id as keyof typeof answers] || isLoading}
+                 disabled={!answers[current.id as keyof typeof answers]}
                  className="px-8 py-3 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all disabled:opacity-50"
                >
                  {step === 3 ? 'Lock It In' : 'Next'}
@@ -1228,7 +1189,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
     </div>
   );
 };
-// --- PERSPECTIVE (FLOW MATRIX UPDATE) ---
+
 const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }) => {
   const flowState = ability >= pressure;
   return (
@@ -1237,7 +1198,7 @@ const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, abilit
       
       <div className="mb-4 animate-enter text-center px-4 shrink-0">
         <p className="font-sans text-xs text-white/60 leading-relaxed">
-          Stress is simply a ratio between Demand and Resource.
+          Stress is simply a ratio. High pressure is safe if capacity is high. Be honest about your current reserves.
         </p>
       </div>
 
@@ -1255,25 +1216,25 @@ const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, abilit
         </div>
 
         <div className="w-full space-y-6 mt-8 px-2 shrink-0 pb-4">
-          <div className="space-y-2">
-             <p className="font-sans text-[10px] tracking-widest text-white/50 uppercase">How intense is the requirement?</p>
-             <div className="grid grid-cols-4 gap-2">
-                {[20, 50, 80, 100].map((val, i) => (
-                    <button key={i} onClick={() => setPressure(val)} className={`py-2 rounded-lg text-[10px] uppercase font-bold border transition-all ${pressure === val ? 'bg-white text-slate-900 border-white' : 'bg-white/5 text-white/40 border-transparent hover:bg-white/10'}`}>
-                        {['Routine', 'Active', 'Intense', 'Critical'][i]}
-                    </button>
-                ))}
+          <div className="space-y-3">
+             <div className="flex justify-between font-sans text-[10px] tracking-widest text-white/50">
+                <span>THE DEMAND</span>
+                <span>{pressure}%</span>
              </div>
+             <input 
+               type="range" min="0" max="100" value={pressure} onChange={(e) => setPressure(Number(e.target.value))} 
+               className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer"
+             />
           </div>
-          <div className="space-y-2">
-             <p className="font-sans text-[10px] tracking-widest text-white/50 uppercase">How capable do you feel?</p>
-             <div className="grid grid-cols-4 gap-2">
-                {[20, 50, 80, 100].map((val, i) => (
-                    <button key={i} onClick={() => setAbility(val)} className={`py-2 rounded-lg text-[10px] uppercase font-bold border transition-all ${ability === val ? 'bg-white text-slate-900 border-white' : 'bg-white/5 text-white/40 border-transparent hover:bg-white/10'}`}>
-                        {['Low', 'Adequate', 'Strong', 'Peak'][i]}
-                    </button>
-                ))}
+          <div className="space-y-3">
+             <div className="flex justify-between font-sans text-[10px] tracking-widest text-white/50">
+                <span>MY RESOURCES</span>
+                <span>{ability}%</span>
              </div>
+             <input 
+               type="range" min="0" max="100" value={ability} onChange={(e) => setAbility(Number(e.target.value))} 
+               className="w-full appearance-none bg-white/10 h-1 rounded-full cursor-pointer"
+             />
           </div>
         </div>
       </div>
@@ -1299,7 +1260,7 @@ const Crossroads: React.FC<CrossroadsProps> = ({ setView, toggleSound, soundEnab
       
       {/* WRAPPED content in scrollable div */}
       <div className="flex-1 flex flex-col justify-center overflow-y-auto hide-scrollbar pb-8 px-6">
-          <h1 className="font-serif text-4xl text-white text-center italic mb-2 shrink-0">Transformation</h1>
+          <h1 className="font-serif text-4xl text-white text-center italic mb-2 shrink-0">Transmutation</h1>
           
           <div className="mb-10 text-center shrink-0">
              <p className="font-sans text-xs text-white/40 leading-relaxed uppercase tracking-widest mb-4">How shall we use this energy?</p>
@@ -1430,11 +1391,11 @@ const Alchemy: React.FC<AlchemyProps> = ({ setView, toggleSound, soundEnabled })
       {[
           { id: 'perform', label: 'Performance', sub: 'Adrenaline', desc: 'Sharpen focus. Slow time.', icon: Zap, color: 'text-amber-200' },
           { id: 'connect', label: 'Connection', sub: 'Oxytocin', desc: 'Soften defense. Open heart.', icon: Heart, color: 'text-rose-200' },
-          { id: 'learn', label: 'Expansion', sub: 'DHEA', desc: 'Shed the limitation. Build new paths.', icon: BookOpen, color: 'text-indigo-200' },
+          { id: 'learn', label: 'Expansion', sub: 'DHEA', desc: 'Molt the shell. Build new paths.', icon: BookOpen, color: 'text-indigo-200' },
       ].map(i => (
           <button 
               key={i.id}
-              onClick={() => setView('integration')}
+              onClick={() => setView('molt')}
               className="w-full p-6 rounded-[24px] glass-panel text-left hover:bg-white/5 transition-all group"
           >
               <div className="flex justify-between items-start mb-2">
@@ -1620,7 +1581,7 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
 
     return (
         <div className="h-full flex flex-col justify-center animate-enter">
-            <Nav title="Energy Lens" subtitle={`Question ${step + 1} / 6`} onBack={() => setView('integration')} toggleSound={() => {}} soundEnabled={false} progress={((step + 1) / 6) * 100} />
+            <Nav title="Energy Lens" subtitle={`Question ${step + 1} / 6`} onBack={() => setView('molt')} toggleSound={() => {}} soundEnabled={false} progress={((step + 1) / 6) * 100} />
             <div className="flex-1 flex flex-col justify-start items-center text-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-2 pt-8">
                 <h2 className="font-serif text-2xl text-white italic mb-8 text-center px-4">{questions[step].q}</h2>
                 <div className="grid gap-3 w-full shrink-0">
@@ -1715,10 +1676,8 @@ const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
   );
 };
 
-const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath, apiKey }) => {
+const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath }) => {
   const [primingDone, setPrimingDone] = useState(false);
-  const [generatedManifesto, setGeneratedManifesto] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
   
   const steps = [
       { id: 'outcome', q: 'The Goal', ph: 'What is the desired outcome?' },
@@ -1726,23 +1685,13 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
       { id: 'when', q: 'The Commitment', ph: 'When will you do it?' }
   ];
   
-  // AI GENERATOR FOR MANIFESTO
   useEffect(() => {
-      const generateDecree = async () => {
-          if (isLocked && !isBurnoutPath && !generatedManifesto && apiKey) {
-              setIsGenerating(true);
-              const prompt = `You are a genius life coach and expert Energy Leadership practitioner. Write a 3-sentence poetic, empowering manifesto for someone who has shifted from feeling stress about "${stressor}" (felt in the ${somaticZones[0]}) to a new truth: "${expandingBelief}". They are committing to: "${goal.outcome}" by "${goal.action}". Tone: Stoic, Alchemist, Strong.`;
-              const result = await generateAIResponse(prompt, apiKey);
-              if (result) setGeneratedManifesto(result);
-              setIsGenerating(false);
-          }
-      };
-      generateDecree();
-  }, [isLocked, apiKey]);
-
-  useEffect(() => {
-      if (goal.outcome && goal.action && goalStep === 0) setGoalStep(2);
-      if (goal.outcome === undefined) setGoal({ outcome: '', action: '', when: '' });
+      if (goal.outcome && goal.action && goalStep === 0) {
+          setGoalStep(2);
+      }
+      if (goal.outcome === undefined) {
+          setGoal({ outcome: '', action: '', when: '' });
+      }
   }, [goal.outcome, goal.action, goalStep]);
 
   const current = steps[Math.min(goalStep, steps.length - 1)];
@@ -1762,12 +1711,12 @@ I seal this by: ${goal.action} (${goal.when}).
       const artifact = `ADAPTIV SESSION #${sessionCount + 1}\n\n${manifestoText}\n\nGenerated by Adaptiv.`;
       navigator.clipboard.writeText(artifact);
       completeSession();
-      alert("Session Artifact copied to clipboard.");
+      alert("Session Artifact copied to clipboard. Share it on your story.");
   };
 
   const generateEmailLink = () => {
       const subject = `Adaptiv Session #${sessionCount + 1}: ${stressor}`;
-      const body = `ADAPTIV SESSION ARTIFACT\n\n${finalText}\n\n(CC save@alexioda.com to log this session)`;
+      const body = `ADAPTIV SESSION ARTIFACT\n\n${manifestoText}\n\n(CC save@alexioda.com to log this session)`;
       return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
@@ -1778,22 +1727,25 @@ I seal this by: ${goal.action} (${goal.when}).
   const workbookTitle = isBurnout ? "Burnout Rescue Kit" : "The Alchemist's Field Guide";
   const workbookDesc = isBurnout ? "Emergency Protocol + Audio ($27)" : "Get the Interactive Guide ($27)";
   const workbookLink = "https://alexioda.gumroad.com/l/roxaxf";
-  
-  // Default text if AI fails or no key
-  const defaultText = `I acknowledge the tension in my ${somaticZones[0] || 'body'} regarding "${stressor}". I release the old pattern. My new operating truth is: "${expandingBelief}". From this place of power, I commit to: ${goal.outcome}. I seal this by: ${goal.action} (${goal.when}).`;
 
-  const finalText = generatedManifesto || defaultText;
-
-  if (isLocked && !primingDone && !isBurnoutPath) { 
+  // RENDER LOGIC FOR PRIMING VS SUMMARY
+  if (isLocked && !primingDone && !isBurnoutPath) { // No priming needed for burnout path (already done in preservation)
     return (
       <div className="h-full flex flex-col relative z-20">
-         <Nav title="Integration" subtitle="Embodiment" onBack={() => { setIsLocked(false); }} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={90} />
+         <Nav 
+            title="Integration" 
+            subtitle="Embodiment" 
+            onBack={() => { setIsLocked(false); }} 
+            soundEnabled={soundEnabled} 
+            toggleSound={toggleSound} 
+            progress={90}
+         />
          <Priming onComplete={() => setPrimingDone(true)} />
       </div>
     );
   }
 
-  // Handle Back Button in Integration form
+  // Handle Back Button in Molt form
   const handleBack = () => {
       if (goalStep > 0) setGoalStep(goalStep - 1);
       else setView('alchemy');
@@ -1801,7 +1753,15 @@ I seal this by: ${goal.action} (${goal.when}).
 
   return (
     <div className="h-full flex flex-col relative z-20">
-       <Nav title="Integration" subtitle="Blueprint Complete" onBack={() => setView('fork')} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={100} />
+       <Nav 
+          title="Integration" 
+          subtitle="Blueprint Complete" 
+          onBack={() => setView('fork')} 
+          soundEnabled={soundEnabled} 
+          toggleSound={toggleSound} 
+          progress={100}
+       />
+       {/* CHANGED: Moved title block inside the scrollable container for better layout */}
        <div className="flex-1 overflow-y-auto hide-scrollbar pb-20 animate-enter px-2">
           
           <div className="text-center pt-2 mb-8 animate-enter">
@@ -1820,11 +1780,19 @@ I seal this by: ${goal.action} (${goal.when}).
                           <span className="font-sans text-[10px] text-white/20">{goalStep + 1} / 3</span>
                       </div>
                       <h3 className="font-serif text-xl text-white italic mb-6">{current.q}</h3>
+                      
                       {current.id === 'when' ? (
                         <div className="space-y-6">
                            <div className="grid grid-cols-2 gap-3">
                               {quickTimes.map(time => (
-                                <button key={time} onClick={() => { setGoal({...goal, when: time}); setIsLocked(true); }} className="py-3 rounded-xl border border-white/20 bg-white/5 text-sm font-sans text-white/90 hover:bg-white/20 hover:border-white/40 hover:text-white transition-all shadow-sm">
+                                <button
+                                  key={time}
+                                  onClick={() => {
+                                    setGoal({...goal, when: time});
+                                    setIsLocked(true);
+                                  }}
+                                  className="py-3 rounded-xl border border-white/20 bg-white/5 text-sm font-sans text-white/90 hover:bg-white/20 hover:border-white/40 hover:text-white transition-all shadow-sm"
+                                >
                                   {time}
                                 </button>
                               ))}
@@ -1833,27 +1801,55 @@ I seal this by: ${goal.action} (${goal.when}).
                         </div>
                       ) : (
                         <>
-                          <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-teal-500/50 transition-colors mb-6 placeholder:text-white/10" placeholder={current.ph} value={goal[current.id as keyof typeof goal]} onChange={e => setGoal({...goal, [current.id]: e.target.value})} onKeyDown={e => { if (e.key === 'Enter' && goal[current.id as keyof typeof goal]) { if (goalStep < 2) setGoalStep(goalStep + 1); else setIsLocked(true); } }} />
+                          <input 
+                             autoFocus
+                             className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-teal-500/50 transition-colors mb-6 placeholder:text-white/10"
+                             placeholder={current.ph}
+                             value={goal[current.id as keyof typeof goal]}
+                             onChange={e => setGoal({...goal, [current.id]: e.target.value})}
+                             onKeyDown={e => {
+                                 if (e.key === 'Enter' && goal[current.id as keyof typeof goal]) {
+                                     if (goalStep < 2) setGoalStep(goalStep + 1);
+                                     else setIsLocked(true);
+                                 }
+                             }}
+                          />
                           <div className="flex gap-3">
                                <button onClick={handleBack} className="px-4 py-3 rounded-xl border border-white/10 text-white/40 hover:text-white transition-colors">Back</button>
-                               <button disabled={!goal[current.id as keyof typeof goal]} onClick={() => { if (goalStep < 2) setGoalStep(goalStep + 1); else setIsLocked(true); }} className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold font-sans text-xs uppercase tracking-widest disabled:opacity-50">Next</button>
+                               <button 
+                                  disabled={!goal[current.id as keyof typeof goal]}
+                                  onClick={() => { if (goalStep < 2) setGoalStep(goalStep + 1); else setIsLocked(true); }}
+                                  className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold font-sans text-xs uppercase tracking-widest disabled:opacity-50"
+                               >
+                                  Next
+                               </button>
                           </div>
                         </>
                       )}
                   </div>
               ) : (
                   <div className="text-center animate-fade-in relative z-10">
+                      {/* REDESIGNED VISUAL ARTIFACT CARD (DECREE) */}
                       <div className={`mb-8 p-8 rounded-2xl border text-center relative overflow-hidden shadow-2xl ${isBurnoutPath ? 'bg-slate-900 border-orange-900/50' : 'bg-gradient-to-br from-teal-900/40 to-slate-900/80 border-teal-500/30'}`}>
-                          <div className="absolute top-0 right-0 p-4 opacity-10"><FileText size={100} className={isBurnoutPath ? "text-orange-200" : "text-teal-200"} /></div>
-                          <p className={`font-sans text-[9px] uppercase tracking-[0.3em] mb-6 mt-2 ${isBurnoutPath ? 'text-orange-200/60' : 'text-teal-200/60'}`}>{isBurnoutPath ? 'Permission Slip' : 'Alchemist Decree'}</p>
+                          <div className="absolute top-0 right-0 p-4 opacity-10">
+                              <FileText size={100} className={isBurnoutPath ? "text-orange-200" : "text-teal-200"} />
+                          </div>
+                          
+                          <p className={`font-sans text-[9px] uppercase tracking-[0.3em] mb-6 mt-2 ${isBurnoutPath ? 'text-orange-200/60' : 'text-teal-200/60'}`}>
+                            {isBurnoutPath ? 'Permission Slip' : 'Alchemist Decree'}
+                          </p>
                           
                           {/* MANIFESTO TEXT DISPLAY */}
                           <div className="font-serif text-lg leading-relaxed text-white/90 italic mb-6">
-                            {isGenerating ? <div className="flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={16}/> Writing Decree...</div> : `"${finalText}"`}
+                            "I acknowledge the tension in my {somaticZones[0] || 'body'} regarding {stressor}.
+                            I release the old pattern. My new operating truth is: <span className="text-teal-200">{expandingBelief}</span>.
+                            From this place of power, I commit to {goal.outcome}.
+                            I seal this by {goal.action} ({goal.when})."
                           </div>
 
                           <div className={`w-12 h-[1px] mx-auto mb-4 ${isBurnoutPath ? 'bg-orange-500/50' : 'bg-teal-500/50'}`}></div>
                           
+                           {/* The Signature Block */}
                            <div className="flex flex-col items-center justify-center gap-1 opacity-80 relative z-10">
                               <span className="font-sans text-[8px] uppercase tracking-widest text-white/40 mb-1">Certified By</span>
                               <span className="font-serif text-lg italic text-white">Conscious Growth Coaching</span>
@@ -1862,22 +1858,45 @@ I seal this by: ${goal.action} (${goal.when}).
                       
                       <div className="text-center space-y-4 mb-8">
                          <p className="font-serif text-white/90 italic">Mission Complete.</p>
-                         <p className="font-sans text-xs text-white/60 leading-relaxed max-w-[280px] mx-auto">You have mapped the friction and shifted your energy. Carry this state into your next task. You are the Architect.</p>
+                         <p className="font-sans text-xs text-white/60 leading-relaxed max-w-[280px] mx-auto">
+                            You have mapped the friction and shifted your energy. Carry this state into your next task. You are the Architect.
+                         </p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3 mb-4">
-                          <button onClick={copyArtifact} className="flex flex-col items-center justify-center p-4 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors gap-2"><Copy size={20}/> <span className="text-[10px] font-bold uppercase tracking-wide">Copy Decree</span></button>
-                          <a href={generateEmailLink()} className="flex flex-col items-center justify-center p-4 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors gap-2"><Mail size={20}/><span className="text-[10px] font-bold uppercase tracking-wide">Email Self</span></a>
+                          <button onClick={copyArtifact} className="flex flex-col items-center justify-center p-4 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors gap-2">
+                              <Copy size={20}/> 
+                              <span className="text-[10px] font-bold uppercase tracking-wide">Copy Decree</span>
+                          </button>
+                          
+                          {/* NEW EMAIL TO SELF FEATURE */}
+                          <a href={generateEmailLink()} className="flex flex-col items-center justify-center p-4 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors gap-2">
+                              <Mail size={20}/>
+                              <span className="text-[10px] font-bold uppercase tracking-wide">Email Self</span>
+                          </a>
                       </div>
                       
-                      <a href={generateLink()} target="_blank" rel="noopener noreferrer" className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-teal-900/30 border border-teal-500/30 text-teal-200 hover:bg-teal-900/50 transition-colors text-xs font-bold uppercase tracking-wide"><Calendar size={14}/> Add to Calendar</a>
+                      <a href={generateLink()} target="_blank" rel="noopener noreferrer" className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-teal-900/30 border border-teal-500/30 text-teal-200 hover:bg-teal-900/50 transition-colors text-xs font-bold uppercase tracking-wide">
+                          <Calendar size={14}/> Add to Calendar
+                      </a>
                   </div>
               )}
           </div>
 
-          <a href={workbookLink} target="_blank" rel="noopener noreferrer" className={`w-full mb-8 py-4 rounded-2xl border flex items-center justify-center gap-3 group transition-all cursor-pointer ${isBurnoutPath ? 'border-orange-500/30 bg-orange-900/10 hover:bg-orange-900/30' : 'border-indigo-500/30 bg-indigo-900/10 hover:bg-indigo-900/30'}`}>
-            <div className={`p-2 rounded-full transition-colors ${isBurnoutPath ? 'bg-orange-500/20 group-hover:bg-orange-500/40' : 'bg-indigo-500/20 group-hover:bg-indigo-500/40'}`}><BookOpen size={18} className={isBurnoutPath ? "text-orange-200" : "text-indigo-200"} /></div>
-            <div className="text-left"><p className={`font-serif italic text-lg leading-none ${isBurnoutPath ? "text-orange-100" : "text-indigo-100"}`}>{workbookTitle}</p><p className={`font-sans text-[10px] uppercase tracking-wider mt-1 ${isBurnoutPath ? "text-orange-300" : "text-indigo-300"}`}>{workbookDesc}</p></div>
+          {/* WORKBOOK UPSELL BUTTON */}
+          <a 
+            href={workbookLink} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className={`w-full mb-8 py-4 rounded-2xl border flex items-center justify-center gap-3 group transition-all cursor-pointer ${isBurnoutPath ? 'border-orange-500/30 bg-orange-900/10 hover:bg-orange-900/30' : 'border-indigo-500/30 bg-indigo-900/10 hover:bg-indigo-900/30'}`}
+          >
+            <div className={`p-2 rounded-full transition-colors ${isBurnoutPath ? 'bg-orange-500/20 group-hover:bg-orange-500/40' : 'bg-indigo-500/20 group-hover:bg-indigo-500/40'}`}>
+              <BookOpen size={18} className={isBurnoutPath ? "text-orange-200" : "text-indigo-200"} />
+            </div>
+            <div className="text-left">
+              <p className={`font-serif italic text-lg leading-none ${isBurnoutPath ? "text-orange-100" : "text-indigo-100"}`}>{workbookTitle}</p>
+              <p className={`font-sans text-[10px] uppercase tracking-wider mt-1 ${isBurnoutPath ? "text-orange-300" : "text-indigo-300"}`}>{workbookDesc}</p>
+            </div>
             <ArrowRight size={16} className={`group-hover:translate-x-1 transition-all ${isBurnoutPath ? "text-orange-300/50 group-hover:text-orange-300" : "text-indigo-300/50 group-hover:text-indigo-300"}`}/>
           </a>
 
@@ -1886,21 +1905,38 @@ I seal this by: ${goal.action} (${goal.when}).
              <div className="mb-8">
                  <p className="font-sans text-[10px] text-white/30 text-center uppercase tracking-widest mb-4">How is the internal weather?</p>
                  <div className="flex gap-3">
-                     <button className="flex-1 py-4 rounded-xl border border-white/5 bg-white/5 text-white/50 hover:bg-white/10 transition-all text-xs uppercase tracking-wider">Clear</button>
-                     <button onClick={() => setView('energy')} className="flex-1 py-4 rounded-xl border border-indigo-500/30 bg-indigo-900/20 text-indigo-200 hover:bg-indigo-900/40 transition-all text-xs uppercase tracking-wider font-bold shadow-[0_0_15px_rgba(99,102,241,0.2)]">Still Heavy</button>
+                     <button className="flex-1 py-4 rounded-xl border border-white/5 bg-white/5 text-white/50 hover:bg-white/10 transition-all text-xs uppercase tracking-wider">
+                        Clear
+                     </button>
+                     <button 
+                        onClick={() => setView('energy')}
+                        className="flex-1 py-4 rounded-xl border border-indigo-500/30 bg-indigo-900/20 text-indigo-200 hover:bg-indigo-900/40 transition-all text-xs uppercase tracking-wider font-bold shadow-[0_0_15px_rgba(99,102,241,0.2)]"
+                     >
+                        Still Heavy
+                     </button>
                  </div>
-                 <p className="font-sans text-[9px] text-white/20 text-center mt-3 max-w-[200px] mx-auto">If heaviness remains, we must check the lens.</p>
+                 <p className="font-sans text-[9px] text-white/20 text-center mt-3 max-w-[200px] mx-auto">
+                    If heaviness remains, we must check the lens.
+                 </p>
              </div>
           )}
 
           <div className="relative overflow-hidden p-8 rounded-[32px] glass-panel group cursor-pointer transition-all hover:bg-white/5">
-               <div className="absolute -right-4 -top-4 opacity-10 group-hover:opacity-20 transition-opacity rotate-12"><Facebook size={100} className="text-blue-400" /></div>
+               <div className="absolute -right-4 -top-4 opacity-10 group-hover:opacity-20 transition-opacity rotate-12">
+                   <Facebook size={100} className="text-blue-400" />
+               </div>
                <h3 className="font-serif text-xl text-white italic mb-2">Deepen the Work</h3>
-               <p className="font-sans text-xs text-white/50 mb-6 leading-relaxed max-w-[80%]">You have begun the shift. Cement this architecture with a 1:1 session at Conscious Growth Coaching.</p>
-               <a href="https://www.facebook.com/share/1RmJbo4Gdt/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-200 hover:bg-blue-600/40 transition-colors text-xs font-bold uppercase tracking-wide">Visit Facebook Page <ArrowRight size={14} /></a>
+               <p className="font-sans text-xs text-white/50 mb-6 leading-relaxed max-w-[80%]">
+                  You have begun the shift. Cement this architecture with a 1:1 session at Conscious Growth Coaching.
+               </p>
+               <a href="https://www.facebook.com/share/1RmJbo4Gdt/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-200 hover:bg-blue-600/40 transition-colors text-xs font-bold uppercase tracking-wide">
+                  Visit Facebook Page <ArrowRight size={14} />
+               </a>
           </div>
           
-          <button onClick={resetApp} className="mt-8 mx-auto flex items-center gap-2 text-white/20 hover:text-white transition-colors text-[10px] uppercase tracking-widest"><RefreshCw size={12} /> Reset System</button>
+          <button onClick={resetApp} className="mt-8 mx-auto flex items-center gap-2 text-white/20 hover:text-white transition-colors text-[10px] uppercase tracking-widest">
+              <RefreshCw size={12} /> Reset System
+          </button>
        </div>
     </div>
   );
@@ -1908,35 +1944,45 @@ I seal this by: ${goal.action} (${goal.when}).
 
 // --- MAIN RENDER ---
 const App = () => {
-  const [view, setView] = useState('welcome'); 
+  // --- STATE ---
+  const [view, setView] = useState('welcome'); // Starts at welcome (removed gate)
   const [bgState, setBgState] = useState('neutral'); 
+  
+  // User & Data
   const [userName, setUserName] = useState('');
   const [sessionCount, setSessionCount] = useState(0);
   const [stressor, setStressor] = useState(''); 
   const [stressLevel, setStressLevel] = useState(50);
   const [energyLevel, setEnergyLevel] = useState(50);
   const [isBurnout, setIsBurnout] = useState(false);
-  const [isBurnoutPath, setBurnoutPath] = useState(false); 
+  const [isBurnoutPath, setBurnoutPath] = useState(false); // NEW STATE FOR BRANCHING
+  
+  // Protocol State
   const [somaticZones, setSomaticZones] = useState<string[]>([]);
-  const [partsStep, setPartsStep] = useState('experience'); 
+  const [partsStep, setPartsStep] = useState('experience'); // experience, connect, message, channel
   const [sensation, setSensation] = useState('');
   const [protection, setProtection] = useState('');
   const [expandingBelief, setExpandingBelief] = useState('');
+  
   const [pressure, setPressure] = useState(50);
   const [ability, setAbility] = useState(50);
+  
+  // Goals & Tools
   const [goal, setGoal] = useState({ what: '', measure: '', when: '', outcome: '', action: '' });
   const [goalStep, setGoalStep] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [breathing, setBreathing] = useState(false);
   const [breathCount, setBreathCount] = useState(0);
+  
+  // Audio
   const [soundEnabled, setSoundEnabled] = useState(false);
-  const apiKey = GLOBAL_API_KEY;
-
   const audioContextRef = useRef<any>(null);
   const noiseNodeRef = useRef<any>(null);
 
+  // --- INITIALIZATION ---
   useEffect(() => {
     try {
+      // Removed Gate check
       const savedUser = localStorage.getItem('adaptiv_user');
       const savedCount = localStorage.getItem('adaptiv_sessions');
       
@@ -1964,6 +2010,7 @@ const App = () => {
     setSessionCount(newCount);
     try {
       localStorage.setItem('adaptiv_sessions', newCount.toString());
+      // Logic to advance the protocol day (optional)
       const currentDay = localStorage.getItem('adaptiv_protocol_day') || '1';
       if (parseInt(currentDay) < 7) {
          localStorage.setItem('adaptiv_protocol_day', (parseInt(currentDay) + 1).toString());
@@ -1976,6 +2023,7 @@ const App = () => {
       localStorage.removeItem('adaptiv_user');
       localStorage.removeItem('adaptiv_sessions');
       localStorage.removeItem('adaptiv_protocol_day');
+      // Note: We deliberately do NOT remove 'adaptiv_access' so they don't have to re-enter code.
     } catch (e) {}
     setUserName('');
     setSessionCount(0);
@@ -1991,6 +2039,7 @@ const App = () => {
     setView('welcome');
   };
 
+  // --- AUDIO ENGINE ---
   const toggleSound = () => {
     if (soundEnabled) {
       if (audioContextRef.current) {
@@ -2027,6 +2076,7 @@ const App = () => {
     }
   };
 
+  // --- LOGIC ---
   useEffect(() => {
     if (view === 'preservation' || isBurnoutPath) setBgState('preservation');
     else if (view === 'laser') setBgState('laser');
@@ -2053,6 +2103,7 @@ const App = () => {
         <Atmosphere bgState={bgState} />
         <div className="w-full max-w-md h-full relative z-10 p-6">
            {view === 'loading' && <div />}
+           {/* Gate Removed */}
            {view === 'welcome' && <Welcome onEnter={() => setView('manifesto')} />}
            {view === 'manifesto' && <Manifesto onContinue={() => setView('profile')} />}
            {view === 'profile' && <Identity userName={userName} setUserName={setUserName} onComplete={saveProfile} />}
@@ -2070,12 +2121,13 @@ const App = () => {
              soundEnabled={soundEnabled} 
              setGoal={setGoal} 
              setExpandingBelief={setExpandingBelief} 
-             setViewToIntegration={() => { setIsLocked(true); setView('integration'); }}
+             setViewToMolt={() => { setIsLocked(true); setView('molt'); }}
            />}
            {view === 'burnout_check' && <BurnoutCheck setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setBurnoutPath={setBurnoutPath} />}
            
            {view === 'somatic' && <Vessel somaticZones={somaticZones} setSomaticZones={setSomaticZones} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            
+           {/* Replaced Narrative with PartsWork */}
            {view === 'partswork' && <PartsWork 
              selectedPart={somaticZones[0] || 'Part'} 
              sensation={sensation} setSensation={setSensation}
@@ -2085,12 +2137,12 @@ const App = () => {
              setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} 
            />}
            
-           {view === 'laser' && <LaserCoaching stressor={stressor} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setGoal={setGoal} setExpandingBelief={setExpandingBelief} apiKey={apiKey} />}
+           {view === 'laser' && <LaserCoaching stressor={stressor} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setGoal={setGoal} setExpandingBelief={setExpandingBelief} />}
            {view === 'lens' && <Perspective pressure={pressure} setPressure={setPressure} ability={ability} setAbility={setAbility} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'fork' && <Crossroads stressLevel={stressLevel} energyLevel={energyLevel} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'regulate' && <Breath breathing={breathing} setBreathing={setBreathing} breathCount={breathCount} setBreathCount={setBreathCount} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'alchemy' && <Alchemy setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
-           {view === 'integration' && <Integration goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} isLocked={isLocked} setIsLocked={setIsLocked} expandingBelief={expandingBelief} stressor={stressor} sessionCount={sessionCount} completeSession={completeSession} resetApp={resetApp} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} somaticZones={somaticZones} isBurnoutPath={isBurnoutPath} apiKey={apiKey} />}
+           {view === 'molt' && <Molt goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} isLocked={isLocked} setIsLocked={setIsLocked} expandingBelief={expandingBelief} stressor={stressor} sessionCount={sessionCount} completeSession={completeSession} resetApp={resetApp} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} somaticZones={somaticZones} isBurnoutPath={isBurnoutPath} />}
            {view === 'insight' && <Insight expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'energy' && <EnergyAnalyzer setView={setView} />}
         </div>
@@ -2098,5 +2150,3 @@ const App = () => {
     </>
   );
 };
-
-export default App;
