@@ -11,7 +11,7 @@ import {
 // --- CONFIGURATION ---
 // PASTE YOUR GEMINI API KEY HERE TO ENABLE AI FOR ALL CLIENTS
 // If left empty (""), the app will use "Simulated" generic responses.
-const GLOBAL_API_KEY = ""; 
+const GLOBAL_API_KEY = "AIzaSyACTaD9NSvxxsrZE7Qfx2K5JfZL_A8eutU"; 
 
 // --- BRANDING ASSETS ---
 
@@ -327,6 +327,7 @@ const Nav: React.FC<NavProps> = ({ title, subtitle, onBack, isDashboard, soundEn
       <div>
         <h2 className="font-sans text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mb-1">{subtitle}</h2>
         <div className="flex items-center gap-2">
+            {/* Small Activity Icon in Header */}
             {!isDashboard && <Activity size={20} className="text-white/80" />}
             <h1 className="font-serif text-3xl text-white/90 italic">{title}</h1>
         </div>
@@ -1135,7 +1136,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
     const fetchSuggestions = async () => {
         if (step === 0 && !suggestions.length && apiKey) {
             setIsLoading(true);
-            const prompt = `User is stressed about: "${stressor}". Generate 3 short, powerful, "anabolic" reframes (Energy Leadership Level 5/6) that start with "The truth is...". Keep them under 15 words.`;
+            const prompt = `You are a genius life coach and expert Energy Leadership practitioner. The user is stressed about: "${stressor}". Generate 3 short, powerful, "anabolic" reframes (Energy Leadership Level 5/6) that start with "The truth is...". Keep them under 15 words.`;
             const result = await generateAIResponse(prompt, apiKey);
             if (result) {
                 // Basic parsing of AI list response
@@ -1656,74 +1657,6 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
     )
 };
 
-const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
-  const [step, setStep] = useState(0);
-
-  const steps = [
-    {
-      icon: Mountain,
-      title: "Physiology",
-      instruction: "Change your state immediately. Stand up. Shoulders back. Deep breath. Look up.",
-      action: "I am ready."
-    },
-    {
-      icon: Anchor,
-      title: "Somatic Anchor",
-      instruction: "Where do you feel this new power in your body? Put your hand there now.",
-      action: "I feel it."
-    },
-    {
-      icon: Eye,
-      title: "Visualization",
-      instruction: "Close your eyes. See the goal achieved. Feel the emotion of the win in your body.",
-      action: "Seal it."
-    }
-  ];
-
-  const current = steps[step];
-
-  const next = () => {
-    if (step < steps.length - 1) {
-      setStep(step + 1);
-    } else {
-      onComplete();
-    }
-  };
-
-  return (
-    // ADDED overflow-y-auto to this view as well
-    <div className="h-full flex flex-col justify-center items-center text-center animate-enter overflow-y-auto hide-scrollbar">
-      <div className="min-h-full flex flex-col justify-center items-center py-10 w-full">
-        <div className="mb-8 relative">
-          <div className="absolute inset-0 bg-teal-500/20 blur-xl rounded-full"></div>
-          <current.icon size={64} className="text-white relative z-10 animate-pulse" strokeWidth={1} />
-        </div>
-        
-        <h2 className="font-serif text-3xl text-white italic mb-4 animate-enter" key={`t-${step}`}>
-          {current.title}
-        </h2>
-        
-        <p className="font-sans text-lg text-white/80 leading-relaxed max-w-[280px] mx-auto mb-12 animate-enter delay-100" key={`i-${step}`}>
-          {current.instruction}
-        </p>
-
-        <button 
-          onClick={next}
-          className="px-10 py-5 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-[0.2em] uppercase hover:scale-105 hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] transition-all animate-enter delay-200"
-        >
-          {current.action}
-        </button>
-
-        <div className="flex gap-2 mt-8">
-          {steps.map((_, i) => (
-            <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i === step ? 'w-8 bg-white' : 'w-2 bg-white/20'}`}></div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath, apiKey }) => {
   const [primingDone, setPrimingDone] = useState(false);
   const [generatedManifesto, setGeneratedManifesto] = useState("");
@@ -1740,7 +1673,7 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
       const generateDecree = async () => {
           if (isLocked && !isBurnoutPath && !generatedManifesto && apiKey) {
               setIsGenerating(true);
-              const prompt = `Write a 3-sentence poetic, empowering manifesto for someone who has shifted from feeling stress about "${stressor}" (felt in the ${somaticZones[0]}) to a new truth: "${expandingBelief}". They are committing to: "${goal.outcome}" by "${goal.action}". Tone: Stoic, Alchemist, Strong.`;
+              const prompt = `You are a genius life coach and expert Energy Leadership practitioner. Write a 3-sentence poetic, empowering manifesto for someone who has shifted from feeling stress about "${stressor}" (felt in the ${somaticZones[0]}) to a new truth: "${expandingBelief}". They are committing to: "${goal.outcome}" by "${goal.action}". Tone: Stoic, Alchemist, Strong.`;
               const result = await generateAIResponse(prompt, apiKey);
               if (result) setGeneratedManifesto(result);
               setIsGenerating(false);
@@ -1755,43 +1688,27 @@ const Molt: React.FC<MoltProps> = ({ goal, setGoal, goalStep, setGoalStep, isLoc
   }, [goal.outcome, goal.action, goalStep]);
 
   const current = steps[Math.min(goalStep, steps.length - 1)];
-
-  const generateLink = () => `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Adaptiv: ' + (goal.action || 'Action'))}&details=${encodeURIComponent('Goal: ' + (goal.outcome || 'Outcome') + '\n\nMindset: ' + expandingBelief)}`;
-  
-  // NEW MANIFESTO TEXT GENERATOR
-  const manifestoText = `
-I acknowledge the tension in my ${somaticZones[0] || 'body'} regarding "${stressor}".
-I release the old pattern. 
-My new operating truth is: "${expandingBelief}".
-From this place of power, I commit to: ${goal.outcome}.
-I seal this by: ${goal.action} (${goal.when}).
-`.trim();
-
-  const copyArtifact = () => {
-      const artifact = `ADAPTIV SESSION #${sessionCount + 1}\n\n${manifestoText}\n\nGenerated by Adaptiv.`;
-      navigator.clipboard.writeText(artifact);
-      completeSession();
-      alert("Session Artifact copied to clipboard.");
-  };
-
-  const generateEmailLink = () => {
-      const subject = `Adaptiv Session #${sessionCount + 1}: ${stressor}`;
-      const body = `ADAPTIV SESSION ARTIFACT\n\n${manifestoText}\n\n(CC save@alexioda.com to log this session)`;
-      return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  };
-
   const quickTimes = ["Now", "Within 1 Hr", "Today", "Tomorrow"];
-  
-  // DYNAMIC WORKBOOK LOGIC
-  const isBurnout = isBurnoutPath;
-  const workbookTitle = isBurnout ? "Burnout Rescue Kit" : "The Alchemist's Field Guide";
-  const workbookDesc = isBurnout ? "Emergency Protocol + Audio ($27)" : "Get the Interactive Guide ($27)";
+  const workbookTitle = isBurnoutPath ? "Burnout Rescue Kit" : "The Alchemist's Field Guide";
+  const workbookDesc = isBurnoutPath ? "Emergency Protocol + Audio ($27)" : "Get the Interactive Guide ($27)";
   const workbookLink = "https://alexioda.gumroad.com/l/roxaxf";
   
   // Default text if AI fails or no key
   const defaultText = `I acknowledge the tension in my ${somaticZones[0] || 'body'} regarding "${stressor}". I release the old pattern. My new operating truth is: "${expandingBelief}". From this place of power, I commit to: ${goal.outcome}. I seal this by: ${goal.action} (${goal.when}).`;
 
   const finalText = generatedManifesto || defaultText;
+
+  const copyArtifact = () => {
+      navigator.clipboard.writeText(`ADAPTIV SESSION #${sessionCount + 1}\n\n${finalText}\n\nGenerated by Adaptiv.`);
+      completeSession();
+      alert("Session Artifact copied to clipboard.");
+  };
+
+  const generateEmailLink = () => {
+      const subject = `Adaptiv Session #${sessionCount + 1}: ${stressor}`;
+      const body = `ADAPTIV SESSION ARTIFACT\n\n${finalText}\n\n(CC save@alexioda.com to log this session)`;
+      return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
 
   if (isLocked && !primingDone && !isBurnoutPath) { 
     return (
