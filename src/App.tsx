@@ -340,7 +340,6 @@ const Nav: React.FC<NavProps> = ({ title, subtitle, onBack, isDashboard, soundEn
       <div>
         <h2 className="font-sans text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mb-1">{subtitle}</h2>
         <div className="flex items-center gap-2">
-            {/* Small Activity Icon in Header */}
             {!isDashboard && <Activity size={20} className="text-white/80" />}
             <h1 className="font-serif text-3xl text-white/90 italic">{title}</h1>
         </div>
@@ -387,12 +386,10 @@ const Welcome: React.FC<WelcomeProps> = ({ onEnter }) => (
     <div className="min-h-full flex flex-col justify-center items-center py-10">
       <div className="mb-10 relative">
         <div className="absolute inset-0 bg-teal-500/10 blur-xl rounded-full"></div>
-        {/* REPLACED LOGO WITH ACTIVITY ICON - SCALED DOWN */}
         <Activity size={72} className="text-teal-200/80 relative z-10 animate-breathe" strokeWidth={0.8} />
       </div>
       
       <div className="space-y-4 max-w-sm">
-        {/* SWAPPED HIERARCHY: Adaptiv is now the Hero Title */}
         <h1 className="font-serif text-5xl text-white italic tracking-wide leading-tight animate-enter">
           Adaptiv
         </h1>
@@ -413,7 +410,6 @@ const Welcome: React.FC<WelcomeProps> = ({ onEnter }) => (
         Enter the Space
       </button>
 
-      {/* FOOTER BRANDING */}
       <div className="mt-16 flex flex-col items-center opacity-60">
         <p className="font-sans text-[8px] text-white/30 uppercase tracking-widest mb-2">Powered By</p>
         <p className="font-serif italic text-white/80 text-xs">Conscious Growth Coaching</p>
@@ -469,7 +465,6 @@ const Identity: React.FC<IdentityProps> = ({ userName, setUserName, onComplete }
     <div className="min-h-full flex flex-col justify-center items-center py-10 w-full">
       <div className="mb-8 relative">
         <div className="absolute inset-0 bg-white/10 blur-xl rounded-full"></div>
-        {/* REPLACED LOGO WITH ACTIVITY ICON - SCALED DOWN */}
         <Activity size={40} className="text-white/80 relative z-10" strokeWidth={1} />
       </div>
       <h1 className="font-serif text-4xl text-white mb-2 italic tracking-wide">Adaptiv</h1>
@@ -497,7 +492,6 @@ const Identity: React.FC<IdentityProps> = ({ userName, setUserName, onComplete }
 );
 
 const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => {
-  // Logic for the Burnout Trigger
   const triggers = ['work', 'job', 'boss', 'career', 'team', 'project', 'deadline', 'email', 'monday', 'shift', 'burnout', 'tired', 'exhausted', 'drained', 'overwhelm', 'client'];
   const showWorkCheck = triggers.some(t => stressor.toLowerCase().includes(t));
 
