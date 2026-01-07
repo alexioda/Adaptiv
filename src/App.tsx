@@ -8,8 +8,53 @@ import {
   Moon, Coffee, MinusCircle, AlertTriangle, Info, FileText, Thermometer, Sparkles, Loader2
 } from 'lucide-react';
 
-// Import the AI Brain (This handles the API key securely)
-import { generateCoachingQuestions, generateManifesto } from './aiService';
+// --- API HELPERS ---
+
+const generateCoachingQuestions = async (stressor: string, somatic: string) => {
+  try {
+    const res = await fetch('/api/coaching-questions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stressor, somatic })
+    });
+    
+    const contentType = res.headers.get("content-type");
+    if (!res.ok || !contentType || !contentType.includes("application/json")) {
+       throw new Error('API unavailable');
+    }
+
+    const data = await res.json();
+    return data.questions;
+  } catch (error) {
+    console.warn("API Error (Using Fallback):", error);
+    return [
+       "What does this tension know that your mind hasn't caught up to yet?",
+       "When you handle this perfectly, what did you notice first?",
+       "Will you solve this before Tuesday, or do you need until Friday?"
+    ];
+  }
+};
+
+const generateManifesto = async (stressor: string, truth: string, action: string) => {
+  try {
+    const res = await fetch('/api/manifesto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stressor, truth, action })
+    });
+
+    const contentType = res.headers.get("content-type");
+    if (!res.ok || !contentType || !contentType.includes("application/json")) {
+       throw new Error('API unavailable');
+    }
+
+    const data = await res.json();
+    return data.manifesto;
+  } catch (error) {
+    console.warn("API Error (Using Fallback):", error);
+    return `I release ${stressor}. I am the architect of my energy. ${truth} is not my hope—it is my operating system. I seal this with ${action}, my sacred oath to sovereignty.`;
+  }
+};
 
 // --- TYPES ---
 
@@ -95,12 +140,12 @@ interface PartsWorkProps {
 
 interface LaserCoachingProps {
   stressor: string;
+  somatic: string;
   setView: (view: string) => void;
   toggleSound: () => void;
   soundEnabled: boolean;
   setGoal: (val: any) => void;
   setExpandingBelief: (val: string) => void;
-  apiKey: string;
 }
 
 interface PerspectiveProps {
@@ -166,7 +211,6 @@ interface IntegrationProps {
   soundEnabled: boolean;
   somaticZones: string[];
   isBurnoutPath: boolean;
-  apiKey: string;
 }
 
 interface PrimingProps {
@@ -460,7 +504,7 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
       
       <div className="flex-1 flex flex-col gap-6 overflow-y-auto hide-scrollbar animate-enter pb-8">
         
-        {/* PROTOCOL TRACKER */}
+        {/* PROTOCOL TRACKER - "Begin Alchemist Cycle" button removed as requested */}
         <div className="glass-panel p-6 rounded-[32px] border-teal-500/20 relative">
            <div className="flex justify-between items-center mb-4">
               <h3 className="font-serif text-xl text-teal-100 italic">The Alchemist's Cycle</h3>
@@ -469,7 +513,7 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
               </span>
            </div>
            
-           <div className="flex justify-between mb-6 relative z-10 px-1 py-2">
+           <div className="flex justify-between relative z-10 px-1 py-2">
               {Array.from({ length: 7 }).map((_, i) => (
                 <div key={i} className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all text-[10px] font-bold ${
                   i < (sessionCount % 7) 
@@ -483,26 +527,6 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
               ))}
               <div className="absolute top-6 left-4 right-4 h-[1px] bg-white/10 -z-10"></div>
            </div>
-
-           <div className="bg-white/5 rounded-2xl p-4 flex items-center gap-4 mb-4">
-              <div className="p-3 bg-teal-500/20 rounded-full text-teal-200">
-                 <RefreshCw size={20} />
-              </div>
-              <div>
-                 <p className="font-sans text-[10px] text-white/40 uppercase tracking-widest">Current Mission</p>
-                 <p className="font-serif text-lg text-white italic">Full System Reset</p>
-              </div>
-           </div>
-
-           <button 
-             onClick={() => {
-                 if (!stressor) setStressor("General Reset");
-                 setView('somatic');
-             }}
-             className="w-full py-3 rounded-xl bg-teal-500 text-slate-900 font-sans text-xs font-bold tracking-widest uppercase hover:bg-teal-400 transition-all shadow-[0_0_20px_rgba(20,184,166,0.2)]"
-           >
-             Begin Alchemist Cycle
-           </button>
         </div>
 
         {/* CHECK-IN */}
@@ -948,7 +972,7 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
                onClick={() => setPartsStep('connect')}
                className="w-full py-4 rounded-full bg-teal-500/10 text-teal-200 font-sans text-xs tracking-widest uppercase hover:bg-teal-500/20 transition-all border border-teal-500/20"
              >
-               I am unblended
+               I have created space
              </button>
           </div>
         )}
@@ -1049,6 +1073,15 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
               onChange={e => setExpandingBelief(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && setView('lens')}
             />
+            
+            <div className="flex flex-wrap justify-center gap-2 mb-8">
+               {["Fuel my focus", "Deepen my empathy", "Protect without walls"].map(ex => (
+                 <button key={ex} onClick={() => setExpandingBelief(ex)} className="px-3 py-1 rounded-full border border-teal-500/20 bg-teal-500/10 text-[10px] text-teal-200 hover:bg-teal-500/20 transition-all">
+                   {ex}
+                 </button>
+               ))}
+            </div>
+
             <button 
                onClick={() => setView('lens')}
                disabled={!expandingBelief}
@@ -1063,7 +1096,7 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
   );
 };
 
-const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief }) => {
+const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, somatic, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief }) => {
   const [step, setStep] = useState(-1);
   const [answers, setAnswers] = useState({ topic: '', result: '', permission: '', action: '' });
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -1074,7 +1107,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
     const fetchSuggestions = async () => {
         if (step === 0 && !suggestions.length) {
             setIsLoading(true);
-            const aiResponse = await generateCoachingQuestions(stressor, "Body Tension");
+            const aiResponse = await generateCoachingQuestions(stressor, somatic);
             if (aiResponse && aiResponse.length === 3) {
                 setSuggestions(aiResponse);
             }
@@ -1082,10 +1115,10 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
         }
     };
     fetchSuggestions();
-  }, [step, stressor]);
+  }, [step, stressor, somatic]);
 
   // Fallback Static Starters
-  const staticStarters = {
+  const staticStarters: Record<number, string[]> = {
       0: ["I realize that...", "The reality is...", "I am no longer..."],
       1: ["I would feel...", "I would be free to...", "It would look like..."],
       2: ["To let go of...", "To make a mistake...", "To prioritize myself..."],
@@ -1100,8 +1133,8 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
   ];
   
   const current = currentQuestions[step];
-  // Use AI suggestions if available for Step 0 (Truth), else static
-  const displayChips = (step === 0 && suggestions.length > 0) ? suggestions : staticStarters[step as keyof typeof staticStarters];
+  // Always use static starters for chips to be "answers"
+  const displayChips = staticStarters[step] || [];
 
   const handleNext = () => {
     if (step < 3) setStep(step + 1);
@@ -1124,7 +1157,6 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
     return (
        <div className="h-full flex flex-col">
           <Nav title="Breakthrough Laser" subtitle="Ignition" onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={75} />
-          {/* ADDED: flex-1 overflow-y-auto to allow scrolling if content overflows */}
           <div className="flex-1 flex flex-col justify-center animate-enter text-center px-6 overflow-y-auto hide-scrollbar">
               <div className="mb-8 relative">
                 <div className="absolute inset-0 bg-amber-500/20 blur-2xl rounded-full animate-pulse"></div>
@@ -1155,7 +1187,6 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
              <div className="absolute top-0 right-0 p-4 opacity-10"><Target size={100} /></div>
              
              {isLoading ? (
-                 // AI LOADING STATE
                  <div className="flex flex-col items-center justify-center h-40 space-y-4">
                      <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
                      <p className="font-serif text-white/50 italic animate-pulse">Consulting the Alchemist...</p>
@@ -1163,6 +1194,16 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
              ) : (
                  <>
                     <span className="font-sans text-[10px] uppercase tracking-widest text-white/40 mb-2 block">{current.label}</span>
+                    
+                    {/* Display AI Suggestions as prompts ABOVE the input if they exist (Step 0) */}
+                    {step === 0 && suggestions.length > 0 && (
+                        <div className="mb-6 space-y-3">
+                            {suggestions.map((q, idx) => (
+                                <p key={idx} className="font-serif text-lg text-teal-100 italic leading-snug opacity-90">"{q}"</p>
+                            ))}
+                        </div>
+                    )}
+
                     <h3 className="font-serif text-2xl text-white italic mb-8 leading-snug">{current.q}</h3>
                     
                     <input 
@@ -1175,9 +1216,9 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
                     onKeyDown={e => e.key === 'Enter' && answers[current.id as keyof typeof answers] && handleNext()}
                     />
 
-                    {/* CHIPS */}
+                    {/* Answer Chips */}
                     <div className="flex flex-wrap gap-2 mb-8">
-                        {displayChips?.map((s) => (
+                        {displayChips.map((s) => (
                             <button 
                                 key={s} 
                                 onClick={() => handleStarter(s)}
@@ -1196,7 +1237,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, setView, toggle
           </div>
           
           <div className="flex justify-center gap-2 mt-8">
-            {questions.map((_, i) => (
+            {currentQuestions.map((_, i) => (
               <div key={i} className={`h-1 rounded-full transition-all duration-500 ${i <= step ? 'w-8 bg-white' : 'w-2 bg-white/20'}`}></div>
             ))}
           </div>
@@ -1212,8 +1253,8 @@ const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, abilit
       <Nav title="The Perspective" subtitle="Calibration" onBack={() => setView('partswork')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={50} />
       
       <div className="mb-4 animate-enter text-center px-4 shrink-0">
-        <p className="font-sans text-xs text-white/60 leading-relaxed">
-          Stress is simply a ratio between Demand and Resource.
+        <p className="font-sans text-xs text-white/60 leading-relaxed max-w-xs mx-auto">
+          We calibrate here to determine if your system needs <strong>Safety</strong> (Restoration) or <strong>Challenge</strong> (Activation). Honest data prevents burnout.
         </p>
       </div>
 
@@ -1691,7 +1732,7 @@ const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
   );
 };
 
-const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath, apiKey }) => {
+const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath }) => {
   const [primingDone, setPrimingDone] = useState(false);
   const [generatedManifesto, setGeneratedManifesto] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -1702,10 +1743,10 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
       { id: 'when', q: 'The Commitment', ph: 'When will you do it?' }
   ];
   
-  // AI GENERATOR FOR MANIFESTO
+  // AI GENERATOR FOR MANIFESTO (Updated to use API)
   useEffect(() => {
       const generateDecree = async () => {
-          if (isLocked && !isBurnoutPath && !generatedManifesto && apiKey) {
+          if (isLocked && !isBurnoutPath && !generatedManifesto) {
               setIsGenerating(true);
               const result = await generateManifesto(stressor, expandingBelief, goal.action || "action");
               if (result) setGeneratedManifesto(result);
@@ -1713,7 +1754,7 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
           }
       };
       generateDecree();
-  }, [isLocked, apiKey, isBurnoutPath, generatedManifesto, stressor, expandingBelief, goal.action]);
+  }, [isLocked, isBurnoutPath, generatedManifesto, stressor, expandingBelief, goal.action]);
 
   useEffect(() => {
       if (goal.outcome && goal.action && goalStep === 0) setGoalStep(2);
@@ -2070,12 +2111,12 @@ const App = () => {
              setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} 
            />}
            
-           {view === 'laser' && <LaserCoaching stressor={stressor} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setGoal={setGoal} setExpandingBelief={setExpandingBelief} apiKey={apiKey} />}
+           {view === 'laser' && <LaserCoaching stressor={stressor} somatic={somaticZones[0] || 'Body'} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setGoal={setGoal} setExpandingBelief={setExpandingBelief} />}
            {view === 'lens' && <Perspective pressure={pressure} setPressure={setPressure} ability={ability} setAbility={setAbility} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'fork' && <Crossroads stressLevel={stressLevel} energyLevel={energyLevel} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'regulate' && <Breath breathing={breathing} setBreathing={setBreathing} breathCount={breathCount} setBreathCount={setBreathCount} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'alchemy' && <Alchemy setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
-           {view === 'integration' && <Integration goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} isLocked={isLocked} setIsLocked={setIsLocked} expandingBelief={expandingBelief} stressor={stressor} sessionCount={sessionCount} completeSession={completeSession} resetApp={resetApp} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} somaticZones={somaticZones} isBurnoutPath={isBurnoutPath} apiKey={apiKey} />}
+           {view === 'integration' && <Integration goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} isLocked={isLocked} setIsLocked={setIsLocked} expandingBelief={expandingBelief} stressor={stressor} sessionCount={sessionCount} completeSession={completeSession} resetApp={resetApp} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} somaticZones={somaticZones} isBurnoutPath={isBurnoutPath} />}
            {view === 'insight' && <Insight expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'energy' && <EnergyAnalyzer setView={setView} />}
         </div>
@@ -2085,4 +2126,3 @@ const App = () => {
 };
 
 export default App;
-
