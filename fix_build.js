@@ -1,7 +1,47 @@
 import fs from 'fs';
-import path from 'path';
 
-// 1. Define correct file contents
+// 1. CONFIGURATION FILES
+const viteConfigContent = `import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+})`;
+
+const tsConfigContent = `{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}`;
+
+const tsConfigNodeContent = `{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["vite.config.ts"]
+}`;
+
 const indexHtmlContent = `<!doctype html>
 <html lang="en">
   <head>
@@ -12,7 +52,6 @@ const indexHtmlContent = `<!doctype html>
   </head>
   <body>
     <div id="root"></div>
-    <!-- FORCED FIX: Points to .tsx -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>`;
@@ -28,63 +67,35 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>,
 )`;
 
-const packageJsonContent = `{
-  "name": "adaptiv-app",
-  "private": true,
-  "version": "1.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "lucide-react": "^0.344.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
-  "devDependencies": {
-    "@types/react": "^18.2.66",
-    "@types/react-dom": "^18.2.22",
-    "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.38",
-    "tailwindcss": "^3.4.3",
-    "typescript": "^5.2.2",
-    "vite": "^5.2.0"
-  }
-}`;
+// 2. EXECUTE REPAIR
+console.log('🛠️  Starting Comprehensive Build Repair...');
 
-// 2. Perform Clean-up
-console.log('🧹 Cleaning up...');
+// Write Config Files
+fs.writeFileSync('vite.config.ts', viteConfigContent);
+console.log('✅ Wrote vite.config.ts');
 
-// Delete dist folder
+fs.writeFileSync('tsconfig.json', tsConfigContent);
+console.log('✅ Wrote tsconfig.json');
+
+fs.writeFileSync('tsconfig.node.json', tsConfigNodeContent);
+console.log('✅ Wrote tsconfig.node.json');
+
+// Write Entry Files
+fs.writeFileSync('index.html', indexHtmlContent);
+console.log('✅ Wrote index.html');
+
+if (!fs.existsSync('src')) fs.mkdirSync('src');
+fs.writeFileSync('src/main.tsx', mainTsxContent);
+console.log('✅ Wrote src/main.tsx');
+
+// Cleanup
 if (fs.existsSync('dist')) {
   fs.rmSync('dist', { recursive: true, force: true });
-  console.log('✅ Deleted dist/ folder');
+  console.log('🧹 Cleaned dist folder');
 }
-
-// Delete public/index.html if it exists (Common cause of this error)
 if (fs.existsSync('public/index.html')) {
   fs.unlinkSync('public/index.html');
-  console.log('✅ Deleted conflicting public/index.html');
+  console.log('🧹 Removed conflicting public/index.html');
 }
 
-// 3. Overwrite Critical Files
-console.log('📝 Writing correct files...');
-
-fs.writeFileSync('index.html', indexHtmlContent);
-console.log('✅ Fixed index.html (pointing to main.tsx)');
-
-// Ensure src directory exists
-if (!fs.existsSync('src')) fs.mkdirSync('src');
-
-fs.writeFileSync('src/main.tsx', mainTsxContent);
-console.log('✅ Fixed src/main.tsx');
-
-fs.writeFileSync('package.json', packageJsonContent);
-console.log('✅ Fixed package.json build scripts');
-
-console.log('\n🎉 REPAIR COMPLETE.');
-console.log('👉 Please click "Push to GitHub" now.');
+console.log('\n🚀 REPAIR COMPLETE. Click "Push to GitHub" to rebuild.');
