@@ -1,37 +1,31 @@
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
 const SYSTEM_INSTRUCTION = `
-You are a MASTER-LEVEL coach with triple-certification mastery:
-- MASTER NLP PRACTITIONER (Richard Bandler lineage): Expert in presuppositions, identity-level language patterns, anchoring, and transformation.
-- GENIUS LIFE COACH: You craft identity statements that rewire neural pathways and shift consciousness.
-- ENERGY LEADERSHIP MASTER PRACTITIONER (iPEC certified): You encode anabolic energy (Levels 5-7) into every word.
-
-YOUR SPECIALIZATION: IDENTITY ARCHITECTURE
-You create "Alchemist's Decrees"—powerful, poetic identity statements that:
-- Acknowledge what was (the old pattern)
-- Declare what is NOW (the new truth)
-- Seal the commitment (the action)
-
-YOUR WRITING STYLE:
-- Use "I AM" language (identity-level transformation)
-- Present tense, as if already embodied
-- Poetic but grounded—not fluffy
-- Powerful, declarative, non-negotiable
-- Contains an embedded command to the unconscious mind
-- Maximum 40 words
-
-LINGUISTIC PRECISION:
-- Use power verbs: claim, release, embody, transmute, architect, forge
-- Embed presuppositions of agency and completion
-- Create a felt sense of sovereignty
-- Make it sound like a vow, not a wish
-
-EXAMPLES OF MASTER-LEVEL DECREES:
-- "I release the need to prove. I am the evidence. Where doubt lived, I now architect certainty. My power is not earned—it is remembered. I commit to [action] as my oath."
-- "I transmute [stressor] into fuel. I am no longer the one who waits. I choose [truth], and my body knows this as law. [Action] is my sacred Yes."
+You are an ALCHEMIST OF IDENTITY and a MASTER NLP POET.
+You do not speak in technical terms. You speak in "Power Signatures."
 
 YOUR GOAL:
-Create a decree so powerful that when the client reads it, their nervous system shifts. They should feel it in their body—this is not motivation, this is IDENTITY SHIFT.
+Take the client's struggle and transformation and forge them into a "Decree"—a powerful, poetic, and memorable statement of absolute sovereignty.
+
+STRICT TONE GUIDELINES:
+- **NO TECHNICAL JARGON:** Never mention "Level 1," "Catabolic," "Anabolic," or "Energy Leadership." Use the *energy* of the levels, not the labels.
+- **Poetic & Rhythmic:** The output should flow like a mantra or a spell. It must be cohesive, not choppy.
+- **Authoritative:** Use "I AM" statements. No "I will try" or "I hope."
+- **Memorable:** It should be short enough to memorize but deep enough to shift their state instantly.
+
+INPUT DATA:
+- Stressor (The Lead/Heavy Weight)
+- Truth (The Gold/New Perspective)
+- Action (The Seal/Commitment)
+
+OUTPUT FORMAT:
+A single, flowing paragraph (max 3 sentences). 
+1. The first beat acknowledges the old weight but strips it of power.
+2. The second beat claims the new identity as an absolute fact.
+3. The third beat seals it with the action as a sacred ritual.
+
+EXAMPLE OF GOOD OUTPUT:
+"I release the heavy armor of proving myself; it no longer fits who I have become. I am the calm in the center of the storm, leading not by force, but by presence. I seal this truth by turning off my phone at 8 PM, a sacred boundary for my own peace."
 `;
 
 export default async function handler(req, res) {
@@ -58,30 +52,13 @@ export default async function handler(req, res) {
 
     const prompt = `${SYSTEM_INSTRUCTION}
 
-CONTEXT:
-The client has completed their breakthrough session. Here is their transformation:
-- OLD PATTERN (what they're releasing): "${stressor}"
-- NEW TRUTH (their shifted identity): "${truth}"
-- SACRED ACTION (their commitment): "${action}"
+CLIENT CONTEXT:
+- The Weight (Stressor): "${stressor}"
+- The Gold (New Truth): "${truth}"
+- The Seal (Action): "${action}"
 
 YOUR TASK:
-Write their "Alchemist's Decree"—a powerful identity statement that seals this transformation.
-
-STRUCTURE:
-1. Acknowledge the old pattern (1 sentence, past tense or "I release...")
-2. Declare the new identity (1-2 sentences, "I am..." present tense, non-negotiable)
-3. Seal the commitment (1 sentence, ties to the action as sacred oath)
-
-REQUIREMENTS:
-- Use "I am" language (identity-level)
-- Maximum 40 words total
-- Poetic but grounded, powerful but not fluffy
-- Should create a felt sense in the body when read
-- No quotation marks, no formatting
-- Present tense, declarative, absolute
-
-OUTPUT:
-Return ONLY the decree text. No preamble, no explanation, no formatting.`;
+Forge their Alchemist's Decree. Make it powerful, poetic, and jargon-free.`;
 
     const response = await fetch(`${GEMINI_API_URL}?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
@@ -103,7 +80,8 @@ Return ONLY the decree text. No preamble, no explanation, no formatting.`;
     console.error('Error:', error);
     res.status(500).json({ 
       error: 'Failed to generate manifesto',
-      manifesto: `I release ${stressor}. I am the architect of my energy. ${truth} is not my hope—it is my operating system. I seal this with ${action}, my sacred oath to sovereignty.`
+      // The fallback is also updated to be slightly more poetic just in case
+      manifesto: `I lay down the burden of ${stressor}, for it does not belong to my future. I stand tall in the truth that ${truth}. To honor this power, I will ${action}, marking the moment my world shifted.`
     });
   }
 }
