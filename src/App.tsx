@@ -12,14 +12,17 @@ import {
 
 const getSmartQuestion = (energy: number, stress: number) => {
   // CATABOLIC ZONE (High Stress / Low Energy)
+  // Level 1 (Victim) or Level 2 (Conflict)
   if (stress > 60 || energy < 40) {
     return "What specifically is threatened by this situation?";
   }
   // ANABOLIC ZONE (High Energy / Flow)
+  // Level 5 (Opportunity) or Level 6 (flow)
   if (energy > 70) {
     return "If you were coaching your best self, what would you tell them to do?";
   }
   // TRANSITIONAL ZONE (Coping / Rationalizing)
+  // Level 3 (Responsibility) or Level 4 (Concern)
   return "What is one assumption you are making that might not be true?";
 };
 
@@ -40,6 +43,7 @@ const generateCoachingQuestions = async (stressor: string, perception: string, s
     }
 
     const data = await res.json();
+    // Return the array, we will pick the first one in the UI logic
     return data.questions; 
   } catch (error) {
     // FALLBACK: Use the Client-Side ELI Brain logic
@@ -582,6 +586,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
   const [answers, setAnswers] = useState<any>({ topic: '', result: '', permission: '', action: '' });
   const [aiQuestions, setAiQuestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedQuestion, setSelectedQuestion] = useState<string>("");
 
   useEffect(() => {
     // Fetch ONCE on mount
@@ -1193,6 +1198,11 @@ const App = () => {
 
   const toggleSound = () => { setSoundEnabled(!soundEnabled); /* Audio logic omitted for brevity */ };
   const resetApp = () => { setView('welcome'); setStressor(''); setPerception(''); setSomaticZones([]); setIsLocked(false); setIsBurnoutPath(false); };
+  
+  // Simple session completion handler to increment count
+  const completeSession = () => {
+    setSessionCount(prev => prev + 1);
+  };
 
   return (
     <>
@@ -1225,7 +1235,7 @@ const App = () => {
            {view === 'fork' && <Crossroads stressLevel={stressLevel} energyLevel={energyLevel} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'regulate' && <Breath breathing={breathing} setBreathing={setBreathing} breathCount={breathCount} setBreathCount={setBreathCount} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'alchemy' && <Alchemy setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
-           {view === 'integration' && <Integration goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} isLocked={isLocked} setIsLocked={setIsLocked} expandingBelief={expandingBelief} stressor={stressor} sessionCount={sessionCount} completeSession={() => {}} resetApp={resetApp} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} somaticZones={somaticZones} isBurnoutPath={isBurnoutPath} />}
+           {view === 'integration' && <Integration goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} isLocked={isLocked} setIsLocked={setIsLocked} expandingBelief={expandingBelief} stressor={stressor} sessionCount={sessionCount} completeSession={completeSession} resetApp={resetApp} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} somaticZones={somaticZones} isBurnoutPath={isBurnoutPath} />}
            {view === 'insight' && <Insight expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'energy' && <EnergyAnalyzer setView={setView} />}
         </div>
@@ -1235,4 +1245,3 @@ const App = () => {
 };
 
 export default App;
-```eof
