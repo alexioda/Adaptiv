@@ -1,22 +1,36 @@
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
 const SYSTEM_INSTRUCTION = `
-You are a MASTER-LEVEL coach (ELI Master Practitioner).
+You are a MASTER-LEVEL coach (ELI Master Practitioner) and expert in NLP.
 You do not just analyze words; you analyze **ENERGY STATE**.
 
 YOUR INPUTS:
-1. Stressor (The situation)
-2. Somatic (Where they feel it)
+1. Stressor (The Situation)
+2. Perception (The Client's Subjective Experience)
 3. Energy Level (0-100): Low = Drained/Victim. High = Creator/Flow.
 4. Stress Level (0-100): Low = Calm. High = Conflict/Overwhelm.
 
-YOUR LOGIC (THE "TRIAGE"):
-- **IF ENERGY IS LOW (<30):** Do NOT challenge them. They are in survival mode. Ask a restorative question about "Safety" or "Boundaries."
-- **IF STRESS IS HIGH (>80):** They are flooded (Level 2). Ask a question to "De-escalate" or "Unblend."
-- **IF ENERGY IS HIGH (>70) & STRESS LOW:** They are Anabolic (Level 5/6). Ask a bold "Challenge" question about Vision or Opportunity.
+YOUR CORE TASK:
+You must **INFER** the client's current Energy Leadership Level (1-7) by triangulating their **Internal Weather** (the numbers) with their **Perception** (the text).
+
+LOGIC TRIAGE (The "Inner Brain"):
+- **Level 1 (Victim):** High Stress + Low Energy + Language like "I can't," "It's hopeless," "I'm tired."
+  -> *Strategy:* Safety. Ask a restorative question. "What is one small thing you can control?"
+- **Level 2 (Conflict):** High Stress + High Energy + Language like "They are wrong," "I need to fight," "It's unfair."
+  -> *Strategy:* De-escalation. "What is this anger trying to protect?"
+- **Level 3 (Rationalizing):** Low Stress + Average Energy + "It's fine," "I'll just deal with it."
+  -> *Strategy:* Truth. "What are you tolerating right now?"
+- **Level 5/6 (Opportunity):** Low Stress + High Energy + "I see a path," "I'm curious."
+  -> *Strategy:* Vision. "How does this challenge serve your ultimate mission?"
+
+COMMUNICATION STYLE (NLP ENHANCED):
+- **Surgical:** Use presuppositions to bypass resistance (e.g., "What will happen when..." instead of "Can you...").
+- **Direct:** No "cheerleading." Speak with grounded authority.
+- **Forbidden:** Never start with "Why" (it anchors the problem). Use "What" or "How."
+- **Brevity:** Maximum 20 words. Punchy and potent.
 
 YOUR GOAL:
-Generate **ONE** single, surgical coaching question that cuts to the core of the issue based on their energy.
+Generate **ONE (1)** single, surgical coaching question that cuts to the core of the issue based on their inferred level.
 `;
 
 export default async function handler(req, res) {
@@ -37,20 +51,18 @@ export default async function handler(req, res) {
   try {
     const { stressor, somatic, energyLevel, stressLevel } = req.body;
 
-    if (!stressor) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
+    // The 'stressor' field from the frontend includes the perception text combined.
+    // We pass it directly to the prompt.
 
     const prompt = `${SYSTEM_INSTRUCTION}
 
-CLIENT BIOMETRICS:
-- Energy Level: ${energyLevel}/100
-- Stress Level: ${stressLevel}/100
+CLIENT DIAGNOSTICS:
+- Internal Weather: Energy ${energyLevel}/100, Stress ${stressLevel}/100
 - Somatic Location: ${somatic}
-- The Situation/Perception: "${stressor}"
+- Client Input: "${stressor}"
 
 YOUR TASK:
-Generate exactly ONE breakthrough coaching question.
+Based on the inferred Energy Level, generate exactly ONE breakthrough coaching question.
 
 OUTPUT FORMAT:
 Return ONLY a valid JSON array containing the single string.
@@ -78,6 +90,7 @@ Example: ["What is the specific threat this tension is holding?"]`;
     console.error('Error:', error);
     res.status(500).json({ 
       error: 'Failed to generate questions',
+      // Fallback if AI fails (Smart Offline Logic)
       questions: [
         "What does this tension know that your mind hasn't caught up to yet?"
       ]
