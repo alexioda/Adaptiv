@@ -111,7 +111,7 @@ interface PartsWorkProps { selectedPart: string; sensation: string; setSensation
 interface LaserCoachingProps { stressor: string; perception: string; somatic: string; setView: (view: string) => void; toggleSound: () => void; soundEnabled: boolean; setGoal: (val: any) => void; setExpandingBelief: (val: string) => void; energyLevel: number; stressLevel: number; }
 interface PerspectiveProps { pressure: number; setPressure: (val: number) => void; ability: number; setAbility: (val: number) => void; setView: (view: string) => void; toggleSound: () => void; soundEnabled: boolean; }
 interface CrossroadsProps { setView: (view: string) => void; toggleSound: () => void; soundEnabled: boolean; stressLevel: number; energyLevel: number; }
-interface BreathProps { breathing: boolean; setBreathing: (val: boolean) => void; breathCount: number; setBreathCount: (val: number) => void; setView: (view: string) => void; toggleSound: () => void; soundEnabled: boolean; }
+interface BreathProps { breathing: boolean; setBreathing: (val: boolean) => void; breathCount: number; setBreathCount: React.Dispatch<React.SetStateAction<number>>; setView: (view: string) => void; toggleSound: () => void; soundEnabled: boolean; }
 interface InsightProps { expandingBelief: string; setExpandingBelief: (val: string) => void; setView: (view: string) => void; toggleSound: () => void; soundEnabled: boolean; }
 interface AlchemyProps { setView: (view: string) => void; toggleSound: () => void; soundEnabled: boolean; }
 interface EnergyAnalyzerProps { setView: (view: string) => void; }
@@ -732,6 +732,77 @@ const Alchemy: React.FC<AlchemyProps> = ({ setView, toggleSound, soundEnabled })
   </div>
 );
 
+const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToIntegration }) => {
+  const [step, setStep] = useState(0);
+
+  const recoverySteps = [
+    {
+      title: "Emergency Brake",
+      icon: Anchor,
+      desc: "We cannot 'push' through burnout. We must stop. Locate one part of your body that feels neutral (hands, feet). Focus there only.",
+      action: "I am anchored."
+    },
+    {
+      title: "Boundary Alchemy",
+      icon: MinusCircle,
+      desc: "Burnout is cured by subtraction. What is one thing you will REFUSE to do today?",
+      action: "I let it go."
+    },
+    {
+      title: "Identity Shift",
+      icon: User,
+      desc: "You are not the worker. You are the Asset. If the Asset breaks, the work stops. Protecting the Asset IS the work.",
+      action: "I am the Asset."
+    }
+  ];
+
+  const current = recoverySteps[step];
+
+  const handleNext = () => {
+    if (step < 2) {
+      setStep(step + 1);
+    } else {
+      setExpandingBelief("I am the Asset. Rest is my strategy.");
+      setGoal({ 
+        outcome: "Status: Unavailable", 
+        action: "I am offline to realign.", 
+        when: "Now" 
+      });
+      setViewToIntegration();
+    }
+  };
+  
+  const handleBack = () => {
+      if (step > 0) setStep(step - 1);
+      else setView('dashboard');
+  }
+
+  return (
+    <div className="h-full flex flex-col">
+       <Nav title="Preservation Mode" subtitle="Recovery Loop" onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={33 * (step+1)} />
+       
+       <div className="flex-1 flex flex-col justify-center items-center animate-enter text-center px-4 overflow-y-auto hide-scrollbar">
+          <div className="mb-8 relative mx-auto">
+             <div className="absolute inset-0 bg-orange-500/20 blur-2xl rounded-full"></div>
+             <current.icon size={64} className="text-orange-200 relative z-10" strokeWidth={1} />
+          </div>
+
+          <h2 className="font-serif text-3xl text-white italic mb-4">{current.title}</h2>
+          <p className="font-sans text-sm text-orange-100/70 leading-relaxed mb-12 max-w-xs mx-auto">
+             {current.desc}
+          </p>
+
+          <button 
+            onClick={handleNext}
+            className="w-full py-5 rounded-full bg-gradient-to-r from-orange-900/60 to-amber-900/60 border border-orange-500/30 text-orange-100 font-sans text-xs tracking-widest uppercase hover:border-orange-500/50 transition-all"
+          >
+             {current.action}
+          </button>
+       </div>
+    </div>
+  );
+};
+
 const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
   const [step, setStep] = useState(0);
 
@@ -816,10 +887,13 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
     }
   }, [isLocked, isBurnoutPath, manifesto]);
 
+  // RESTORED: Quick times buttons for the 'when' step
   const quickTimes = ["Now", "Within 1 Hr", "Today", "Tomorrow"];
+  
   const steps = [{ id: 'outcome', q: 'The Goal', ph: 'Desired outcome?' }, { id: 'action', q: 'The Action', ph: 'Single step?' }, { id: 'when', q: 'The Commitment', ph: 'When?' }];
   const current = steps[Math.min(goalStep, 2)];
 
+  // Added handleBack logic
   const handleBack = () => {
     if (goalStep > 0) setGoalStep(goalStep - 1);
     else setView('alchemy');
@@ -854,121 +928,107 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
 
   if (isLocked) {
     return (
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col px-4 text-center justify-center">
         <Nav title="Integration" subtitle="Blueprint Complete" onBack={() => setView('fork')} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={100} aiActive={generating} />
         
-        <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-20">
-            {/* THE DECREE CARD */}
-            <div className={`glass-panel p-8 rounded-[32px] mb-8 relative overflow-hidden transition-all ${isBurnoutPath ? 'border-orange-500/50' : ''}`}>
-              <div className="flex justify-center mb-6">
-                {isBurnoutPath ? (
-                  <div className="p-4 bg-orange-900/30 rounded-full border border-orange-500/50">
-                    <BatteryWarning size={48} className="text-orange-300" />
-                  </div>
-                ) : (
-                  <FileText size={64} className="text-teal-200 opacity-80" />
-                )}
-              </div>
+        {/* ADDED SCROLLING HERE */}
+        <div className={`glass-panel p-8 rounded-[32px] mb-6 overflow-y-auto max-h-[60vh] ${isBurnoutPath ? 'border-orange-500/50' : ''}`}>
+           <div className="flex justify-center mb-6">
+             {isBurnoutPath ? (
+               <div className="p-4 bg-orange-900/30 rounded-full border border-orange-500/50">
+                 <BatteryWarning size={48} className="text-orange-300" />
+               </div>
+             ) : (
+               <FileText size={64} className="text-teal-200 opacity-80" />
+             )}
+           </div>
 
-              <p className={`font-sans text-[9px] uppercase tracking-widest mb-6 flex items-center justify-center gap-2 ${isBurnoutPath ? 'text-orange-200/80' : 'text-teal-200/60'}`}>
-                {isBurnoutPath ? "Permission Slip" : "Alchemist Decree"}
-                {isOffline && <span className="bg-red-500/20 text-red-300 px-1 rounded flex items-center gap-1"><WifiOff size={8}/> Offline Mode</span>}
-              </p>
+           <p className={`font-sans text-[9px] uppercase tracking-widest mb-6 flex items-center justify-center gap-2 ${isBurnoutPath ? 'text-orange-200/80' : 'text-teal-200/60'}`}>
+             {isBurnoutPath ? "Permission Slip" : "Alchemist Decree"}
+             {isOffline && <span className="bg-red-500/20 text-red-300 px-1 rounded flex items-center gap-1"><WifiOff size={8}/> Offline Mode</span>}
+           </p>
 
-              <div className="font-serif text-lg leading-relaxed text-white/90 italic mb-8 text-center">
-                {generating ? (
-                  <div className="flex flex-col items-center gap-3 animate-pulse">
-                    <Loader2 className="animate-spin text-teal-400" size={24}/>
-                    <span>Forging Decree...</span>
-                  </div>
-                ) : isBurnoutPath ? (
-                  `"I, ${'The Sovereign'}, grant myself full permission to pause. The world will wait. My energy is my most precious asset, and I choose to protect it now."`
-                ) : (
-                  `"${manifesto || expandingBelief}"`
-                )}
-              </div>
+           <div className="font-serif text-lg leading-relaxed text-white/90 italic mb-6">
+             {generating ? (
+               <div className="flex flex-col items-center gap-3 animate-pulse">
+                 <Loader2 className="animate-spin text-teal-400" size={24}/>
+                 <span>Forging Decree...</span>
+               </div>
+             ) : isBurnoutPath ? (
+               // Explicit Burnout Permission Slip
+               `"I, ${'The Sovereign'}, grant myself full permission to pause. The world will wait. My energy is my most precious asset, and I choose to protect it now."`
+             ) : (
+               `"${manifesto || expandingBelief}"`
+             )}
+           </div>
 
-              {/* UTILITIES (Copy/Email/Cal) */}
-              {!generating && (
-                <div className="flex justify-center gap-6 border-t border-white/10 pt-6">
-                    <button onClick={copyArtifact} className="flex flex-col items-center gap-1 text-white/40 hover:text-white transition-colors">
-                      <Copy size={18}/>
-                      <span className="text-[8px] uppercase tracking-widest">Copy</span>
-                    </button>
-                    <a href={generateEmailLink()} className="flex flex-col items-center gap-1 text-white/40 hover:text-white transition-colors">
-                      <Mail size={18}/>
-                      <span className="text-[8px] uppercase tracking-widest">Email</span>
-                    </a>
-                    <a href={generateCalendarLink()} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-white/40 hover:text-white transition-colors">
-                      <Calendar size={18}/>
-                      <span className="text-[8px] uppercase tracking-widest">Calendar</span>
-                    </a>
-                </div>
-              )}
-            </div>
+           {/* RESTORED DECREE UTILITIES */}
+           {!generating && (
+             <div className="flex justify-center gap-6 border-t border-white/10 pt-6">
+                <button onClick={copyArtifact} className="flex flex-col items-center gap-1 text-white/40 hover:text-white transition-colors">
+                  <Copy size={18}/>
+                  <span className="text-[8px] uppercase tracking-widest">Copy</span>
+                </button>
+                <a href={generateEmailLink()} className="flex flex-col items-center gap-1 text-white/40 hover:text-white transition-colors">
+                  <Mail size={18}/>
+                  <span className="text-[8px] uppercase tracking-widest">Email</span>
+                </a>
+                <a href={generateCalendarLink()} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-white/40 hover:text-white transition-colors">
+                  <Calendar size={18}/>
+                  <span className="text-[8px] uppercase tracking-widest">Calendar</span>
+                </a>
+             </div>
+           )}
 
-            {/* UPSELL / NEXT STEPS SECTION */}
-            {!isBurnoutPath && (
-              <div className="space-y-4 mb-8">
-                 <div className="text-center mb-6">
-                    <h3 className="font-serif text-xl text-white/90 italic mb-2">The Architecture of Change</h3>
-                    <p className="font-sans text-xs text-white/50 max-w-xs mx-auto leading-relaxed">
-                      You have shifted your state. Now, anchor this new reality.
-                    </p>
-                 </div>
-
-                 {/* ENERGY LENS AUDIT */}
-                 <button onClick={() => setView('energy')} className="w-full block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-teal-500/20 hover:border-teal-400/40 text-left">
-                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Activity size={80} className="text-teal-300" /></div>
-                    <div className="relative z-10">
-                       <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-teal-500/20 text-[9px] font-bold uppercase tracking-widest text-teal-300">Baseline Check</span></div>
-                       <h3 className="font-serif text-xl text-white italic mb-1">Energy Lens Audit</h3>
-                       <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Understand your default patterns. Take the 6-question diagnostic.</p>
-                       <div className="inline-flex items-center gap-2 text-teal-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Start Audit <ArrowRight size={14} /></div>
-                    </div>
-                 </button>
-
-                 {/* CALENDLY (Full ELI) */}
-                 <a href="https://calendly.com/alexioda" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-indigo-500/20 hover:border-indigo-400/40">
-                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Zap size={80} className="text-indigo-300" /></div>
-                    <div className="relative z-10">
-                       <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-indigo-500/20 text-[9px] font-bold uppercase tracking-widest text-indigo-300">1:1 Coaching</span></div>
-                       <h3 className="font-serif text-xl text-white italic mb-1">Lock in the Shift</h3>
-                       <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">To rewire your baseline permanently, book a Full Energy Leadership Index (ELI) Assessment.</p>
-                       <div className="inline-flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Book Strategy Session <ArrowRight size={14} /></div>
-                    </div>
-                 </a>
-
-                 {/* WORKBOOK */}
-                 <a href="https://alexioda.gumroad.com/l/roxaxf" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-blue-500/20 hover:border-blue-400/40">
-                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><BookOpen size={80} className="text-blue-300" /></div>
-                    <div className="relative z-10">
-                       <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-blue-500/20 text-[9px] font-bold uppercase tracking-widest text-blue-300">Self-Paced</span></div>
-                       <h3 className="font-serif text-xl text-white italic mb-1">The Field Guide</h3>
-                       <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Get the interactive workbook to master this protocol.</p>
-                       <div className="inline-flex items-center gap-2 text-blue-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Get the Guide <ExternalLink size={14} /></div>
-                    </div>
-                 </a>
-                 
-                 {/* FACEBOOK COMMUNITY */}
-                 <a href="https://www.facebook.com/share/1RmJbo4Gdt/" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-purple-500/20 hover:border-purple-400/40">
-                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Facebook size={80} className="text-purple-300" /></div>
-                    <div className="relative z-10">
-                       <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-purple-500/20 text-[9px] font-bold uppercase tracking-widest text-purple-300">Community</span></div>
-                       <h3 className="font-serif text-xl text-white italic mb-1">Join the Circle</h3>
-                       <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Connect with other Sovereign Leaders. Daily insights and tools.</p>
-                       <div className="inline-flex items-center gap-2 text-purple-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Join Facebook Group <ExternalLink size={14} /></div>
-                    </div>
-                 </a>
-              </div>
-            )}
-
-            {/* NAV FOOTER */}
-            <div className="flex gap-4 justify-center pb-8 pt-4 border-t border-white/5">
-                <button onClick={resetApp} className="flex items-center justify-center gap-2 text-white/40 hover:text-white uppercase text-[10px] tracking-widest"><RefreshCw size={12}/> Reset System</button>
-                <button onClick={() => setView('dashboard')} className={`flex items-center justify-center gap-2 uppercase text-[10px] tracking-widest border px-4 py-2 rounded-full ${isBurnoutPath ? 'text-orange-300 border-orange-500/30 hover:bg-orange-900/20' : 'text-teal-400 border-teal-500/30 hover:bg-teal-900/20'}`}><Home size={12}/> Return to Orbit</button>
-            </div>
+           <div className={`w-12 h-[1px] mx-auto mb-4 ${isBurnoutPath ? 'bg-orange-500/50' : 'bg-teal-500/50'}`}></div>
+           <p className="font-serif text-white/90 italic">{isBurnoutPath ? "Protocol: Deep Rest Active." : "Mission Complete."}</p>
         </div>
+
+        {/* RESTORED NAVIGATION BUTTONS */}
+        <div className="flex gap-4 justify-center pb-8">
+            <button onClick={resetApp} className="flex items-center justify-center gap-2 text-white/40 hover:text-white uppercase text-[10px] tracking-widest"><RefreshCw size={12}/> Reset System</button>
+            <button onClick={() => setView('dashboard')} className={`flex items-center justify-center gap-2 uppercase text-[10px] tracking-widest border px-4 py-2 rounded-full ${isBurnoutPath ? 'text-orange-300 border-orange-500/30 hover:bg-orange-900/20' : 'text-teal-400 border-teal-500/30 hover:bg-teal-900/20'}`}><Home size={12}/> Return to Orbit</button>
+        </div>
+        
+        {/* BURNOUT SPECIFIC UPSELL */}
+        {isBurnoutPath ? (
+          <div className="mb-8 p-6 rounded-2xl bg-orange-900/10 border border-orange-500/20">
+             <h4 className="font-serif text-orange-200 italic mb-2">Why did this happen?</h4>
+             <p className="text-xs text-white/60 mb-4">Burnout isn't just about workload; it's about energy leaks. Let's find yours.</p>
+             <button onClick={() => setView('energy')} className="text-[10px] font-bold uppercase tracking-widest text-orange-400 hover:text-white">Diagnose the Leak &rarr;</button>
+          </div>
+        ) : (
+        /* RESTORED: DEEPEN THE WORK FOR NON-BURNOUT PATH */
+        <>
+          <div className="relative overflow-hidden p-8 rounded-[32px] glass-panel group cursor-pointer transition-all hover:bg-white/5 mb-8">
+             <div className="absolute -right-4 -top-4 opacity-10 group-hover:opacity-20 transition-opacity rotate-12"><BookOpen size={100} className="text-indigo-400" /></div>
+             <h3 className="font-serif text-xl text-white italic mb-2">The Field Guide</h3>
+             <p className="font-sans text-xs text-white/50 mb-6 leading-relaxed max-w-[80%]">Get the interactive workbook to master this protocol.</p>
+             <a href="https://alexioda.gumroad.com/l/roxaxf" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-indigo-600/20 border border-indigo-500/30 text-indigo-200 hover:bg-indigo-600/40 transition-colors text-xs font-bold uppercase tracking-wide">Get the Guide <ExternalLink size={14} /></a>
+          </div>
+
+          {/* ENERGY LENS AUDIT */}
+             <button onClick={() => setView('energy')} className="w-full block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-teal-500/20 hover:border-teal-400/40 text-left mb-8">
+                <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Activity size={80} className="text-teal-300" /></div>
+                <div className="relative z-10">
+                   <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-teal-500/20 text-[9px] font-bold uppercase tracking-widest text-teal-300">Baseline Check</span></div>
+                   <h3 className="font-serif text-xl text-white italic mb-1">Energy Lens Audit</h3>
+                   <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Understand your default patterns. Take the 6-question diagnostic.</p>
+                   <div className="inline-flex items-center gap-2 text-teal-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Start Audit <ArrowRight size={14} /></div>
+                </div>
+             </button>
+
+          <div className="relative overflow-hidden p-8 rounded-[32px] glass-panel group cursor-pointer transition-all hover:bg-white/5 mb-8">
+             <div className="absolute -right-4 -top-4 opacity-10 group-hover:opacity-20 transition-opacity rotate-12"><Calendar size={100} className="text-blue-400" /></div>
+             <h3 className="font-serif text-xl text-white italic mb-2">Deepen the Work</h3>
+             <p className="font-sans text-xs text-white/50 mb-6 leading-relaxed max-w-[80%]">You have begun the shift. Cement this architecture with a 1:1 session at Conscious Growth Coaching.</p>
+             <div className="flex gap-3">
+               <a href="https://www.facebook.com/share/1RmJbo4Gdt/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-200 hover:bg-blue-600/40 transition-colors text-xs font-bold uppercase tracking-wide">Facebook <ExternalLink size={14} /></a>
+               <a href="https://calendly.com/alexioda" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-teal-600/20 border border-teal-500/30 text-teal-200 hover:bg-teal-600/40 transition-colors text-xs font-bold uppercase tracking-wide">Book Full ELI Assessment <ExternalLink size={14} /></a>
+             </div>
+          </div>
+        </>
+        )}
       </div>
     );
   }
@@ -979,6 +1039,7 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
       <div className="glass-panel p-8 rounded-[32px] m-4">
          <h3 className="font-serif text-xl text-white italic mb-6">{current.q}</h3>
          
+         {/* RESTORED: Special UI for the 'when' step */}
          {current.id === 'when' ? (
            <div className="space-y-6">
               <div className="grid grid-cols-2 gap-3">
