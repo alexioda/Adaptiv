@@ -421,6 +421,14 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
               </div>
             )}
             
+            <div className="flex gap-2">
+              <button onClick={() => setView('burnout_check')} className="flex-1 py-4 rounded-xl border border-white/5 text-white/40 flex items-center justify-center gap-2 hover:bg-white/5 transition-all">
+                  <Coffee size={14}/> <span className="font-sans text-[10px] uppercase tracking-widest">Burnout Risk</span>
+              </button>
+              <button onClick={() => setView('energy')} className="flex-1 py-4 rounded-xl border border-white/5 text-white/40 flex items-center justify-center gap-2 hover:bg-white/5 transition-all">
+                  <Zap size={14}/> <span className="font-sans text-[10px] uppercase tracking-widest">Energy Audit</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -734,6 +742,77 @@ const Alchemy: React.FC<AlchemyProps> = ({ setView, toggleSound, soundEnabled })
     </div>
   </div>
 );
+
+const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToIntegration }) => {
+  const [step, setStep] = useState(0);
+
+  const recoverySteps = [
+    {
+      title: "Emergency Brake",
+      icon: Anchor,
+      desc: "We cannot 'push' through burnout. We must stop. Locate one part of your body that feels neutral (hands, feet). Focus there only.",
+      action: "I am anchored."
+    },
+    {
+      title: "Boundary Alchemy",
+      icon: MinusCircle,
+      desc: "Burnout is cured by subtraction. What is one thing you will REFUSE to do today?",
+      action: "I let it go."
+    },
+    {
+      title: "Identity Shift",
+      icon: User,
+      desc: "You are not the worker. You are the Asset. If the Asset breaks, the work stops. Protecting the Asset IS the work.",
+      action: "I am the Asset."
+    }
+  ];
+
+  const current = recoverySteps[step];
+
+  const handleNext = () => {
+    if (step < 2) {
+      setStep(step + 1);
+    } else {
+      setExpandingBelief("I am the Asset. Rest is my strategy.");
+      setGoal({ 
+        outcome: "Status: Unavailable", 
+        action: "I am offline to realign.", 
+        when: "Now" 
+      });
+      setViewToIntegration();
+    }
+  };
+  
+  const handleBack = () => {
+      if (step > 0) setStep(step - 1);
+      else setView('dashboard');
+  }
+
+  return (
+    <div className="h-full flex flex-col">
+       <Nav title="Preservation Mode" subtitle="Recovery Loop" onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={33 * (step+1)} />
+       
+       <div className="flex-1 flex flex-col justify-center items-center animate-enter text-center px-4 overflow-y-auto hide-scrollbar">
+          <div className="mb-8 relative mx-auto">
+             <div className="absolute inset-0 bg-orange-500/20 blur-2xl rounded-full"></div>
+             <current.icon size={64} className="text-orange-200 relative z-10" strokeWidth={1} />
+          </div>
+
+          <h2 className="font-serif text-3xl text-white italic mb-4">{current.title}</h2>
+          <p className="font-sans text-sm text-orange-100/70 leading-relaxed mb-12 max-w-xs mx-auto">
+             {current.desc}
+          </p>
+
+          <button 
+            onClick={handleNext}
+            className="w-full py-5 rounded-full bg-gradient-to-r from-orange-900/60 to-amber-900/60 border border-orange-500/30 text-orange-100 font-sans text-xs tracking-widest uppercase hover:border-orange-500/50 transition-all"
+          >
+             {current.action}
+          </button>
+       </div>
+    </div>
+  );
+};
 
 const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
   const [step, setStep] = useState(0);
