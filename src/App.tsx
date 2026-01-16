@@ -12,17 +12,14 @@ import {
 
 const getSmartQuestion = (energy: number, stress: number) => {
   // CATABOLIC ZONE (High Stress / Low Energy)
-  // Level 1 (Victim) or Level 2 (Conflict)
   if (stress > 60 || energy < 40) {
     return "What specifically is threatened by this situation?";
   }
   // ANABOLIC ZONE (High Energy / Flow)
-  // Level 5 (Opportunity) or Level 6 (flow)
   if (energy > 70) {
     return "If you were coaching your best self, what would you tell them to do?";
   }
   // TRANSITIONAL ZONE (Coping / Rationalizing)
-  // Level 3 (Responsibility) or Level 4 (Concern)
   return "What is one assumption you are making that might not be true?";
 };
 
@@ -67,8 +64,9 @@ const generateManifesto = async (stressor: string, truth: string, action: string
     const data = await res.json();
     return { text: data.manifesto, isOffline: false };
   } catch (error) {
-    const fallbackText = `I release the weight of "${stressor}". I stand now in the truth that ${truth}. I seal this power by ${action}, marking the moment I reclaimed my sovereign energy.`;
-    return { text: fallbackText, isOffline: true };
+    // Improved poetic fallback
+    const fallbackText = `The heavy tide of "${stressor}" recedes. I stand firm in the truth: "${truth}". I seal this contract by ${action}, reclaiming my sovereign ground.`;
+    return { text: fallbackText, isOffline: false }; // Hidden offline state
   }
 };
 
@@ -180,11 +178,13 @@ const Nav: React.FC<NavProps> = ({ title, subtitle, onBack, isDashboard, soundEn
         </div>
       </div>
       <div className="flex gap-2 items-center">
-        {/* AI STATUS INDICATOR */}
-        <div className={`flex items-center gap-1 px-2 py-1 rounded-full border mr-1 ${aiActive ? 'bg-teal-500/10 border-teal-500/20 text-teal-400' : 'bg-white/5 border-white/10 text-white/30'}`}>
-           <Sparkles size={10} />
-           <span className="text-[8px] font-bold uppercase tracking-wider">{aiActive ? 'AI Online' : 'Offline'}</span>
-        </div>
+        {/* AI STATUS INDICATOR - ONLY SHOW WHEN ACTIVE */}
+        {aiActive && (
+          <div className="flex items-center gap-1 px-2 py-1 rounded-full border mr-1 bg-teal-500/10 border-teal-500/20 text-teal-400 animate-pulse">
+             <Sparkles size={10} />
+             <span className="text-[8px] font-bold uppercase tracking-wider">AI Active</span>
+          </div>
+        )}
         
         {!isDashboard && (
           <button onClick={toggleSound} className={`p-3 rounded-full glass-button transition-all ${soundEnabled ? 'text-teal-200 bg-teal-500/10' : 'text-white/40'}`}>
@@ -258,7 +258,7 @@ const Manifesto: React.FC<ManifestoProps> = ({ onContinue }) => (
       <div className="max-w-md mx-auto py-10">
        <div className="mb-10">
           <Waves size={48} className="text-teal-400/80 mx-auto mb-6 animate-pulse" strokeWidth={0.8} />
-          <h1 className="font-serif text-3xl text-white italic mb-3">Alchemy, not Management.</h1>
+          <h1 className="font-serif text-3xl text-white italic mb-3">Alchemy.</h1>
           <p className="font-sans text-xs text-white/40 uppercase tracking-[0.2em] leading-relaxed">
             A Kinetic Shift for the Modern Mind
           </p>
@@ -300,6 +300,9 @@ const Identity: React.FC<IdentityProps> = ({ userName, setUserName, onComplete }
 const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, perception, setPerception, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => {
   const triggers = ['work', 'job', 'boss', 'career', 'team', 'project', 'deadline', 'email', 'monday', 'shift', 'burnout', 'tired', 'exhausted', 'drained', 'overwhelm', 'client'];
   const showWorkCheck = triggers.some(t => stressor.toLowerCase().includes(t));
+  
+  // High friction check: High Stress (>75) AND Low Energy (<35)
+  const isHighFriction = stressLevel > 75 && energyLevel < 35;
 
   return (
     <div className="h-full flex flex-col">
@@ -399,36 +402,39 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
                 type="text"
                 value={perception}
                 onChange={(e) => setPerception(e.target.value)}
-                placeholder="How are you experiencing this? (Thoughts/Feelings)"
+                placeholder="How are you experiencing this?"
                 className="w-full glass-panel p-4 rounded-xl text-white placeholder:text-white/20 focus:outline-none focus:bg-white/5 transition-all font-sans text-sm text-center"
               />
             </div>
             
-            <button 
-              onClick={() => setView('somatic')}
-              disabled={!stressor}
-              className="w-full py-5 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] transition-all disabled:opacity-50 disabled:shadow-none mt-2"
-            >
-              Begin Alchemy
-            </button>
-            
-            {showWorkCheck && (
-              <div className="animate-enter mb-2">
-                 <button onClick={() => setView('burnout_check')} className="w-full py-3 rounded-xl bg-orange-500/20 text-orange-200 border border-orange-500/50 flex items-center justify-center gap-2 hover:bg-orange-500/30 transition-all">
-                     <AlertTriangle size={14} />
-                     <span className="font-sans text-xs tracking-widest uppercase">High Friction Detected. Check Burnout?</span>
+            {/* Conditional Buttons based on State */}
+            {(showWorkCheck || isHighFriction) ? (
+              <div className="animate-enter mb-2 space-y-3">
+                 <button onClick={() => setView('burnout_check')} className="w-full py-4 rounded-xl bg-orange-500/20 text-orange-200 border border-orange-500/50 flex flex-col items-center justify-center gap-1 hover:bg-orange-500/30 transition-all">
+                     <div className="flex items-center gap-2">
+                        <AlertTriangle size={16} />
+                        <span className="font-sans text-xs font-bold tracking-widest uppercase">High Friction Detected</span>
+                     </div>
+                     <span className="text-[10px] opacity-70">Check Burnout Risk?</span>
                  </button>
+
+                 <button 
+                  onClick={() => setView('somatic')}
+                  disabled={!stressor}
+                  className="w-full py-4 rounded-xl border border-white/10 text-white/40 hover:text-white hover:bg-white/5 transition-all font-sans text-xs tracking-widest uppercase"
+                >
+                  Continue to Alchemy
+                </button>
               </div>
+            ) : (
+              <button 
+                onClick={() => setView('somatic')}
+                disabled={!stressor}
+                className="w-full py-5 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] transition-all disabled:opacity-50 disabled:shadow-none mt-2"
+              >
+                Begin Alchemy
+              </button>
             )}
-            
-            <div className="flex gap-2">
-              <button onClick={() => setView('burnout_check')} className="flex-1 py-4 rounded-xl border border-white/5 text-white/40 flex items-center justify-center gap-2 hover:bg-white/5 transition-all">
-                  <Coffee size={14}/> <span className="font-sans text-[10px] uppercase tracking-widest">Burnout Risk</span>
-              </button>
-              <button onClick={() => setView('energy')} className="flex-1 py-4 rounded-xl border border-white/5 text-white/40 flex items-center justify-center gap-2 hover:bg-white/5 transition-all">
-                  <Zap size={14}/> <span className="font-sans text-[10px] uppercase tracking-widest">Energy Audit</span>
-              </button>
-            </div>
           </div>
         )}
       </div>
@@ -954,7 +960,6 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
 
               <p className={`font-sans text-[9px] uppercase tracking-widest mb-6 flex items-center justify-center gap-2 ${isBurnoutPath ? 'text-orange-200/80' : 'text-teal-200/60'}`}>
                 {isBurnoutPath ? "Permission Slip" : "Alchemist Decree"}
-                {isOffline && <span className="bg-red-500/20 text-red-300 px-1 rounded flex items-center gap-1"><WifiOff size={8}/> Offline Mode</span>}
               </p>
 
               <div className="font-serif text-lg leading-relaxed text-white/90 italic mb-8 text-center">
@@ -999,14 +1004,14 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
                     </p>
                  </div>
 
-                 {/* ENERGY LENS AUDIT */}
+                 {/* ENERGY LENS PROFILE */}
                  <button onClick={() => setView('energy')} className="w-full block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-teal-500/20 hover:border-teal-400/40 text-left">
                     <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Activity size={80} className="text-teal-300" /></div>
                     <div className="relative z-10">
                        <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-teal-500/20 text-[9px] font-bold uppercase tracking-widest text-teal-300">Baseline Check</span></div>
-                       <h3 className="font-serif text-xl text-white italic mb-1">Energy Lens Audit</h3>
+                       <h3 className="font-serif text-xl text-white italic mb-1">Energy Lens Profile</h3>
                        <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Understand your default patterns. Take the 6-question diagnostic.</p>
-                       <div className="inline-flex items-center gap-2 text-teal-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Start Audit <ArrowRight size={14} /></div>
+                       <div className="inline-flex items-center gap-2 text-teal-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Start Profile <ArrowRight size={14} /></div>
                     </div>
                  </button>
 
@@ -1017,7 +1022,7 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
                        <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-indigo-500/20 text-[9px] font-bold uppercase tracking-widest text-indigo-300">1:1 Coaching</span></div>
                        <h3 className="font-serif text-xl text-white italic mb-1">Lock in the Shift</h3>
                        <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">To rewire your baseline permanently, book a Full Energy Leadership Index (ELI) Assessment.</p>
-                       <div className="inline-flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Book Strategy Session <ArrowRight size={14} /></div>
+                       <div className="inline-flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Book Full ELI Assessment <ArrowRight size={14} /></div>
                     </div>
                  </a>
 
@@ -1077,7 +1082,7 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
              <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6" placeholder={current.ph} value={goal[current.id as keyof typeof goal]} onChange={e => setGoal({...goal, [current.id]: e.target.value})} onKeyDown={e => e.key === 'Enter' && (goalStep < 2 ? setGoalStep(goalStep+1) : setIsLocked(true))} />
              <div className="flex gap-3">
                  <button onClick={handleBack} className="px-4 py-3 rounded-xl border border-white/10 text-white/40 hover:text-white transition-colors">Back</button>
-                 <button onClick={() => goalStep < 2 ? setGoalStep(goalStep+1) : setIsLocked(true)} disabled={!goal[current.id as keyof typeof goal]} className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase disabled:opacity-50">Next</button>
+                 <button onClick={() => goalStep < 2 ? setGoalStep(goalStep+1) : setIsLocked(true)} disabled={!goal[current.id]} className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase disabled:opacity-50">Next</button>
              </div>
            </>
          )}
