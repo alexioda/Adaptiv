@@ -133,7 +133,7 @@ interface AlchemyProps { setView: (view: string) => void; toggleSound: () => voi
 interface EnergyAnalyzerProps { setView: (view: string) => void; }
 
 interface IntegrationProps { 
-  goal: { what: string; measure: string; when: string; outcome: string; action?: string }; 
+  goal: { what: string; measure: string; when: string; outcome: string; action: string }; // Made action required to fix TS2345
   setGoal: (val: any) => void; 
   goalStep: number; 
   setGoalStep: (val: number) => void; 
@@ -417,7 +417,7 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
                 type="text"
                 value={perception}
                 onChange={(e) => setPerception(e.target.value)}
-                placeholder="How are you experiencing this?"
+                placeholder="How are you experiencing this? (Thoughts/Feelings)"
                 className="w-full glass-panel p-4 rounded-xl text-white placeholder:text-white/20 focus:outline-none focus:bg-white/5 transition-all font-sans text-sm text-center"
               />
             </div>
@@ -764,6 +764,77 @@ const Alchemy: React.FC<AlchemyProps> = ({ setView, toggleSound, soundEnabled })
   </div>
 );
 
+const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToIntegration }) => {
+  const [step, setStep] = useState(0);
+
+  const recoverySteps = [
+    {
+      title: "Emergency Brake",
+      icon: Anchor,
+      desc: "We cannot 'push' through burnout. We must stop. Locate one part of your body that feels neutral (hands, feet). Focus there only.",
+      action: "I am anchored."
+    },
+    {
+      title: "Boundary Alchemy",
+      icon: MinusCircle,
+      desc: "Burnout is cured by subtraction. What is one thing you will REFUSE to do today?",
+      action: "I let it go."
+    },
+    {
+      title: "Identity Shift",
+      icon: User,
+      desc: "You are not the worker. You are the Asset. If the Asset breaks, the work stops. Protecting the Asset IS the work.",
+      action: "I am the Asset."
+    }
+  ];
+
+  const current = recoverySteps[step];
+
+  const handleNext = () => {
+    if (step < 2) {
+      setStep(step + 1);
+    } else {
+      setExpandingBelief("I am the Asset. Rest is my strategy.");
+      setGoal({ 
+        outcome: "Status: Unavailable", 
+        action: "I am offline to realign.", 
+        when: "Now" 
+      });
+      setViewToIntegration();
+    }
+  };
+  
+  const handleBack = () => {
+      if (step > 0) setStep(step - 1);
+      else setView('dashboard');
+  }
+
+  return (
+    <div className="h-full flex flex-col">
+       <Nav title="Preservation Mode" subtitle="Recovery Loop" onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={33 * (step+1)} />
+       
+       <div className="flex-1 flex flex-col justify-center items-center animate-enter text-center px-4 overflow-y-auto hide-scrollbar">
+          <div className="mb-8 relative mx-auto">
+             <div className="absolute inset-0 bg-orange-500/20 blur-2xl rounded-full"></div>
+             <current.icon size={64} className="text-orange-200 relative z-10" strokeWidth={1} />
+          </div>
+
+          <h2 className="font-serif text-3xl text-white italic mb-4">{current.title}</h2>
+          <p className="font-sans text-sm text-orange-100/70 leading-relaxed mb-12 max-w-xs mx-auto">
+             {current.desc}
+          </p>
+
+          <button 
+            onClick={handleNext}
+            className="w-full py-5 rounded-full bg-gradient-to-r from-orange-900/60 to-amber-900/60 border border-orange-500/30 text-orange-100 font-sans text-xs tracking-widest uppercase hover:border-orange-500/50 transition-all"
+          >
+             {current.action}
+          </button>
+       </div>
+    </div>
+  );
+};
+
 const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
   const [step, setStep] = useState(0);
 
@@ -940,60 +1011,59 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
             </div>
 
             {/* UPSELL / NEXT STEPS SECTION */}
-            {!isBurnoutPath && (
-              <div className="space-y-4 mb-8">
-                 <div className="text-center mb-6">
-                    <h3 className="font-serif text-xl text-white/90 italic mb-2">The Architecture of Change</h3>
-                    <p className="font-sans text-xs text-white/50 max-w-xs mx-auto leading-relaxed">
-                      You have shifted your state. Now, anchor this new reality.
-                    </p>
-                 </div>
+            {/* Show for EVERYONE now, as requested */}
+            <div className="space-y-4 mb-8">
+                <div className="text-center mb-6">
+                  <h3 className="font-serif text-xl text-white/90 italic mb-2">The Architecture of Change</h3>
+                  <p className="font-sans text-xs text-white/50 max-w-xs mx-auto leading-relaxed">
+                    You have shifted your state. Now, anchor this new reality.
+                  </p>
+                </div>
 
-                 {/* ENERGY LENS PROFILE */}
-                 <button onClick={() => setView('energy')} className="w-full block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-teal-500/20 hover:border-teal-400/40 text-left">
-                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Activity size={80} className="text-teal-300" /></div>
-                    <div className="relative z-10">
-                       <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-teal-500/20 text-[9px] font-bold uppercase tracking-widest text-teal-300">Baseline Check</span></div>
-                       <h3 className="font-serif text-xl text-white italic mb-1">Energy Lens Profile</h3>
-                       <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Understand your default patterns. Take the 6-question diagnostic.</p>
-                       <div className="inline-flex items-center gap-2 text-teal-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Start Profile <ArrowRight size={14} /></div>
-                    </div>
-                 </button>
+                {/* ENERGY LENS PROFILE */}
+                <button onClick={() => setView('energy')} className="w-full block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-teal-500/20 hover:border-teal-400/40 text-left">
+                  <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Activity size={80} className="text-teal-300" /></div>
+                  <div className="relative z-10">
+                      <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-teal-500/20 text-[9px] font-bold uppercase tracking-widest text-teal-300">Baseline Check</span></div>
+                      <h3 className="font-serif text-xl text-white italic mb-1">Energy Lens Profile</h3>
+                      <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Understand your default patterns. Take the 6-question diagnostic.</p>
+                      <div className="inline-flex items-center gap-2 text-teal-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Start Profile <ArrowRight size={14} /></div>
+                  </div>
+                </button>
 
-                 {/* CALENDLY (Full ELI) */}
-                 <a href="https://calendly.com/alexioda" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-indigo-500/20 hover:border-indigo-400/40">
-                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Zap size={80} className="text-indigo-300" /></div>
-                    <div className="relative z-10">
-                       <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-indigo-500/20 text-[9px] font-bold uppercase tracking-widest text-indigo-300">1:1 Coaching</span></div>
-                       <h3 className="font-serif text-xl text-white italic mb-1">Lock in the Shift</h3>
-                       <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">To rewire your baseline permanently, book a Full Energy Leadership Index (ELI) Assessment.</p>
-                       <div className="inline-flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Book Full ELI Assessment <ArrowRight size={14} /></div>
-                    </div>
-                 </a>
+                {/* CALENDLY (Full ELI) */}
+                <a href="https://calendly.com/alexioda" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-indigo-500/20 hover:border-indigo-400/40">
+                  <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Zap size={80} className="text-indigo-300" /></div>
+                  <div className="relative z-10">
+                      <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-indigo-500/20 text-[9px] font-bold uppercase tracking-widest text-indigo-300">1:1 Coaching</span></div>
+                      <h3 className="font-serif text-xl text-white italic mb-1">Lock in the Shift</h3>
+                      <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">To rewire your baseline permanently, book a Full Energy Leadership Index (ELI) Assessment.</p>
+                      <div className="inline-flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Book Full ELI Assessment <ArrowRight size={14} /></div>
+                  </div>
+                </a>
 
-                 {/* WORKBOOK */}
-                 <a href="https://alexioda.gumroad.com/l/roxaxf" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-blue-500/20 hover:border-blue-400/40">
-                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><BookOpen size={80} className="text-blue-300" /></div>
-                    <div className="relative z-10">
-                       <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-blue-500/20 text-[9px] font-bold uppercase tracking-widest text-blue-300">Self-Paced</span></div>
-                       <h3 className="font-serif text-xl text-white italic mb-1">The Field Guide</h3>
-                       <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Get the interactive workbook to master this protocol.</p>
-                       <div className="inline-flex items-center gap-2 text-blue-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Get the Guide <ExternalLink size={14} /></div>
-                    </div>
-                 </a>
-                 
-                 {/* FACEBOOK COMMUNITY */}
-                 <a href="https://www.facebook.com/share/1RmJbo4Gdt/" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-purple-500/20 hover:border-purple-400/40">
-                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Facebook size={80} className="text-purple-300" /></div>
-                    <div className="relative z-10">
-                       <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-purple-500/20 text-[9px] font-bold uppercase tracking-widest text-purple-300">Community</span></div>
-                       <h3 className="font-serif text-xl text-white italic mb-1">Join the Circle</h3>
-                       <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Connect with other Sovereign Leaders. Daily insights and tools.</p>
-                       <div className="inline-flex items-center gap-2 text-purple-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Join Facebook Group <ExternalLink size={14} /></div>
-                    </div>
-                 </a>
-              </div>
-            )}
+                {/* WORKBOOK */}
+                <a href="https://alexioda.gumroad.com/l/roxaxf" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-blue-500/20 hover:border-blue-400/40">
+                  <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><BookOpen size={80} className="text-blue-300" /></div>
+                  <div className="relative z-10">
+                      <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-blue-500/20 text-[9px] font-bold uppercase tracking-widest text-blue-300">Self-Paced</span></div>
+                      <h3 className="font-serif text-xl text-white italic mb-1">The Field Guide</h3>
+                      <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Get the interactive workbook to master this protocol.</p>
+                      <div className="inline-flex items-center gap-2 text-blue-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Get the Guide <ExternalLink size={14} /></div>
+                  </div>
+                </a>
+                
+                {/* FACEBOOK COMMUNITY */}
+                <a href="https://www.facebook.com/share/1RmJbo4Gdt/" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-purple-500/20 hover:border-purple-400/40">
+                  <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Facebook size={80} className="text-purple-300" /></div>
+                  <div className="relative z-10">
+                      <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-purple-500/20 text-[9px] font-bold uppercase tracking-widest text-purple-300">Community</span></div>
+                      <h3 className="font-serif text-xl text-white italic mb-1">Join the Circle</h3>
+                      <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Connect with other Sovereign Leaders. Daily insights and tools.</p>
+                      <div className="inline-flex items-center gap-2 text-purple-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Join Facebook Group <ExternalLink size={14} /></div>
+                  </div>
+                </a>
+            </div>
 
             {/* NAV FOOTER */}
             <div className="flex gap-4 justify-center pb-8 pt-4 border-t border-white/5">
