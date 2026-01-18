@@ -1011,7 +1011,6 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
             </div>
 
             {/* UPSELL / NEXT STEPS SECTION */}
-            {/* Show for EVERYONE now, as requested */}
             <div className="space-y-4 mb-8">
                 <div className="text-center mb-6">
                   <h3 className="font-serif text-xl text-white/90 italic mb-2">The Architecture of Change</h3>
@@ -1020,7 +1019,7 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
                   </p>
                 </div>
 
-                {/* ENERGY LENS PROFILE */}
+                {/* ENERGY LENS PROFILE - Available to everyone */}
                 <button onClick={() => setView('energy')} className="w-full block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-teal-500/20 hover:border-teal-400/40 text-left">
                   <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Activity size={80} className="text-teal-300" /></div>
                   <div className="relative z-10">
@@ -1031,7 +1030,7 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
                   </div>
                 </button>
 
-                {/* CALENDLY (Full ELI) */}
+                {/* CALENDLY (Full ELI) - Available to everyone */}
                 <a href="https://calendly.com/alexioda" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-indigo-500/20 hover:border-indigo-400/40">
                   <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Zap size={80} className="text-indigo-300" /></div>
                   <div className="relative z-10">
@@ -1042,7 +1041,7 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
                   </div>
                 </a>
 
-                {/* WORKBOOK */}
+                {/* WORKBOOK - Available to everyone */}
                 <a href="https://alexioda.gumroad.com/l/roxaxf" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-blue-500/20 hover:border-blue-400/40">
                   <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><BookOpen size={80} className="text-blue-300" /></div>
                   <div className="relative z-10">
@@ -1053,7 +1052,7 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
                   </div>
                 </a>
                 
-                {/* FACEBOOK COMMUNITY */}
+                {/* FACEBOOK COMMUNITY - Available to everyone */}
                 <a href="https://www.facebook.com/share/1RmJbo4Gdt/" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-purple-500/20 hover:border-purple-400/40">
                   <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Facebook size={80} className="text-purple-300" /></div>
                   <div className="relative z-10">
