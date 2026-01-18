@@ -64,9 +64,24 @@ const generateManifesto = async (stressor: string, truth: string, action: string
     const data = await res.json();
     return { text: data.manifesto, isOffline: false };
   } catch (error) {
-    // Improved poetic fallback
-    const fallbackText = `The heavy tide of "${stressor}" recedes. I stand firm in the truth: "${truth}". I seal this contract by ${action}, reclaiming my sovereign ground.`;
-    return { text: fallbackText, isOffline: false }; // Hidden offline state
+    const fallbackText = `I release the weight of "${stressor}". I stand now in the truth that ${truth}. I seal this power by ${action}, marking the moment I reclaimed my sovereign energy.`;
+    return { text: fallbackText, isOffline: true };
+  }
+};
+
+const generateEnergyInsight = async (level: number, type: string) => {
+  try {
+    const res = await fetch('/api/energy-analysis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ level, type })
+    });
+    
+    if (!res.ok) throw new Error('API unavailable');
+    const data = await res.json();
+    return data.insight;
+  } catch (error) {
+    return "Your energy is your currency. How you spend it determines your reality.";
   }
 };
 
@@ -749,77 +764,6 @@ const Alchemy: React.FC<AlchemyProps> = ({ setView, toggleSound, soundEnabled })
   </div>
 );
 
-const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToIntegration }) => {
-  const [step, setStep] = useState(0);
-
-  const recoverySteps = [
-    {
-      title: "Emergency Brake",
-      icon: Anchor,
-      desc: "We cannot 'push' through burnout. We must stop. Locate one part of your body that feels neutral (hands, feet). Focus there only.",
-      action: "I am anchored."
-    },
-    {
-      title: "Boundary Alchemy",
-      icon: MinusCircle,
-      desc: "Burnout is cured by subtraction. What is one thing you will REFUSE to do today?",
-      action: "I let it go."
-    },
-    {
-      title: "Identity Shift",
-      icon: User,
-      desc: "You are not the worker. You are the Asset. If the Asset breaks, the work stops. Protecting the Asset IS the work.",
-      action: "I am the Asset."
-    }
-  ];
-
-  const current = recoverySteps[step];
-
-  const handleNext = () => {
-    if (step < 2) {
-      setStep(step + 1);
-    } else {
-      setExpandingBelief("I am the Asset. Rest is my strategy.");
-      setGoal({ 
-        outcome: "Status: Unavailable", 
-        action: "I am offline to realign.", 
-        when: "Now" 
-      });
-      setViewToIntegration();
-    }
-  };
-  
-  const handleBack = () => {
-      if (step > 0) setStep(step - 1);
-      else setView('dashboard');
-  }
-
-  return (
-    <div className="h-full flex flex-col">
-       <Nav title="Preservation Mode" subtitle="Recovery Loop" onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={33 * (step+1)} />
-       
-       <div className="flex-1 flex flex-col justify-center items-center animate-enter text-center px-4 overflow-y-auto hide-scrollbar">
-          <div className="mb-8 relative mx-auto">
-             <div className="absolute inset-0 bg-orange-500/20 blur-2xl rounded-full"></div>
-             <current.icon size={64} className="text-orange-200 relative z-10" strokeWidth={1} />
-          </div>
-
-          <h2 className="font-serif text-3xl text-white italic mb-4">{current.title}</h2>
-          <p className="font-sans text-sm text-orange-100/70 leading-relaxed mb-12 max-w-xs mx-auto">
-             {current.desc}
-          </p>
-
-          <button 
-            onClick={handleNext}
-            className="w-full py-5 rounded-full bg-gradient-to-r from-orange-900/60 to-amber-900/60 border border-orange-500/30 text-orange-100 font-sans text-xs tracking-widest uppercase hover:border-orange-500/50 transition-all"
-          >
-             {current.action}
-          </button>
-       </div>
-    </div>
-  );
-};
-
 const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
   const [step, setStep] = useState(0);
 
@@ -960,6 +904,7 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
 
               <p className={`font-sans text-[9px] uppercase tracking-widest mb-6 flex items-center justify-center gap-2 ${isBurnoutPath ? 'text-orange-200/80' : 'text-teal-200/60'}`}>
                 {isBurnoutPath ? "Permission Slip" : "Alchemist Decree"}
+                {isOffline && <span className="bg-red-500/20 text-red-300 px-1 rounded flex items-center gap-1"><WifiOff size={8}/> Offline Mode</span>}
               </p>
 
               <div className="font-serif text-lg leading-relaxed text-white/90 italic mb-8 text-center">
