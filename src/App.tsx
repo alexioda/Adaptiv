@@ -397,10 +397,10 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
               Your biometrics indicate high friction. Standard protocols may cause further strain.
             </p>
             <button 
-              onClick={() => setView('burnout_check')} // FIXED: Routes to Assessment, not straight to Preservation
+              onClick={() => setView('preservation')}
               className="w-full py-4 rounded-full bg-gradient-to-r from-orange-900/60 to-amber-900/60 border border-orange-500/30 text-orange-100 font-sans text-xs tracking-widest uppercase hover:border-orange-500/50 transition-all shadow-lg shadow-orange-900/20"
             >
-              Verify with Assessment
+              Enter Preservation
             </button>
           </div>
         ) : (
@@ -1012,58 +1012,60 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
             </div>
 
             {/* UPSELL / NEXT STEPS SECTION */}
-            <div className="space-y-4 mb-8">
-                <div className="text-center mb-6">
-                  <h3 className="font-serif text-xl text-white/90 italic mb-2">The Architecture of Change</h3>
-                  <p className="font-sans text-xs text-white/50 max-w-xs mx-auto leading-relaxed">
-                    You have shifted your state. Now, anchor this new reality.
-                  </p>
-                </div>
+            {!isBurnoutPath && (
+              <div className="space-y-4 mb-8">
+                 <div className="text-center mb-6">
+                    <h3 className="font-serif text-xl text-white/90 italic mb-2">The Architecture of Change</h3>
+                    <p className="font-sans text-xs text-white/50 max-w-xs mx-auto leading-relaxed">
+                      You have shifted your state. Now, anchor this new reality.
+                    </p>
+                 </div>
 
-                {/* ENERGY LENS PROFILE */}
-                <button onClick={() => setView('energy')} className="w-full block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-teal-500/20 hover:border-teal-400/40 text-left">
-                  <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Activity size={80} className="text-teal-300" /></div>
-                  <div className="relative z-10">
-                      <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-teal-500/20 text-[9px] font-bold uppercase tracking-widest text-teal-300">Baseline Check</span></div>
-                      <h3 className="font-serif text-xl text-white italic mb-1">Energy Lens Profile</h3>
-                      <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Understand your default patterns. Take the 6-question diagnostic.</p>
-                      <div className="inline-flex items-center gap-2 text-teal-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Start Profile <ArrowRight size={14} /></div>
-                  </div>
-                </button>
+                 {/* ENERGY LENS PROFILE */}
+                 <button onClick={() => setView('energy')} className="w-full block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-teal-500/20 hover:border-teal-400/40 text-left">
+                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Activity size={80} className="text-teal-300" /></div>
+                    <div className="relative z-10">
+                       <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-teal-500/20 text-[9px] font-bold uppercase tracking-widest text-teal-300">Baseline Check</span></div>
+                       <h3 className="font-serif text-xl text-white italic mb-1">Energy Lens Profile</h3>
+                       <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Understand your default patterns. Take the 6-question diagnostic.</p>
+                       <div className="inline-flex items-center gap-2 text-teal-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Start Profile <ArrowRight size={14} /></div>
+                    </div>
+                 </button>
 
-                {/* CALENDLY (Full ELI) */}
-                <a href="https://calendly.com/alexioda" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-indigo-500/20 hover:border-indigo-400/40">
-                  <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Zap size={80} className="text-indigo-300" /></div>
-                  <div className="relative z-10">
-                      <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-indigo-500/20 text-[9px] font-bold uppercase tracking-widest text-indigo-300">1:1 Coaching</span></div>
-                      <h3 className="font-serif text-xl text-white italic mb-1">Lock in the Shift</h3>
-                      <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">To rewire your baseline permanently, book a Full Energy Leadership Index (ELI) Assessment.</p>
-                      <div className="inline-flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Book Full ELI Assessment <ArrowRight size={14} /></div>
-                  </div>
-                </a>
+                 {/* CALENDLY (Full ELI) */}
+                 <a href="https://calendly.com/alexioda" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-indigo-500/20 hover:border-indigo-400/40">
+                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Zap size={80} className="text-indigo-300" /></div>
+                    <div className="relative z-10">
+                       <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-indigo-500/20 text-[9px] font-bold uppercase tracking-widest text-indigo-300">1:1 Coaching</span></div>
+                       <h3 className="font-serif text-xl text-white italic mb-1">Lock in the Shift</h3>
+                       <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">To rewire your baseline permanently, book a Full Energy Leadership Index (ELI) Assessment.</p>
+                       <div className="inline-flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Book Full ELI Assessment <ArrowRight size={14} /></div>
+                    </div>
+                 </a>
 
-                {/* WORKBOOK */}
-                <a href="https://alexioda.gumroad.com/l/roxaxf" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-blue-500/20 hover:border-blue-400/40">
-                  <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><BookOpen size={80} className="text-blue-300" /></div>
-                  <div className="relative z-10">
-                      <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-blue-500/20 text-[9px] font-bold uppercase tracking-widest text-blue-300">Self-Paced</span></div>
-                      <h3 className="font-serif text-xl text-white italic mb-1">The Field Guide</h3>
-                      <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Get the interactive workbook to master this protocol.</p>
-                      <div className="inline-flex items-center gap-2 text-blue-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Get the Guide <ExternalLink size={14} /></div>
-                  </div>
-                </a>
-                
-                {/* FACEBOOK COMMUNITY */}
-                <a href="https://www.facebook.com/share/1RmJbo4Gdt/" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-purple-500/20 hover:border-purple-400/40">
-                  <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Facebook size={80} className="text-purple-300" /></div>
-                  <div className="relative z-10">
-                      <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-purple-500/20 text-[9px] font-bold uppercase tracking-widest text-purple-300">Community</span></div>
-                      <h3 className="font-serif text-xl text-white italic mb-1">Join the Circle</h3>
-                      <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Connect with other Sovereign Leaders. Daily insights and tools.</p>
-                      <div className="inline-flex items-center gap-2 text-purple-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Join Facebook Group <ExternalLink size={14} /></div>
-                  </div>
-                </a>
-            </div>
+                 {/* WORKBOOK */}
+                 <a href="https://alexioda.gumroad.com/l/roxaxf" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-blue-500/20 hover:border-blue-400/40">
+                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><BookOpen size={80} className="text-blue-300" /></div>
+                    <div className="relative z-10">
+                       <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-blue-500/20 text-[9px] font-bold uppercase tracking-widest text-blue-300">Self-Paced</span></div>
+                       <h3 className="font-serif text-xl text-white italic mb-1">The Field Guide</h3>
+                       <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Get the interactive workbook to master this protocol.</p>
+                       <div className="inline-flex items-center gap-2 text-blue-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Get the Guide <ExternalLink size={14} /></div>
+                    </div>
+                 </a>
+                 
+                 {/* FACEBOOK COMMUNITY */}
+                 <a href="https://www.facebook.com/share/1RmJbo4Gdt/" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-purple-500/20 hover:border-purple-400/40">
+                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Facebook size={80} className="text-purple-300" /></div>
+                    <div className="relative z-10">
+                       <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-purple-500/20 text-[9px] font-bold uppercase tracking-widest text-purple-300">Community</span></div>
+                       <h3 className="font-serif text-xl text-white italic mb-1">Join the Circle</h3>
+                       <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Connect with other Sovereign Leaders. Daily insights and tools.</p>
+                       <div className="inline-flex items-center gap-2 text-purple-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Join Facebook Group <ExternalLink size={14} /></div>
+                    </div>
+                 </a>
+              </div>
+            )}
 
             {/* NAV FOOTER */}
             <div className="flex gap-4 justify-center pb-8 pt-4 border-t border-white/5">
@@ -1097,7 +1099,7 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
              <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6" placeholder={current.ph} value={goal[current.id as keyof typeof goal]} onChange={e => setGoal({...goal, [current.id]: e.target.value})} onKeyDown={e => e.key === 'Enter' && (goalStep < 2 ? setGoalStep(goalStep+1) : setIsLocked(true))} />
              <div className="flex gap-3">
                  <button onClick={handleBack} className="px-4 py-3 rounded-xl border border-white/10 text-white/40 hover:text-white transition-colors">Back</button>
-                 <button onClick={() => goalStep < 2 ? setGoalStep(goalStep+1) : setIsLocked(true)} disabled={!goal[current.id]} className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase disabled:opacity-50">Next</button>
+                 <button onClick={() => goalStep < 2 ? setGoalStep(goalStep+1) : setIsLocked(true)} disabled={!goal[current.id as keyof typeof goal]} className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase disabled:opacity-50">Next</button>
              </div>
            </>
          )}
