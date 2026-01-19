@@ -149,6 +149,7 @@ interface IntegrationProps {
   soundEnabled: boolean; 
   somaticZones: string[]; 
   isBurnoutPath: boolean;
+  userName: string;
 }
 
 interface PrimingProps {
@@ -902,7 +903,7 @@ const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
   );
 };
 
-const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath }) => {
+const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath, userName }) => {
   const [primingDone, setPrimingDone] = useState(false);
   const [manifesto, setManifesto] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -985,7 +986,7 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
                     <span>Forging Decree...</span>
                   </div>
                 ) : isBurnoutPath ? (
-                  `"I, ${'The Sovereign'}, grant myself full permission to pause. The world will wait. My energy is my most precious asset, and I choose to protect it now."`
+                  `"I, ${userName || 'The Conscious Leader'}, grant myself full permission to pause. The world will wait. My energy is my most precious asset, and I choose to protect it now."`
                 ) : (
                   `"${manifesto || expandingBelief}"`
                 )}
@@ -1107,17 +1108,152 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
   );
 };
 
-const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, setBurnoutPath }) => (
-  <div className="h-full flex flex-col justify-center text-center px-6">
-    <AlertTriangle size={48} className="text-orange-400 mx-auto mb-6" />
-    <h2 className="font-serif text-3xl text-white italic mb-4">Spark Check</h2>
-    <p className="font-sans text-sm text-white/70 mb-8">Do you feel a sense of dread or heavy anxiety before starting your work?</p>
-    <div className="space-y-4">
-      <button onClick={() => { setBurnoutPath(true); setView('preservation'); }} className="w-full py-4 rounded-xl bg-orange-500/20 text-orange-200 border border-orange-500">Yes, frequently</button>
-      <button onClick={() => { setBurnoutPath(false); setView('somatic'); }} className="w-full py-4 rounded-xl border border-white/10 text-white/50">No, rarely</button>
+const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, setBurnoutPath }) => {
+  const [step, setStep] = useState(0);
+  const [score, setScore] = useState(0);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [showResult, setShowResult] = useState(false);
+  const [aiInsight, setAiInsight] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const questions = [
+    { q: "Physical State", text: "Do you feel tired even after sleep, or have physical symptoms like headaches or stomach knots?" },
+    { q: "Emotional State", text: "Do you feel increasingly cynical, detached, or negative about your work or the people you work with?" },
+    { q: "Cognitive Fog", text: "Are you finding it hard to concentrate, or do you feel like you're working harder but accomplishing less?" },
+    { q: "Relational Snap", text: "Are you more irritable or impatient with colleagues, friends, or family than usual?" },
+    { q: "Anticipatory Dread", text: "Do you feel a sense of dread or heavy anxiety on Sunday nights or before starting your shift?" },
+    { q: "Recovery Lag", text: "Does it take you longer than a weekend to feel like yourself again?" }
+  ];
+
+  const handleBack = () => {
+      if (step > 0) {
+          setStep(step - 1);
+          setScore(score - (selected !== null ? selected : 0));
+          setSelected(null);
+      } else {
+          setView('dashboard');
+      }
+  };
+
+  const getResult = (currentScore: number) => {
+    if (currentScore <= 2) return { 
+      type: "Friction (Acute Stress)", 
+      desc: "You are under pressure, but the engine is still intact. You need to discharge the stress, not stop the car.", 
+      action: "Use 'Laser Coaching' to reframe the immediate stressor.",
+      isBurnout: false 
+    };
+    if (currentScore <= 4) return { 
+      type: "Smoldering (Early Burnout)", 
+      desc: "The warning lights are on. Your cynicism is a defense mechanism. If you push harder now, you will break.", 
+      action: "You need boundaries. Use 'Preservation Mode' to audit your energy leaks.",
+      isBurnout: true 
+    };
+    return { 
+      type: "Inferno (Full Burnout)", 
+      desc: "Your battery isn't just empty; it's damaged. You cannot 'mindset' your way out of this. You need physiological safety.", 
+      action: "Emergency Brake. Stop. Use 'Preservation Mode' to find one safe harbor.",
+      isBurnout: true 
+    };
+  };
+
+  const confirmAnswer = (val: number) => {
+    const newScore = score + val;
+    setScore(newScore);
+    
+    if (step < questions.length - 1) {
+      setStep(step + 1);
+    } else {
+      const result = getResult(newScore);
+      setShowResult(true);
+      setLoading(true);
+      // Generate AI insight based on the result type
+      generateEnergyInsight(result.isBurnout ? 1 : 2, `Burnout Phase: ${result.type}`).then(res => {
+        setAiInsight(res);
+        setLoading(false);
+      });
+    }
+  };
+
+  const resultData = getResult(score);
+
+  if (showResult) {
+    return (
+      <div className="h-full flex flex-col justify-center animate-enter px-6 overflow-y-auto hide-scrollbar">
+        <div className="flex-1 flex flex-col justify-center items-center text-center py-10">
+          <div className={`mb-6 p-6 rounded-full border ${resultData.isBurnout ? 'bg-orange-900/30 border-orange-500/50' : 'bg-teal-900/30 border-teal-500/50'}`}>
+              {resultData.isBurnout ? <Thermometer size={48} className="text-orange-400" /> : <Activity size={48} className="text-teal-400" />}
+          </div>
+          
+          <p className="font-sans text-[10px] uppercase tracking-widest opacity-60 mb-2">Diagnostic Result</p>
+          <h2 className="font-serif text-3xl text-white italic mb-4">{resultData.type}</h2>
+          
+          {/* AI Insight Box */}
+          <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10 w-full">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Sparkles size={12} className="text-teal-400"/>
+              <span className="text-[9px] uppercase tracking-widest text-teal-400">Energy Shift Recommendation</span>
+            </div>
+            <p className="font-serif text-sm italic text-white/90">
+              {loading ? "Analyzing Energy Pattern..." : `"${aiInsight}"`}
+            </p>
+          </div>
+
+          <p className="font-sans text-sm text-white/70 leading-relaxed mb-8 max-w-xs">
+            {resultData.desc}
+          </p>
+
+          <div className="bg-white/5 rounded-xl p-6 border border-white/10 w-full mb-8">
+            <h4 className="font-serif text-white italic mb-2 text-sm flex items-center justify-center gap-2"><Info size={14}/> The Deeper Why</h4>
+            <p className="font-sans text-[10px] uppercase tracking-widest text-white/50 mb-2">Recommended Protocol</p>
+            <p className="font-serif text-lg text-white italic">{resultData.action}</p>
+          </div>
+
+          <button 
+            onClick={() => {
+              setBurnoutPath(resultData.isBurnout);
+              if (resultData.isBurnout) {
+                  setView('preservation');
+              } else {
+                  setView('somatic');
+              }
+            }}
+            className={`w-full py-4 rounded-full font-sans text-xs font-bold tracking-widest uppercase transition-all ${resultData.isBurnout ? 'bg-orange-500 text-slate-900 hover:bg-orange-400' : 'bg-teal-500 text-slate-900 hover:bg-teal-400'}`}
+          >
+            Begin Protocol
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full flex flex-col">
+       <Nav title="Burnout Audit" subtitle={`Question ${step + 1} / 6`} onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={((step + 1) / 6) * 100} />
+       
+       <div className="flex-1 flex flex-col justify-start items-center text-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-6 pt-8">
+          <h3 className="font-serif text-2xl text-white italic mb-2 shrink-0">{questions[step].q}</h3>
+          <p className="font-sans text-sm text-white/70 leading-relaxed mb-8 max-w-xs shrink-0">
+            {questions[step].text}
+          </p>
+
+          <div className="w-full space-y-4 shrink-0">
+              <button 
+                onClick={() => confirmAnswer(1)} 
+                className="w-full py-5 rounded-xl border border-orange-500/50 bg-orange-500/20 text-orange-200 font-sans text-xs tracking-widest uppercase transition-all hover:bg-orange-500/30"
+             >
+                Yes, frequently
+             </button>
+             <button 
+                onClick={() => confirmAnswer(0)} 
+                className="w-full py-5 rounded-xl border border-teal-500/50 bg-teal-500/20 text-teal-200 font-sans text-xs tracking-widest uppercase transition-all hover:bg-teal-500/30"
+             >
+                No, rarely
+             </button>
+          </div>
+       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // --- ENERGY ANALYZER ---
 const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
@@ -1395,7 +1531,7 @@ const App = () => {
            {view === 'fork' && <Crossroads stressLevel={stressLevel} energyLevel={energyLevel} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'regulate' && <Breath breathing={breathing} setBreathing={setBreathing} breathCount={breathCount} setBreathCount={setBreathCount} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'alchemy' && <Alchemy setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
-           {view === 'integration' && <Integration goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} isLocked={isLocked} setIsLocked={setIsLocked} expandingBelief={expandingBelief} stressor={stressor} sessionCount={sessionCount} completeSession={completeSession} resetApp={resetApp} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} somaticZones={somaticZones} isBurnoutPath={isBurnoutPath} />}
+           {view === 'integration' && <Integration goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} isLocked={isLocked} setIsLocked={setIsLocked} expandingBelief={expandingBelief} stressor={stressor} sessionCount={sessionCount} completeSession={completeSession} resetApp={resetApp} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} somaticZones={somaticZones} isBurnoutPath={isBurnoutPath} userName={userName} />}
            {view === 'insight' && <Insight expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'energy' && <EnergyAnalyzer setView={setView} />}
         </div>
