@@ -23,7 +23,7 @@ const getSmartQuestion = (energy: number, stress: number) => {
   return "What is one assumption you are making that might not be true?";
 };
 
-// --- API HELPERS ---
+// --- API HELPERS (UPDATED FOR STREAMING) ---
 
 const generateCoachingQuestions = async (stressor: string, perception: string, somatic: string, energyLevel: number, stressLevel: number) => {
   try {
@@ -40,7 +40,6 @@ const generateCoachingQuestions = async (stressor: string, perception: string, s
     }
 
     const data = await res.json();
-    // Return the array, we will pick the first one in the UI logic
     return data.questions; 
   } catch (error) {
     // FALLBACK: Use the Client-Side ELI Brain logic
@@ -48,7 +47,8 @@ const generateCoachingQuestions = async (stressor: string, perception: string, s
   }
 };
 
-const generateManifesto = async (stressor: string, truth: string, action: string) => {
+// UPDATED: Streaming Manifesto Generator to fix Vercel Timeout
+const generateManifesto = async (stressor: string, truth: string, action: string, onUpdate: (text: string) => void) => {
   try {
     const res = await fetch('/api/manifesto', {
       method: 'POST',
@@ -56,15 +56,33 @@ const generateManifesto = async (stressor: string, truth: string, action: string
       body: JSON.stringify({ stressor, truth, action })
     });
 
-    const contentType = res.headers.get("content-type");
-    if (!res.ok || !contentType || !contentType.includes("application/json")) {
-       throw new Error('API unavailable');
+    if (!res.ok) throw new Error('API unavailable');
+
+    // Check if the response is a stream
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        // Decode the chunk and append to state
+        const chunk = decoder.decode(value, { stream: true });
+        fullText += chunk;
+        onUpdate(fullText); // Live typing effect
+      }
+    } else {
+      // Fallback if backend isn't streaming yet
+      const data = await res.json();
+      fullText = data.manifesto;
+      onUpdate(fullText);
     }
 
-    const data = await res.json();
-    return { text: data.manifesto, isOffline: false };
+    return { text: fullText, isOffline: false };
   } catch (error) {
     const fallbackText = `I release the weight of "${stressor}". I stand now in the truth that ${truth}. I seal this power by ${action}, marking the moment I reclaimed my sovereign energy.`;
+    onUpdate(fallbackText);
     return { text: fallbackText, isOffline: true };
   }
 };
@@ -431,7 +449,7 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
                         <AlertTriangle size={16} />
                         <span className="font-sans text-xs font-bold tracking-widest uppercase">High Friction Detected</span>
                      </div>
-                     <span className="text-[10px] opacity-70">Check Burnout Risk?</span>
+                     <span className="text-[10px] opacity-70">Run Vitality Scan</span>
                  </button>
 
                  <button 
@@ -695,9 +713,6 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
   );
 };
 
-// --- REST OF THE COMPONENTS (Unchanged logic, just simplified for file length) ---
-// Crossroads, Breath, Alchemy, Integration, Insight, EnergyAnalyzer included below
-
 const Crossroads: React.FC<CrossroadsProps> = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel }) => {
   const recommendStillness = parseInt(stressLevel.toString()) > 70 && parseInt(energyLevel.toString()) < 40;
   return (
@@ -912,8 +927,10 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
   useEffect(() => {
     if (isLocked && !isBurnoutPath && !manifesto) {
       setGenerating(true);
-      generateManifesto(stressor, expandingBelief, goal.action || "action").then(res => {
-        setManifesto(res.text);
+      // UPDATED: Using streaming generator callback
+      generateManifesto(stressor, expandingBelief, goal.action || "action", (text) => {
+          setManifesto(text);
+      }).then(res => {
         setIsOffline(res.isOffline);
         setGenerating(false);
       });
@@ -979,13 +996,9 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
                 {isOffline && <span className="bg-red-500/20 text-red-300 px-1 rounded flex items-center gap-1"><WifiOff size={8}/> Offline Mode</span>}
               </p>
 
-              <div className="font-serif text-lg leading-relaxed text-white/90 italic mb-8 text-center">
-                {generating ? (
-                  <div className="flex flex-col items-center gap-3 animate-pulse">
-                    <Loader2 className="animate-spin text-teal-400" size={24}/>
-                    <span>Forging Decree...</span>
-                  </div>
-                ) : isBurnoutPath ? (
+              <div className="font-serif text-lg leading-relaxed text-white/90 italic mb-8 text-center min-h-[100px]">
+                {/* Streaming text appears here */}
+                {isBurnoutPath ? (
                   `"I, ${userName || 'The Conscious Leader'}, grant myself full permission to pause. The world will wait. My energy is my most precious asset, and I choose to protect it now."`
                 ) : (
                   `"${manifesto || expandingBelief}"`
@@ -1228,7 +1241,7 @@ const BurnoutCheck: React.FC<BurnoutCheckProps> = ({ setView, setBurnoutPath, to
 
   return (
     <div className="h-full flex flex-col">
-       <Nav title="Burnout Audit" subtitle={`Question ${step + 1} / 6`} onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={((step + 1) / 6) * 100} />
+       <Nav title="Vitality Scan" subtitle={`Question ${step + 1} / 6`} onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={((step + 1) / 6) * 100} />
        
        <div className="flex-1 flex flex-col justify-start items-center text-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-6 pt-8">
           <h3 className="font-serif text-2xl text-white italic mb-2 shrink-0">{questions[step].q}</h3>
