@@ -8,7 +8,7 @@ import {
   MinusCircle, AlertTriangle, Info, FileText, Thermometer, Sparkles, Loader2, WifiOff, Home, BatteryWarning, ExternalLink, HelpCircle
 } from 'lucide-react';
 
-// --- SOUND ENGINE (New Feature) ---
+// --- 1. SOUND ENGINE (New Update) ---
 class SoundEngine {
   ctx: AudioContext | null = null;
   osc: OscillatorNode | null = null;
@@ -31,16 +31,16 @@ class SoundEngine {
 
     this.osc = this.ctx!.createOscillator();
     this.osc.type = 'sine';
-    this.osc.frequency.setValueAtTime(110, this.ctx!.currentTime); // 110Hz (A2)
+    this.osc.frequency.setValueAtTime(110, this.ctx!.currentTime); // 110Hz (Theta/Alpha border)
     
     this.osc.connect(this.gain!);
     this.osc.start();
-    this.gain!.gain.setTargetAtTime(0.05, this.ctx!.currentTime, 2); // Fade in
+    this.gain!.gain.setTargetAtTime(0.05, this.ctx!.currentTime, 2); // Slow fade in
   }
 
   stop() {
     if (this.gain && this.ctx) {
-      this.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.5); // Fade out
+      this.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.5);
       setTimeout(() => {
         if (this.osc) { this.osc.stop(); this.osc.disconnect(); }
       }, 600);
@@ -49,7 +49,7 @@ class SoundEngine {
 }
 const soundEngine = new SoundEngine();
 
-// --- API HELPERS (Restored + Streaming Update) ---
+// --- API HELPERS (Restored + Streaming Logic) ---
 
 const getSmartQuestion = (energy: number, stress: number) => {
   if (stress > 60 || energy < 40) return "What specifically is threatened by this situation?";
@@ -73,7 +73,7 @@ const generateCoachingQuestions = async (stressor: string, perception: string, s
   }
 };
 
-// UPDATED: Streaming support
+// UPDATED: Streaming support for Manifesto
 const generateManifesto = async (stressor: string, truth: string, action: string, fear: string, onUpdate: (text: string) => void) => {
   try {
     const res = await fetch('/api/manifesto', {
@@ -123,7 +123,7 @@ const generateEnergyInsight = async (level: number, type: string) => {
   }
 };
 
-// --- SHARED COMPONENTS ---
+// --- SHARED STYLES (Restored with Ripple Animation) ---
 
 const FontStyles = () => (
   <style>{`
@@ -142,8 +142,12 @@ const FontStyles = () => (
     
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     .animate-enter { animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .animate-fade-in { animation: fadeIn 1s ease-out forwards; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: white; cursor: pointer; margin-top: -8px; box-shadow: 0 0 20px rgba(255,255,255,0.5); }
+    input[type=range]::-webkit-slider-runnable-track { height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; }
     .glow-pulse { animation: glowPulse 3s infinite; }
     @keyframes glowPulse { 0% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4); border-color: rgba(20, 184, 166, 0.6); } 50% { box-shadow: 0 0 20px 0 rgba(20, 184, 166, 0.2); border-color: rgba(20, 184, 166, 1); } 100% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4); border-color: rgba(20, 184, 166, 0.6); } }
   `}</style>
@@ -200,15 +204,16 @@ const Atmosphere: React.FC<{ bgState: string }> = ({ bgState }) => {
     preservation: "from-[#1c1917] via-[#292524] to-[#0c0a09]",
     laser: "from-[#1e1b4b] via-[#312e81] to-[#1e1b4b]"
   };
-
   return (
     <div className={`absolute inset-0 bg-gradient-to-b transition-colors duration-[3000ms] ${themes[bgState] || themes.neutral}`}>
       <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
+      <div className="absolute top-[10%] left-[10%] w-[80%] h-[60%] bg-indigo-500/10 rounded-full blur-[100px] animate-subconscious"></div>
+      <div className="absolute bottom-[-10%] right-[10%] w-[50%] h-[50%] bg-teal-500/10 rounded-full blur-[120px] animate-subconscious" style={{ animationDelay: '3s' }}></div>
     </div>
   );
 };
 
-// --- VIEW COMPONENTS (Restored to Original Design) ---
+// --- RESTORED VIEW COMPONENTS ---
 
 const Welcome: React.FC<{ onEnter: () => void }> = ({ onEnter }) => (
   <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
@@ -224,6 +229,10 @@ const Welcome: React.FC<{ onEnter: () => void }> = ({ onEnter }) => (
         <button onClick={onEnter} className="mt-12 px-8 py-4 rounded-full bg-white/10 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-white/20 hover:scale-105 transition-all animate-enter delay-300 border border-white/5">Enter the Space</button>
       </div>
       <div className="flex-1"></div>
+      <div className="mt-8 flex flex-col items-center opacity-60 shrink-0">
+        <p className="font-sans text-[8px] text-white/30 uppercase tracking-widest mb-2">Powered By</p>
+        <p className="font-serif italic text-white/80 text-xs">Conscious Growth Coaching</p>
+      </div>
     </div>
   </div>
 );
@@ -244,6 +253,8 @@ const Manifesto: React.FC<{ onContinue: () => void }> = ({ onContinue }) => (
          <p className="text-white">In the next few minutes, we will locate the friction in the body, listen to its message, and shift it into fuel.</p>
        </div>
        <div className="my-12 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+       <p className="font-sans text-[10px] uppercase tracking-widest text-white/40 mb-6">The Only Requirement</p>
+       <p className="font-serif text-white/90 italic mb-10">"Do not rush. When the screen says breathe, actually breathe."</p>
        <button onClick={onContinue} className="w-full py-5 rounded-full bg-white/5 border border-white/10 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-white/10 hover:border-white/30 transition-all">Begin</button>
       </div>
   </div>
@@ -254,7 +265,12 @@ const Identity: React.FC<any> = ({ userName, setUserName, onComplete }) => (
     <div className="min-h-full flex flex-col items-center py-10 w-full">
       <div className="flex-1"></div>
       <div className="w-full max-w-xs flex flex-col items-center">
+        <div className="mb-8 relative">
+            <div className="absolute inset-0 bg-white/10 blur-xl rounded-full"></div>
+            <Activity size={40} className="text-white/80 relative z-10" strokeWidth={1} />
+        </div>
         <h1 className="font-serif text-4xl text-white mb-2 italic tracking-wide">Adaptiv</h1>
+        <p className="font-sans text-white/40 text-xs tracking-[0.2em] uppercase mb-12">Alchemy for the Soul</p>
         <div className="w-full space-y-6 mt-12">
             <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && userName && onComplete()} placeholder="Enter Name / Alias" className="w-full bg-transparent border-b border-white/20 py-3 text-center text-white text-xl font-serif placeholder:text-white/20 focus:outline-none focus:border-white/60 transition-colors" />
             <button onClick={onComplete} disabled={!userName} className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs font-medium tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed">Begin</button>
@@ -276,7 +292,7 @@ const Horizon: React.FC<any> = ({ userName, sessionCount, stressor, setStressor,
       <div className="flex-1 flex flex-col gap-6 overflow-y-auto hide-scrollbar animate-enter pb-8">
         
         {/* REBRANDED: 7-Day Neural Reset */}
-        <div className="glass-panel p-4 rounded-[24px] border-teal-500/20 relative">
+        <div className="glass-panel p-4 rounded-[24px] border-teal-500/20 relative group">
            <div className="flex justify-between items-center mb-2">
               <div className="flex items-center gap-2">
                 <h3 className="font-serif text-lg text-teal-100 italic">7-Day Neural Reset</h3>
@@ -287,7 +303,11 @@ const Horizon: React.FC<any> = ({ userName, sessionCount, stressor, setStressor,
               </span>
            </div>
            
-           <div className="flex justify-between mb-6 relative z-10 px-1">
+           <p className="text-[9px] text-teal-200/40 mb-3 leading-relaxed">
+             Neuroplasticity requires repetition. Complete 7 cycles to rewire your baseline response to stress.
+           </p>
+           
+           <div className="flex justify-between mb-2 relative z-10 px-1">
               {Array.from({ length: 7 }).map((_, i) => (
                 <div key={i} className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all text-[9px] font-bold ${
                   i < (sessionCount % 7) 
@@ -338,6 +358,9 @@ const Horizon: React.FC<any> = ({ userName, sessionCount, stressor, setStressor,
         {isBurnout ? (
           <div className="animate-enter delay-100 p-4 rounded-2xl bg-orange-900/10 border border-orange-500/30">
             <p className="font-serif text-xl text-orange-200 text-center italic mb-2">System Alert: Depletion</p>
+            <p className="font-sans text-[10px] text-orange-200/60 text-center mb-4 leading-relaxed">
+              Your biometrics indicate high friction. Standard protocols may cause further strain.
+            </p>
             <button onClick={() => setView('preservation')} className="w-full py-4 rounded-full bg-gradient-to-r from-orange-900/60 to-amber-900/60 border border-orange-500/30 text-orange-100 font-sans text-xs tracking-widest uppercase hover:border-orange-500/50 transition-all shadow-lg shadow-orange-900/20">
               Enter Preservation
             </button>
@@ -352,7 +375,10 @@ const Horizon: React.FC<any> = ({ userName, sessionCount, stressor, setStressor,
             {(showWorkCheck || isHighFriction) ? (
               <div className="animate-enter mb-2 space-y-3">
                  <button onClick={() => setView('burnout_check')} className="w-full py-4 rounded-xl bg-orange-500/20 text-orange-200 border border-orange-500/50 flex flex-col items-center justify-center gap-1 hover:bg-orange-500/30 transition-all">
-                     <span className="font-sans text-xs font-bold tracking-widest uppercase">High Friction Detected</span>
+                     <div className="flex items-center gap-2">
+                        <AlertTriangle size={16} />
+                        <span className="font-sans text-xs font-bold tracking-widest uppercase">High Friction Detected</span>
+                     </div>
                      {/* UPDATED: Renamed to Vitality Scan */}
                      <span className="text-[10px] opacity-70">Run Vitality Scan</span>
                  </button>
@@ -378,6 +404,10 @@ const Vessel: React.FC<any> = ({ somaticZones, setSomaticZones, setView, toggleS
   return (
     <div className="h-full flex flex-col">
       <Nav title="The Vessel" subtitle="Locate the Part" onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={15} />
+      <div className="mb-4 animate-enter shrink-0 px-4">
+        <p className="font-serif text-lg text-white/80 italic leading-relaxed">"Where does the tension live?"</p>
+        <p className="font-sans text-xs text-white/40 mt-1 leading-relaxed max-w-[90%]">Select the physical part that is calling for attention right now.</p>
+      </div>
       <div className="flex-1 grid grid-cols-2 gap-3 content-start overflow-y-auto hide-scrollbar pb-4 min-h-0 animate-enter delay-100 px-4">
         {zones.map(z => {
           const Icon = z.icon;
@@ -412,6 +442,10 @@ const PartsWork: React.FC<any> = ({ selectedPart, sensation, setSensation, prote
             <Activity size={24} className="text-white/80 mx-auto mb-4" />
             <p className="font-serif text-2xl text-white/90 italic mb-4">"How does the {selectedPart} feel?"</p>
             <input autoFocus className="w-full bg-transparent border-b border-white/20 py-4 text-center text-white font-light text-lg focus:outline-none mb-6" placeholder="It feels like..." value={sensation} onChange={e => setSensation(e.target.value)} onKeyDown={e => e.key === 'Enter' && setPartsStep('unblend')} />
+            {/* RESTORED: Sensation Chips */}
+            <div className="flex flex-wrap justify-center gap-2 mb-8">
+               {["Tightness", "Heat", "Heaviness", "Buzzing"].map(s => <button key={s} onClick={() => setSensation(s)} className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-[10px] text-white/90 hover:bg-white/20 transition-all">{s}</button>)}
+            </div>
             <button onClick={() => setPartsStep('unblend')} disabled={!sensation} className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all">Next</button>
           </div>
         )}
@@ -420,7 +454,7 @@ const PartsWork: React.FC<any> = ({ selectedPart, sensation, setSensation, prote
           <div className="text-center">
              <Wind size={64} className="text-teal-200 mx-auto mb-8" />
              <h3 className="font-serif text-2xl text-white italic mb-4">Separation</h3>
-             <p className="font-sans text-sm text-white/70 leading-relaxed mb-8">Can you ask the <strong>{sensation}</strong> to step back just a few inches?</p>
+             <p className="font-sans text-sm text-white/70 leading-relaxed mb-8">Can you ask the <strong>{sensation}</strong> to step back just a few inches, so you can look <em>at</em> it, rather than <em>through</em> it?</p>
              <button onClick={() => setPartsStep('connect')} className="w-full py-4 rounded-full bg-teal-500/10 text-teal-200 font-sans text-xs tracking-widest uppercase hover:bg-teal-500/20 transition-all border border-teal-500/20">I have created space</button>
           </div>
         )}
@@ -441,6 +475,10 @@ const PartsWork: React.FC<any> = ({ selectedPart, sensation, setSensation, prote
              <Shield size={24} className="text-white/80 mx-auto mb-4" />
              <p className="font-serif text-2xl text-white/90 italic mb-4">"What is it trying to do?"</p>
              <input autoFocus className="w-full bg-transparent border-b border-white/20 py-4 text-center text-white font-light text-lg focus:outline-none mb-6" placeholder="It is trying to..." value={protection} onChange={e => setProtection(e.target.value)} onKeyDown={e => e.key === 'Enter' && setPartsStep('channel')} />
+             {/* RESTORED: Protection Chips */}
+             <div className="flex flex-wrap justify-center gap-2 mb-8">
+                {["Prevent Failure", "Keep me Safe", "Control Outcomes"].map(p => <button key={p} onClick={() => setProtection(p)} className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-[10px] text-white/90 hover:bg-white/20 transition-all">{p}</button>)}
+             </div>
              <button onClick={() => setPartsStep('channel')} disabled={!protection} className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all">Acknowledge</button>
           </div>
         )}
@@ -449,7 +487,14 @@ const PartsWork: React.FC<any> = ({ selectedPart, sensation, setSensation, prote
           <div className="text-center">
             <Zap size={24} className="text-teal-200 mx-auto mb-4" />
             <p className="font-serif text-2xl text-teal-100 italic mb-4">"Shift the Energy"</p>
+            <p className="font-sans text-xs text-white/60 mb-6">You don't need to destroy the energy. Use it.</p>
             <input autoFocus className="w-full bg-transparent border-b border-teal-500/30 py-4 text-center text-teal-50 font-light text-lg focus:outline-none mb-8" placeholder="I will use this energy to..." value={expandingBelief} onChange={e => setExpandingBelief(e.target.value)} onKeyDown={e => e.key === 'Enter' && setView('lens')} />
+            {/* RESTORED: Expansion Chips */}
+            <div className="flex flex-wrap justify-center gap-2 mb-8">
+               {["Fuel my boundaries", "Deepen my focus", "Drive my commitment"].map(ex => (
+                 <button key={ex} onClick={() => setExpandingBelief(ex)} className="px-3 py-1 rounded-full border border-teal-500/20 bg-teal-500/10 text-[10px] text-teal-200 hover:bg-teal-500/20 transition-all">{ex}</button>
+               ))}
+            </div>
             <button onClick={() => setView('lens')} disabled={!expandingBelief} className="w-full py-4 rounded-full bg-teal-500/10 text-teal-200 border border-teal-500/20 font-sans text-xs tracking-widest uppercase hover:bg-teal-500/20 transition-all">Integrate</button>
           </div>
         )}
@@ -463,6 +508,9 @@ const Perspective: React.FC<any> = ({ pressure, setPressure, ability, setAbility
   return (
     <div className="h-full flex flex-col">
       <Nav title="The Perspective" subtitle="Calibration" onBack={() => setView('partswork')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={50} />
+      <div className="mb-4 text-center px-6">
+        <p className="font-sans text-xs text-white/60 leading-relaxed max-w-xs mx-auto">We calibrate here to check your bandwidth. If Demand exceeds Resource, we need Safety (Stillness). If Resource exceeds Demand, we need Action (Motion).</p>
+      </div>
       <div className="flex-1 flex flex-col items-center justify-start pt-4 px-4 overflow-y-auto hide-scrollbar">
         <div className={`relative w-40 h-40 rounded-full border border-white/10 flex items-center justify-center transition-all duration-1000 ${flowState ? 'shadow-[0_0_50px_rgba(20,184,166,0.2)]' : 'shadow-[0_0_50px_rgba(244,63,94,0.2)]'}`}>
            <div className="text-center relative z-10 px-2">
@@ -564,11 +612,14 @@ const LaserCoaching: React.FC<any> = ({ stressor, perception, somatic, setView, 
                <span className="font-sans text-[10px] text-white/40 uppercase tracking-widest mb-4 block">{currentQ.label}</span>
                <h3 className="font-serif text-2xl text-white italic mb-8 leading-snug">{currentQ.q}</h3>
                <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6 text-lg placeholder:text-white/20" placeholder={currentQ.ph} value={answers[currentQ.id]} onChange={e => setAnswers({...answers, [currentQ.id]: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleNext()} />
+               
+               {/* RESTORED: Answer Chips */}
                <div className="flex flex-wrap gap-2 mb-6">
                  {(starters[step] || []).map(s => (
                    <button key={s} onClick={() => setAnswers({...answers, [currentQ.id]: s})} className="px-3 py-1 rounded-full border border-white/10 bg-white/5 text-[10px] text-white/60 hover:bg-white/10 transition-colors">{s}</button>
                  ))}
                </div>
+               
                <div className="flex justify-end"><button onClick={handleNext} disabled={!answers[currentQ.id]} className="px-8 py-3 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-widest uppercase disabled:opacity-50">{step === 3 ? "Lock It In" : "Next"}</button></div>
              </div>
            )}
@@ -923,7 +974,7 @@ const EnergyAnalyzer: React.FC<any> = ({ setView }) => {
     )
 };
 
-// --- MAIN APP RENDER (Restored Flow) ---
+// --- MAIN APP RENDER ---
 const App = () => {
   const [view, setView] = useState('welcome'); 
   const [bgState, setBgState] = useState('neutral'); 
@@ -931,7 +982,7 @@ const App = () => {
   const [sessionCount, setSessionCount] = useState(0);
   const [stressor, setStressor] = useState(''); 
   const [perception, setPerception] = useState('');
-  const [fear, setFear] = useState(''); // Added Fear state
+  const [fear, setFear] = useState(''); 
   const [stressLevel, setStressLevel] = useState(50);
   const [energyLevel, setEnergyLevel] = useState(50);
   const [isBurnout, setIsBurnout] = useState(false);
@@ -991,7 +1042,6 @@ const App = () => {
              resetApp={resetApp} 
            />}
            {view === 'preservation' && <Preservation setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setGoal={setGoal} setExpandingBelief={setExpandingBelief} setViewToIntegration={() => { setIsLocked(true); setView('integration'); }} />}
-           {/* UPDATED: Renamed View */}
            {view === 'burnout_check' && <VitalityScan setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setBurnoutPath={setIsBurnoutPath} />}
            {view === 'somatic' && <Vessel somaticZones={somaticZones} setSomaticZones={setSomaticZones} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'partswork' && <PartsWork selectedPart={somaticZones[0] || 'Part'} sensation={sensation} setSensation={setSensation} protection={protection} setProtection={setProtection} fear={fear} setFear={setFear} expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief} partsStep={partsStep} setPartsStep={setPartsStep} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
