@@ -10,54 +10,49 @@ const google = createGoogleGenerativeAI({
 });
 
 export async function POST(req: Request) {
-  const { stressor, somatic, energyLevel, stressLevel } = await req.json();
-
-  // Dynamic persona based on user's energy
-  const isHighStress = stressLevel > 70;
-  const isLowEnergy = energyLevel < 40;
-  
-  let approach = "Direct and challenging.";
-  if (isHighStress) approach = "Calm, grounding, and focused on safety/protection.";
-  if (isLowEnergy) approach = "Gentle, focused on the smallest possible step.";
-
-  const systemPrompt = `You are an expert NLP Coach (Energy Leadership Master).
-  
-  CLIENT PROFILE:
-  - Situation: "${stressor}"
-  - Somatic Feeling: "${somatic}"
-  - Internal Weather: Energy ${energyLevel}/100, Stress ${stressLevel}/100
-  - Your Approach Mode: ${approach}
-
-  TASK:
-  Generate exactly 3 surgical coaching questions to shift their perspective.
-  
-  CRITICAL RULES:
-  1. You MUST reference their specific situation ("${stressor}") or body part ("${somatic}") in at least one question.
-  2. Do NOT ask generic questions like "What would love do?"
-  3. Question 1 should validate the feeling.
-  4. Question 2 should challenge the assumption.
-  5. Question 3 should provoke a micro-action.
-  6. Return ONLY a JSON array of strings.`;
-
   try {
+    const { stressor, somatic, energyLevel, stressLevel } = await req.json();
+
+    // Contextual Logic
+    const isHighStress = stressLevel > 70;
+    const isLowEnergy = energyLevel < 40;
+    let approach = "Direct and challenging.";
+    if (isHighStress) approach = "Calm, grounding, and focused on safety.";
+    if (isLowEnergy) approach = "Gentle, focused on micro-steps.";
+
+    const systemPrompt = `You are an expert NLP Coach.
+    Client Context:
+    - Situation: "${stressor}"
+    - Body Sensation: "${somatic}"
+    - Energy: ${energyLevel}/100 | Stress: ${stressLevel}/100
+    - Approach: ${approach}
+
+    TASK: Generate exactly 3 surgical coaching questions.
+    RULES:
+    1. You MUST reference the specific situation ("${stressor}") or sensation ("${somatic}") in the questions.
+    2. Question 1: Validate the feeling.
+    3. Question 2: Challenge the assumption.
+    4. Question 3: Provoke a micro-action.
+    5. Return ONLY a JSON array of strings.`;
+
     const { text } = await generateText({
       model: google('gemini-1.5-flash'),
       system: systemPrompt,
-      prompt: "Generate the 3 questions now.",
+      prompt: "Generate questions.",
     });
 
     const cleanText = text.replace(/```json|```/g, '').trim();
     return new Response(JSON.stringify({ questions: JSON.parse(cleanText) }), {
       headers: { 'Content-Type': 'application/json' }
     });
+
   } catch (error) {
-    console.error("AI Error:", error);
-    // Smart fallback that uses their specific words even if AI fails
+    console.error("Coaching API Error:", error);
     return new Response(JSON.stringify({ 
       questions: [
-        `What is the "${somatic}" trying to protect you from?`,
-        `If the weight of "${stressor}" was 10% lighter, what would you do differently?`,
-        "What is one thing you are pretending not to know?"
+        `What is the "${somatic}" trying to tell you about ${stressor}?`,
+        "If you had full permission to stop, what would you do?",
+        "What is one small step that feels doable right now?"
       ] 
     }), { headers: { 'Content-Type': 'application/json' } });
   }
