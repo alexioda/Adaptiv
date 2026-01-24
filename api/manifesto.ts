@@ -1,8 +1,8 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { streamText } from 'ai';
+import { generateText } from 'ai';
 
 export const config = {
-  runtime: 'edge', // <--- CRITICAL: Forces Vercel to use Edge (Standard Request/Response)
+  runtime: 'edge',
 };
 
 const google = createGoogleGenerativeAI({
@@ -10,33 +10,44 @@ const google = createGoogleGenerativeAI({
 });
 
 export async function POST(req: Request) {
-  const { stressor, truth, action, fear } = await req.json();
+  // Safe parsing with defaults
+  const body = await req.json();
+  const { stressor, truth, action, fear = "uncertainty" } = body;
 
-  const systemPrompt = `You are an ALCHEMIST OF IDENTITY and a MASTER NLP POET.
-  Your goal is to forge a "Decree"—a statement of absolute sovereignty.
+  const systemPrompt = `You are an ALCHEMIST OF IDENTITY.
+  Goal: Forge a "Decree" of sovereignty.
   
-  TONE RULES:
-  - NO technical jargon (No "Level 1", "Catabolic").
+  TONE:
+  - No jargon.
   - Poetic, Rhythmic, Ancient.
   - Authoritative ("I AM").
   - Short (Max 3 sentences).
 
-  INPUT CONTEXT:
-  - The Weight: "${stressor}"
-  - The Fear: "${fear}"
-  - The New Truth: "${truth}"
-  - The Seal (Action): "${action}"
+  CONTEXT:
+  - Weight: "${stressor}"
+  - Fear: "${fear}"
+  - Truth: "${truth}"
+  - Action: "${action}"
 
   STRUCTURE:
-  1. Acknowledge the fear/weight briefly but dismiss its power.
-  2. Claim the new truth as an absolute fact.
+  1. Acknowledge the fear briefly but dismiss its power.
+  2. Claim the new truth.
   3. Seal it with the action.`;
 
-  const result = await streamText({
-    model: google('gemini-1.5-flash'),
-    system: systemPrompt,
-    prompt: "Generate the decree now.",
-  });
+  try {
+    const { text } = await generateText({
+      model: google('gemini-1.5-flash'),
+      system: systemPrompt,
+      prompt: "Generate the decree.",
+    });
 
-  return result.toDataStreamResponse();
+    return new Response(JSON.stringify({ manifesto: text }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    console.error("Manifesto Error:", error);
+    return new Response(JSON.stringify({ 
+      manifesto: `I release the weight of ${stressor}. I acknowledge the fear of ${fear}, but I choose to stand in my truth: ${truth}. I seal this by ${action}.`
+    }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  }
 }
