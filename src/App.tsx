@@ -9,8 +9,39 @@ import {
   Split, CloudFog
 } from 'lucide-react';
 
+// --- TYPES ---
+interface Goal {
+  what: string;
+  measure: string;
+  when: string;
+  outcome: string;
+  action: string;
+}
+
+interface NavProps {
+  title: string;
+  subtitle: string;
+  onBack?: () => void;
+  isDashboard?: boolean;
+  soundEnabled: boolean;
+  toggleSound: () => void;
+  resetApp?: () => void;
+  progress?: number;
+  aiActive?: boolean;
+}
+
+interface SomaticZone {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+}
+
 // --- 1. SOUND ENGINE ---
 class SoundEngine {
+  ctx: AudioContext | null;
+  osc: OscillatorNode | null;
+  gain: GainNode | null;
+
   constructor() {
     this.ctx = null;
     this.osc = null;
@@ -19,7 +50,8 @@ class SoundEngine {
 
   init() {
     if (!this.ctx) {
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const AudioCtor = window.AudioContext || (window as any).webkitAudioContext;
+      this.ctx = new AudioCtor();
       this.gain = this.ctx.createGain();
       this.gain.connect(this.ctx.destination);
       this.gain.gain.value = 0; 
@@ -30,22 +62,22 @@ class SoundEngine {
     if (!this.ctx || !this.gain) this.init();
     if (this.ctx?.state === 'suspended') this.ctx.resume();
     
-    if (this.osc) { this.osc.stop(); this.osc.disconnect(); }
+    if (this.osc) { try { this.osc.stop(); this.osc.disconnect(); } catch (e) {} }
 
-    this.osc = this.ctx.createOscillator();
+    this.osc = this.ctx!.createOscillator();
     this.osc.type = 'sine';
-    this.osc.frequency.setValueAtTime(110, this.ctx.currentTime); // 110Hz
+    this.osc.frequency.setValueAtTime(110, this.ctx!.currentTime); // 110Hz
     
-    this.osc.connect(this.gain);
+    this.osc.connect(this.gain!);
     this.osc.start();
-    this.gain.gain.setTargetAtTime(0.05, this.ctx.currentTime, 2); 
+    this.gain!.gain.setTargetAtTime(0.05, this.ctx!.currentTime, 2); 
   }
 
   stop() {
     if (this.gain && this.ctx) {
       this.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.5);
       setTimeout(() => {
-        if (this.osc) { this.osc.stop(); this.osc.disconnect(); }
+        if (this.osc) { try { this.osc.stop(); this.osc.disconnect(); } catch (e) {} }
       }, 600);
     }
   }
@@ -56,13 +88,13 @@ const soundEngine = new SoundEngine();
 
 const apiKey = ""; // API Key injected by environment
 
-const getSmartQuestion = (energy, stress) => {
+const getSmartQuestion = (energy: number, stress: number) => {
   if (stress > 60 || energy < 40) return "What specifically is threatened by this situation?";
   if (energy > 70) return "If you were coaching your best self, what would you tell them to do?";
   return "What is one assumption you are making that might not be true?";
 };
 
-const generateCoachingQuestions = async (stressor, perception, somatic, energyLevel, stressLevel) => {
+const generateCoachingQuestions = async (stressor: string, perception: string, somatic: string, energyLevel: number, stressLevel: number): Promise<string[]> => {
   try {
     const prompt = `Generate 4 short, powerful, provocative coaching questions for a client.
     Context:
@@ -86,7 +118,10 @@ const generateCoachingQuestions = async (stressor, perception, somatic, energyLe
     if (!res.ok) throw new Error('API unavailable');
     
     const data = await res.json();
-    const parsed = JSON.parse(data.candidates[0].content.parts[0].text);
+    let text = data.candidates[0].content.parts[0].text;
+    // Fix: Remove potential markdown wrapping which causes JSON.parse to fail
+    text = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(text);
     return parsed.questions; 
   } catch (error) {
     console.error("Coaching Question Error", error);
@@ -94,7 +129,7 @@ const generateCoachingQuestions = async (stressor, perception, somatic, energyLe
   }
 };
 
-const generateManifesto = async (stressor, truth, action, fear, onUpdate) => {
+const generateManifesto = async (stressor: string, truth: string, action: string, fear: string, onUpdate: (text: string) => void) => {
   try {
     const prompt = `Act as a wise, powerful executive coach. Write a personal "Alchemist Decree" (Manifesto) for your client.
     
@@ -133,7 +168,7 @@ const generateManifesto = async (stressor, truth, action, fear, onUpdate) => {
   }
 };
 
-const generateEnergyInsight = async (level, type) => {
+const generateEnergyInsight = async (level: number, type: string) => {
   try {
     const prompt = `Provide a single, profound, 1-sentence insight about energy leadership for someone at Level ${level} experiencing '${type}'. Tone: Mystical, grounded, empowering.`;
     
@@ -176,7 +211,7 @@ const FontStyles = () => (
   `}</style>
 );
 
-const Nav = ({ title, subtitle, onBack, isDashboard, soundEnabled, toggleSound, resetApp, progress, aiActive }) => (
+const Nav: React.FC<NavProps> = ({ title, subtitle, onBack, isDashboard, soundEnabled, toggleSound, resetApp, progress, aiActive }) => (
   <div className="flex flex-col mb-4 pt-4 animate-enter shrink-0 relative z-50">
     <div className="flex justify-between items-start">
       <div>
@@ -218,8 +253,8 @@ const Nav = ({ title, subtitle, onBack, isDashboard, soundEnabled, toggleSound, 
   </div>
 );
 
-const Atmosphere = ({ bgState }) => {
-  const themes = {
+const Atmosphere: React.FC<{ bgState: string }> = ({ bgState }) => {
+  const themes: Record<string, string> = {
     neutral: "from-[#0f172a] via-[#1e1b4b] to-[#0f172a]", 
     friction: "from-[#2a0a12] via-[#1a0505] to-[#2a0a12]", 
     flow: "from-[#042f2e] via-[#022c22] to-[#042f2e]",      
@@ -235,7 +270,7 @@ const Atmosphere = ({ bgState }) => {
 
 // --- COMPONENTS ---
 
-const Welcome = ({ onEnter }) => (
+const Welcome: React.FC<{ onEnter: () => void }> = ({ onEnter }) => (
   <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
     <div className="min-h-full flex flex-col justify-center items-center py-10">
       <div className="flex-1"></div>
@@ -257,7 +292,7 @@ const Welcome = ({ onEnter }) => (
   </div>
 );
 
-const Manifesto = ({ onContinue }) => (
+const Manifesto: React.FC<{ onContinue: () => void }> = ({ onContinue }) => (
   <div className="h-full flex flex-col justify-center animate-enter px-6 overflow-y-auto hide-scrollbar text-center">
       <div className="max-w-md mx-auto py-10">
        <div className="mb-10">
@@ -278,7 +313,7 @@ const Manifesto = ({ onContinue }) => (
   </div>
 );
 
-const Identity = ({ userName, setUserName, onComplete }) => (
+const Identity: React.FC<{ userName: string; setUserName: (n: string) => void; onComplete: () => void }> = ({ userName, setUserName, onComplete }) => (
   <div className="h-full flex flex-col px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
     <div className="min-h-full flex flex-col items-center py-10 w-full">
       <div className="flex-1"></div>
@@ -294,7 +329,7 @@ const Identity = ({ userName, setUserName, onComplete }) => (
   </div>
 );
 
-const Horizon = ({ userName, sessionCount, stressor, setStressor, perception, setPerception, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => {
+const Horizon: React.FC<any> = ({ userName, sessionCount, stressor, setStressor, perception, setPerception, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => {
   const triggers = ['work', 'job', 'boss', 'career', 'team', 'project', 'deadline', 'email', 'monday', 'shift', 'burnout', 'tired', 'exhausted', 'drained', 'overwhelm', 'client'];
   const showWorkCheck = triggers.some(t => stressor.toLowerCase().includes(t));
   const isHighFriction = stressLevel > 75 && energyLevel < 35;
@@ -381,7 +416,7 @@ const Horizon = ({ userName, sessionCount, stressor, setStressor, perception, se
 };
 
 // --- NEW COMPONENT: THE FORK IN THE ROAD ---
-const ForkEntry = ({ setView, toggleSound, soundEnabled }) => (
+const ForkEntry: React.FC<any> = ({ setView, toggleSound, soundEnabled }) => (
   <div className="h-full flex flex-col justify-center px-4">
     <Nav title="The Source" subtitle="Origin Point" onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={10} />
     <div className="flex-1 flex flex-col justify-center gap-6 animate-enter">
@@ -416,7 +451,7 @@ const ForkEntry = ({ setView, toggleSound, soundEnabled }) => (
 );
 
 // --- NEW COMPONENT: THE DIFFUSER ---
-const Diffuser = ({ fear, setFear, setView, toggleSound, soundEnabled }) => {
+const Diffuser: React.FC<any> = ({ fear, setFear, setView, toggleSound, soundEnabled }) => {
   const [step, setStep] = useState(0);
   
   return (
@@ -446,7 +481,7 @@ const Diffuser = ({ fear, setFear, setView, toggleSound, soundEnabled }) => {
 };
 
 // --- VESSEL ---
-const Vessel = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnabled }) => {
+const Vessel: React.FC<any> = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnabled }) => {
   const zones = [
     { id: 'Head', label: 'Head', icon: Brain }, { id: 'Eyes', label: 'Eyes', icon: Eye },
     { id: 'Throat', label: 'Throat', icon: MessageCircle }, { id: 'Chest', label: 'Chest', icon: Shield },
@@ -471,7 +506,7 @@ const Vessel = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnab
   );
 };
 
-const PartsWork = ({ selectedPart, sensation, setSensation, protection, setProtection, fear, setFear, expandingBelief, setExpandingBelief, partsStep, setPartsStep, setView, toggleSound, soundEnabled }) => {
+const PartsWork: React.FC<any> = ({ selectedPart, sensation, setSensation, protection, setProtection, fear, setFear, expandingBelief, setExpandingBelief, partsStep, setPartsStep, setView, toggleSound, soundEnabled }) => {
   const handleBack = () => {
     if (partsStep === 'experience') setView('somatic');
     else if (partsStep === 'unblend') setPartsStep('experience');
@@ -542,7 +577,7 @@ const PartsWork = ({ selectedPart, sensation, setSensation, protection, setProte
   );
 };
 
-const Perspective = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }) => {
+const Perspective: React.FC<any> = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }) => {
   const flowState = ability >= pressure;
   return (
     <div className="h-full flex flex-col">
@@ -574,8 +609,8 @@ const Perspective = ({ pressure, setPressure, ability, setAbility, setView, togg
   );
 };
 
-const Crossroads = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel }) => {
-  const recommendStillness = parseInt(stressLevel) > 70 && parseInt(energyLevel) < 40;
+const Crossroads: React.FC<any> = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel }) => {
+  const recommendStillness = parseInt(stressLevel.toString()) > 70 && parseInt(energyLevel.toString()) < 40;
   return (
     <div className="h-full flex flex-col justify-center px-6">
       <Nav title="The Crossroads" subtitle="Choice Point" onBack={() => setView('lens')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={65} />
@@ -598,10 +633,10 @@ const Crossroads = ({ setView, toggleSound, soundEnabled, stressLevel, energyLev
   );
 };
 
-const LaserCoaching = ({ stressor, perception, somatic, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, energyLevel, stressLevel }) => {
+const LaserCoaching: React.FC<any> = ({ stressor, perception, somatic, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, energyLevel, stressLevel }) => {
   const [step, setStep] = useState(0); 
-  const [answers, setAnswers] = useState({ topic: '', result: '', permission: '', action: '' });
-  const [aiQuestions, setAiQuestions] = useState([]);
+  const [answers, setAnswers] = useState<any>({ topic: '', result: '', permission: '', action: '' });
+  const [aiQuestions, setAiQuestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -620,7 +655,7 @@ const LaserCoaching = ({ stressor, perception, somatic, setView, toggleSound, so
     }
   }, []);
 
-  const starters = {
+  const starters: Record<number, string[]> = {
     0: ["My insight is...", "The real issue is...", "I'm realizing that...", "I sense..."],
     1: ["I would look like...", "I would feel...", "It would be done.", "I would be free."],
     2: ["To make a mess.", "To prioritize me.", "To let go.", "To trust myself."],
@@ -637,7 +672,7 @@ const LaserCoaching = ({ stressor, perception, somatic, setView, toggleSound, so
     if (step < 3) setStep(step + 1);
     else {
       setExpandingBelief(answers.topic);
-      setGoal((prev) => ({ ...prev, outcome: answers.result, action: answers.action }));
+      setGoal((prev: any) => ({ ...prev, outcome: answers.result, action: answers.action }));
       setView('integration');
     }
   };
@@ -668,9 +703,9 @@ const LaserCoaching = ({ stressor, perception, somatic, setView, toggleSound, so
   );
 };
 
-const Breath = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }) => {
+const Breath: React.FC<any> = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }) => {
   const phase = breathCount < 4 ? "Inhale" : breathCount < 8 ? "Hold" : "Exhale";
-  useEffect(() => { if (!breathing) return; const i = setInterval(() => setBreathCount((c) => (c + 1) % 16), 1000); return () => clearInterval(i); }, [breathing]);
+  useEffect(() => { if (!breathing) return; const i = setInterval(() => setBreathCount((c: number) => (c + 1) % 16), 1000); return () => clearInterval(i); }, [breathing]);
   
   return (
     <div className="h-full flex flex-col justify-center items-center">
@@ -690,7 +725,7 @@ const Breath = ({ breathing, setBreathing, breathCount, setBreathCount, setView,
   );
 };
 
-const Insight = ({ expandingBelief, setExpandingBelief, setView, toggleSound, soundEnabled }) => (
+const Insight: React.FC<any> = ({ expandingBelief, setExpandingBelief, setView, toggleSound, soundEnabled }) => (
   <div className="h-full flex flex-col justify-center px-6 text-center">
     <Nav title="The Clarity" subtitle="Harvesting" onBack={() => setView('regulate')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
     <div className="flex-1 flex flex-col justify-center">
@@ -701,7 +736,7 @@ const Insight = ({ expandingBelief, setExpandingBelief, setView, toggleSound, so
   </div>
 );
 
-const Alchemy = ({ setView, toggleSound, soundEnabled }) => (
+const Alchemy: React.FC<any> = ({ setView, toggleSound, soundEnabled }) => (
   <div className="h-full flex flex-col">
     <Nav title="Vitality Alchemy" subtitle="Select Chemistry" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
     <div className="flex-1 space-y-4 px-4 pt-4">
@@ -717,7 +752,7 @@ const Alchemy = ({ setView, toggleSound, soundEnabled }) => (
 );
 
 // --- PRIMING (Defined BEFORE Integration) ---
-const Priming = ({ onComplete }) => {
+const Priming: React.FC<any> = ({ onComplete }) => {
   const [step, setStep] = useState(0);
   const steps = [
     { icon: Mountain, title: "Physiology", instruction: "Change your state immediately. Stand up. Shoulders back. Deep breath. Look up.", action: "I am ready." },
@@ -741,7 +776,7 @@ const Priming = ({ onComplete }) => {
 };
 
 // --- INTEGRATION (Uses Priming) ---
-const Integration = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, fear, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath, userName }) => {
+const Integration: React.FC<any> = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, fear, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath, userName }) => {
   const [primingDone, setPrimingDone] = useState(false);
   const [manifesto, setManifesto] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -920,10 +955,10 @@ const Integration = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLock
            </div>
          ) : (
            <>
-             <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6" placeholder={current.ph} value={goal[current.id]} onChange={e => setGoal({...goal, [current.id]: e.target.value})} onKeyDown={e => e.key === 'Enter' && (goalStep < 2 ? setGoalStep(goalStep+1) : setIsLocked(true))} />
+             <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6" placeholder={current.ph} value={goal[current.id as keyof Goal]} onChange={e => setGoal({...goal, [current.id]: e.target.value})} onKeyDown={e => e.key === 'Enter' && (goalStep < 2 ? setGoalStep(goalStep+1) : setIsLocked(true))} />
              <div className="flex gap-3">
                  <button onClick={handleBack} className="px-4 py-3 rounded-xl border border-white/10 text-white/40 hover:text-white transition-colors">Back</button>
-                 <button onClick={() => goalStep < 2 ? setGoalStep(goalStep+1) : setIsLocked(true)} disabled={!goal[current.id]} className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase disabled:opacity-50">Next</button>
+                 <button onClick={() => goalStep < 2 ? setGoalStep(goalStep+1) : setIsLocked(true)} disabled={!goal[current.id as keyof Goal]} className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase disabled:opacity-50">Next</button>
              </div>
            </>
          )}
@@ -932,7 +967,7 @@ const Integration = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLock
   );
 };
 
-const Preservation = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToIntegration }) => {
+const Preservation: React.FC<any> = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToIntegration }) => {
   const [step, setStep] = useState(0);
   const recoverySteps = [
     { title: "Emergency Brake", icon: Anchor, desc: "We cannot 'push' through burnout. We must stop. Locate one part of your body that feels neutral (hands, feet). Focus there only.", action: "I am anchored." },
@@ -963,10 +998,10 @@ const Preservation = ({ setView, toggleSound, soundEnabled, setGoal, setExpandin
   );
 };
 
-const VitalityScan = ({ setView, setBurnoutPath, toggleSound, soundEnabled }) => {
+const VitalityScan: React.FC<any> = ({ setView, setBurnoutPath, toggleSound, soundEnabled }) => {
   const [step, setStep] = useState(0);
   const [score, setScore] = useState(0);
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [aiInsight, setAiInsight] = useState("");
   const [loading, setLoading] = useState(false);
@@ -985,7 +1020,7 @@ const VitalityScan = ({ setView, setBurnoutPath, toggleSound, soundEnabled }) =>
       else { setView('dashboard'); }
   };
 
-  const confirmAnswer = (val) => {
+  const confirmAnswer = (val: number) => {
     const newScore = score + val;
     setScore(newScore);
     if (step < questions.length - 1) setStep(step + 1);
@@ -997,7 +1032,7 @@ const VitalityScan = ({ setView, setBurnoutPath, toggleSound, soundEnabled }) =>
     }
   };
 
-  const getResult = (currentScore) => {
+  const getResult = (currentScore: number) => {
     if (currentScore <= 2) return { type: "Friction (Acute Stress)", desc: "You are under pressure, but the engine is still intact. You need to discharge the stress, not stop the car.", action: "Use 'Laser Coaching' to reframe the immediate stressor.", isBurnout: false };
     if (currentScore <= 4) return { type: "Smoldering (Early Burnout)", desc: "The warning lights are on. Your cynicism is a defense mechanism. If you push harder now, you will break.", action: "You need boundaries. Use 'Preservation Mode' to audit your energy leaks.", isBurnout: true };
     return { type: "Inferno (Full Burnout)", desc: "Your battery isn't just empty; it's damaged. You cannot 'mindset' your way out of this. You need physiological safety.", action: "Emergency Brake. Stop. Use 'Preservation Mode' to find one safe harbor.", isBurnout: true };
@@ -1039,12 +1074,12 @@ const VitalityScan = ({ setView, setBurnoutPath, toggleSound, soundEnabled }) =>
   );
 };
 
-const EnergyAnalyzer = ({ setView }) => {
+const EnergyAnalyzer: React.FC<any> = ({ setView }) => {
     const [step, setStep] = useState(0);
     const [score, setScore] = useState(0);
-    const [result, setResult] = useState(null);
-    const [selected, setSelected] = useState(null);
-    const [showInfo, setShowInfo] = useState(null);
+    const [result, setResult] = useState<number | null>(null);
+    const [selected, setSelected] = useState<number | null>(null);
+    const [showInfo, setShowInfo] = useState<number | null>(null);
 
     const questions = [
         { q: "Reaction to Challenge", options: [{ text: "I feel like a victim. Why me?", val: 1 }, { text: "I have to fight to win.", val: 2 }, { text: "I look for the opportunity.", val: 5 }] },
@@ -1064,8 +1099,8 @@ const EnergyAnalyzer = ({ setView }) => {
         else setResult(Math.round(newScore / questions.length));
     };
 
-    const getResultText = (level) => {
-        const levels = {
+    const getResultText = (level: number) => {
+        const levels: Record<number, any> = {
             1: { title: "Level 1: The Victim", type: "Catabolic", desc: "Core Thought: 'I lose.' You feel at the effect of the situation.", shift: "Where do I actually have a choice right now?", recommendation: "Re-engage agency." },
             2: { title: "Level 2: The Fighter", type: "Catabolic", desc: "Core Thought: 'I win, you lose.' High energy, but fueled by conflict.", shift: "How can I win without making anyone else wrong?", recommendation: "Shift from conflict to construction." },
             3: { title: "Level 3: The Rationalizer", type: "Anabolic", desc: "Core Thought: 'I win.' You are coping well, but may be tolerating things.", shift: "What is the emotion I am explaining away?", recommendation: "Move from coping to feeling." },
@@ -1129,14 +1164,14 @@ const App = () => {
   const [energyLevel, setEnergyLevel] = useState(50);
   const [isBurnout, setIsBurnout] = useState(false);
   const [isBurnoutPath, setIsBurnoutPath] = useState(false); 
-  const [somaticZones, setSomaticZones] = useState([]);
+  const [somaticZones, setSomaticZones] = useState<string[]>([]);
   const [partsStep, setPartsStep] = useState('experience'); 
   const [sensation, setSensation] = useState('');
   const [protection, setProtection] = useState('');
   const [expandingBelief, setExpandingBelief] = useState('');
   const [pressure, setPressure] = useState(50);
   const [ability, setAbility] = useState(50);
-  const [goal, setGoal] = useState({ what: '', measure: '', when: '', outcome: '', action: '' });
+  const [goal, setGoal] = useState<any>({ what: '', measure: '', when: '', outcome: '', action: '' });
   const [goalStep, setGoalStep] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [breathing, setBreathing] = useState(false);
