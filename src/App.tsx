@@ -6,7 +6,7 @@ import {
   Waves, Volume2, VolumeX, ChevronRight, ChevronLeft, X, AlertCircle, Copy, LogOut, BarChart, RefreshCw,
   Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail, 
   MinusCircle, AlertTriangle, Info, FileText, Thermometer, Sparkles, Loader2, WifiOff, Home, BatteryWarning, ExternalLink, HelpCircle,
-  Split, CloudFog
+  Split, CloudFog, Compass
 } from 'lucide-react';
 
 // --- TYPES ---
@@ -88,15 +88,75 @@ const soundEngine = new SoundEngine();
 
 const apiKey = ""; // API Key injected by environment
 
+// Helper to reformat goals from "I would..." to "To..."
+const formatGoalOutcome = (text: string) => {
+  if (!text) return "";
+  // Regex to match starting phrases like "I would", "I want to", "I will", "I'd like to" case insensitive
+  const clean = text.replace(/^(I would|I want to|I will|I'd like to|I am going to)\s+/i, "");
+  // Prefix with "To " and capitalize the next letter
+  return "To " + clean.charAt(0).toLowerCase() + clean.slice(1);
+};
+
 const getSmartQuestion = (energy: number, stress: number) => {
   if (stress > 60 || energy < 40) return "What specifically is threatened by this situation?";
   if (energy > 70) return "If you were coaching your best self, what would you tell them to do?";
   return "What is one assumption you are making that might not be true?";
 };
 
+const analyzeCurrentEnergy = async (stressor: string, perception: string, stressLevel: number, energyLevel: number) => {
+  try {
+    const prompt = `Act as an expert Energy Leadership Master Practitioner (ELI-MP). Analyze the client's state based on the following:
+    
+    Inputs:
+    - Situation/Stressor: "${stressor}"
+    - Perception/Thoughts: "${perception}"
+    - Self-Rated Stress: ${stressLevel}%
+    - Self-Rated Energy: ${energyLevel}%
+
+    Task:
+    1. Identify the likely Energy Level (1-7) dominating this specific situation (Catabolic vs Anabolic).
+    2. Write a "Reflection": A compassionate, direct, 2-sentence mirror statement to the client about how they are likely viewing this.
+    
+    Constraints for Reflection:
+    - Use "You" statements.
+    - NO ELI jargon (Do NOT use words like "Level 1", "Catabolic", "Anabolic", "Victim", "Conflict").
+    - Focus on the *feeling* and the *perspective* (e.g., "You are feeling cornered...", "You are carrying the weight of...", "You are seeing this as a battle...").
+    - Be empathetic but truthful.
+
+    Return ONLY a raw JSON object: { "level": number, "reflection": "string" }. Do not use markdown formatting.`;
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { response_mime_type: "application/json" }
+      })
+    });
+
+    if (!res.ok) throw new Error('API unavailable');
+    
+    const data = await res.json();
+    let text = data.candidates[0].content.parts[0].text;
+    text = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(text);
+    return parsed; 
+  } catch (error) {
+    console.error("Energy Analysis Error", error);
+    // Fallback logic
+    const isCatabolic = stressLevel > 60 || energyLevel < 40;
+    return { 
+      level: isCatabolic ? 2 : 3, 
+      reflection: isCatabolic 
+        ? "You are feeling the weight of this situation and perhaps a need to protect yourself from a negative outcome."
+        : "You are coping with this situation logically, but may be tolerating more than you realize."
+    };
+  }
+};
+
 const generateCoachingQuestions = async (stressor: string, perception: string, somatic: string, energyLevel: number, stressLevel: number): Promise<string[]> => {
   try {
-    const prompt = `Generate 4 short, powerful, provocative coaching questions for a client.
+    const prompt = `Generate 4 short, powerful, provocative coaching questions for a client using Energy Leadership principles.
     Context:
     - Situation: ${stressor}
     - Experience: ${perception}
@@ -119,7 +179,6 @@ const generateCoachingQuestions = async (stressor: string, perception: string, s
     
     const data = await res.json();
     let text = data.candidates[0].content.parts[0].text;
-    // Fix: Remove potential markdown wrapping which causes JSON.parse to fail
     text = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(text);
     return parsed.questions; 
@@ -129,22 +188,23 @@ const generateCoachingQuestions = async (stressor: string, perception: string, s
   }
 };
 
-const generateManifesto = async (stressor: string, truth: string, action: string, fear: string, onUpdate: (text: string) => void) => {
+const generateManifesto = async (stressor: string, truth: string, action: string, fear: string, currentLevel: number, onUpdate: (text: string) => void) => {
   try {
-    const prompt = `Act as a wise, powerful executive coach. Write a personal "Alchemist Decree" (Manifesto) for your client.
+    const prompt = `Act as an Energy Leadership Master Practitioner (ELI-MP). Write a powerful "Alchemist Decree" for your client.
     
     Inputs:
-    - Stressor to Release: "${stressor}"
+    - Stressor: "${stressor}"
     - Hidden Fear: "${fear}"
-    - New Truth/Insight: "${truth}"
+    - New Truth (Anabolic Insight): "${truth}"
     - Commitment Action: "${action}"
+    - Current Energy Level: Level ${currentLevel} (Shift this to Level 5/6)
 
     Guidelines:
-    - Use the first person ("I").
-    - Be authoritative, grounded, and poetic.
-    - Specifically acknowledge releasing the stressor/fear and stepping into the new truth.
+    - First person ("I").
+    - Acknowledge the current energy (without judgment) and explicitly choose the higher frequency.
+    - Use empowering, resonant language.
     - Keep it under 50 words.
-    - Output ONLY the text of the decree. No quotes or markdown.`;
+    - Output ONLY the text.`;
 
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
       method: 'POST',
@@ -162,7 +222,8 @@ const generateManifesto = async (stressor: string, truth: string, action: string
     return { isOffline: false };
   } catch (error) {
     console.error("Manifesto Error", error);
-    const fallbackText = `I release the weight of "${stressor}". I acknowledge my fear that ${fear || 'I am not enough'}, but I stand now in the truth that ${truth}. I seal this power by ${action}.`;
+    // ELI-Informed Fallback Logic
+    const fallbackText = `I observe the heavy energy of "${stressor}" and the quiet fear that ${fear || 'I am not enough'}. I honor it, but I do not reside there. I choose to shift. Standing in the truth that ${truth}, I reclaim my power. My action is my seal: ${action}.`;
     onUpdate(fallbackText);
     return { isOffline: true };
   }
@@ -170,7 +231,7 @@ const generateManifesto = async (stressor: string, truth: string, action: string
 
 const generateEnergyInsight = async (level: number, type: string) => {
   try {
-    const prompt = `Provide a single, profound, 1-sentence insight about energy leadership for someone at Level ${level} experiencing '${type}'. Tone: Mystical, grounded, empowering.`;
+    const prompt = `Provide a single, profound, 1-sentence insight about Energy Leadership (ELI) for someone experiencing Level ${level} ('${type}'). Tone: Mystical, grounded, empowering.`;
     
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
       method: 'POST',
@@ -329,14 +390,55 @@ const Identity: React.FC<{ userName: string; setUserName: (n: string) => void; o
   </div>
 );
 
-const Horizon: React.FC<any> = ({ userName, sessionCount, stressor, setStressor, perception, setPerception, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp }) => {
+// --- NEW COMPONENT: ENERGY REFLECTION (AI LENS) ---
+const EnergyReflection: React.FC<any> = ({ energyAnalysis, setView, toggleSound, soundEnabled }) => {
+  return (
+    <div className="h-full flex flex-col justify-center px-4 animate-enter">
+      <Nav title="Current Resonance" subtitle="The Lens" isDashboard={false} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={5} />
+      <div className="flex-1 flex flex-col justify-center items-center text-center pb-12">
+         <div className="mb-8 p-6 rounded-full bg-indigo-500/10 border border-indigo-500/20">
+            <Compass size={48} className="text-indigo-300" />
+         </div>
+         <h3 className="font-serif text-2xl text-white italic mb-6">"Here is what I sense..."</h3>
+         
+         <div className="p-6 rounded-[24px] bg-white/5 border border-white/10 mb-8 max-w-sm">
+            <p className="font-serif text-lg text-white/90 italic leading-relaxed">
+              "{energyAnalysis?.reflection || "Connecting to your field..."}"
+            </p>
+         </div>
+
+         <p className="font-sans text-xs text-white/40 max-w-xs leading-relaxed mb-10">
+           This is your current energetic baseline. We will now shift this frequency.
+         </p>
+
+         <button 
+           onClick={() => setView('fork_entry')} 
+           className="w-full py-5 rounded-full bg-indigo-500 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-indigo-400 hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-all"
+         >
+           Shift This Energy
+         </button>
+      </div>
+    </div>
+  );
+};
+
+const Horizon: React.FC<any> = ({ userName, sessionCount, stressor, setStressor, perception, setPerception, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp, setEnergyAnalysis }) => {
+  const [analyzing, setAnalyzing] = useState(false);
   const triggers = ['work', 'job', 'boss', 'career', 'team', 'project', 'deadline', 'email', 'monday', 'shift', 'burnout', 'tired', 'exhausted', 'drained', 'overwhelm', 'client'];
   const showWorkCheck = triggers.some(t => stressor.toLowerCase().includes(t));
   const isHighFriction = stressLevel > 75 && energyLevel < 35;
 
+  const handleBeginAlchemy = async () => {
+    setAnalyzing(true);
+    const analysis = await analyzeCurrentEnergy(stressor, perception, stressLevel, energyLevel);
+    setEnergyAnalysis(analysis);
+    setAnalyzing(false);
+    setView('energy_reflection');
+  };
+
   return (
     <div className="h-full flex flex-col">
-      <Nav title={`Hello, ${userName || 'Traveler'}`} subtitle={`Session ${sessionCount + 1}`} isDashboard={true} resetApp={resetApp} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={0} />
+      <Nav title={`Hello, ${userName || 'Traveler'}`} subtitle={`Session ${sessionCount + 1}`} isDashboard={true} resetApp={resetApp} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={0} aiActive={analyzing} />
       <div className="flex-1 flex flex-col gap-6 overflow-y-auto hide-scrollbar animate-enter pb-8">
         
         {/* REBRANDED: 7-Day Neural Reset */}
@@ -382,6 +484,23 @@ const Horizon: React.FC<any> = ({ userName, sessionCount, stressor, setStressor,
                     ))}
                 </div>
             </div>
+            
+            {/* NEW: VISIBLE ELI ASSESSMENT ENTRY POINT */}
+            <div className="pt-4 border-t border-white/5">
+                <button 
+                  onClick={() => setView('energy')} 
+                  className="w-full flex items-center justify-between p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all group"
+                >
+                   <div className="flex items-center gap-3">
+                      <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-300"><Zap size={16} /></div>
+                      <div className="text-left">
+                         <span className="block font-serif text-sm text-white italic">Deep Energy Lens</span>
+                         <span className="block text-[9px] text-white/50 uppercase tracking-wider">Access ELI Assessment</span>
+                      </div>
+                   </div>
+                   <ChevronRight size={16} className="text-white/30 group-hover:text-white transition-colors" />
+                </button>
+            </div>
           </div>
         </div>
 
@@ -403,10 +522,14 @@ const Horizon: React.FC<any> = ({ userName, sessionCount, stressor, setStressor,
                       <span className="font-sans text-xs font-bold tracking-widest uppercase">High Friction Detected</span>
                       <span className="text-[10px] opacity-70">Run Vitality Scan</span>
                   </button>
-                  <button onClick={() => setView('fork_entry')} disabled={!stressor} className="w-full py-4 rounded-xl border border-white/10 text-white/40 hover:text-white hover:bg-white/5 transition-all font-sans text-xs tracking-widest uppercase">Continue to Alchemy</button>
+                  <button onClick={handleBeginAlchemy} disabled={!stressor || analyzing} className="w-full py-4 rounded-xl border border-white/10 text-white/40 hover:text-white hover:bg-white/5 transition-all font-sans text-xs tracking-widest uppercase flex items-center justify-center gap-2">
+                    {analyzing ? <Loader2 className="animate-spin" size={14} /> : "Continue to Alchemy"}
+                  </button>
               </div>
             ) : (
-              <button onClick={() => setView('fork_entry')} disabled={!stressor} className="w-full py-5 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] transition-all disabled:opacity-50 disabled:shadow-none mt-2">Begin Alchemy</button>
+              <button onClick={handleBeginAlchemy} disabled={!stressor || analyzing} className="w-full py-5 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] transition-all disabled:opacity-50 disabled:shadow-none mt-2 flex items-center justify-center gap-2">
+                {analyzing ? <Loader2 className="animate-spin" size={16} /> : "Begin Alchemy"}
+              </button>
             )}
           </div>
         )}
@@ -577,7 +700,7 @@ const PartsWork: React.FC<any> = ({ selectedPart, sensation, setSensation, prote
   );
 };
 
-const Perspective: React.FC<any> = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }) => {
+const Perspective = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }) => {
   const flowState = ability >= pressure;
   return (
     <div className="h-full flex flex-col">
@@ -609,7 +732,7 @@ const Perspective: React.FC<any> = ({ pressure, setPressure, ability, setAbility
   );
 };
 
-const Crossroads: React.FC<any> = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel }) => {
+const Crossroads = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel }) => {
   const recommendStillness = parseInt(stressLevel.toString()) > 70 && parseInt(energyLevel.toString()) < 40;
   return (
     <div className="h-full flex flex-col justify-center px-6">
@@ -633,7 +756,7 @@ const Crossroads: React.FC<any> = ({ setView, toggleSound, soundEnabled, stressL
   );
 };
 
-const LaserCoaching: React.FC<any> = ({ stressor, perception, somatic, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, energyLevel, stressLevel }) => {
+const LaserCoaching = ({ stressor, perception, somatic, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, energyLevel, stressLevel }) => {
   const [step, setStep] = useState(0); 
   const [answers, setAnswers] = useState<any>({ topic: '', result: '', permission: '', action: '' });
   const [aiQuestions, setAiQuestions] = useState<string[]>([]);
@@ -655,7 +778,7 @@ const LaserCoaching: React.FC<any> = ({ stressor, perception, somatic, setView, 
     }
   }, []);
 
-  const starters: Record<number, string[]> = {
+  const starters = {
     0: ["My insight is...", "The real issue is...", "I'm realizing that...", "I sense..."],
     1: ["I would look like...", "I would feel...", "It would be done.", "I would be free."],
     2: ["To make a mess.", "To prioritize me.", "To let go.", "To trust myself."],
@@ -703,7 +826,7 @@ const LaserCoaching: React.FC<any> = ({ stressor, perception, somatic, setView, 
   );
 };
 
-const Breath: React.FC<any> = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }) => {
+const Breath = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }) => {
   const phase = breathCount < 4 ? "Inhale" : breathCount < 8 ? "Hold" : "Exhale";
   useEffect(() => { if (!breathing) return; const i = setInterval(() => setBreathCount((c: number) => (c + 1) % 16), 1000); return () => clearInterval(i); }, [breathing]);
   
@@ -725,7 +848,7 @@ const Breath: React.FC<any> = ({ breathing, setBreathing, breathCount, setBreath
   );
 };
 
-const Insight: React.FC<any> = ({ expandingBelief, setExpandingBelief, setView, toggleSound, soundEnabled }) => (
+const Insight = ({ expandingBelief, setExpandingBelief, setView, toggleSound, soundEnabled }) => (
   <div className="h-full flex flex-col justify-center px-6 text-center">
     <Nav title="The Clarity" subtitle="Harvesting" onBack={() => setView('regulate')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
     <div className="flex-1 flex flex-col justify-center">
@@ -736,7 +859,7 @@ const Insight: React.FC<any> = ({ expandingBelief, setExpandingBelief, setView, 
   </div>
 );
 
-const Alchemy: React.FC<any> = ({ setView, toggleSound, soundEnabled }) => (
+const Alchemy = ({ setView, toggleSound, soundEnabled }) => (
   <div className="h-full flex flex-col">
     <Nav title="Vitality Alchemy" subtitle="Select Chemistry" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
     <div className="flex-1 space-y-4 px-4 pt-4">
@@ -752,7 +875,7 @@ const Alchemy: React.FC<any> = ({ setView, toggleSound, soundEnabled }) => (
 );
 
 // --- PRIMING (Defined BEFORE Integration) ---
-const Priming: React.FC<any> = ({ onComplete }) => {
+const Priming = ({ onComplete }) => {
   const [step, setStep] = useState(0);
   const steps = [
     { icon: Mountain, title: "Physiology", instruction: "Change your state immediately. Stand up. Shoulders back. Deep breath. Look up.", action: "I am ready." },
@@ -776,7 +899,7 @@ const Priming: React.FC<any> = ({ onComplete }) => {
 };
 
 // --- INTEGRATION (Uses Priming) ---
-const Integration: React.FC<any> = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, fear, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath, userName }) => {
+const Integration = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, fear, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath, userName, energyAnalysis }) => {
   const [primingDone, setPrimingDone] = useState(false);
   const [manifesto, setManifesto] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -785,7 +908,9 @@ const Integration: React.FC<any> = ({ goal, setGoal, goalStep, setGoalStep, isLo
   useEffect(() => {
     if (isLocked && !isBurnoutPath && !manifesto) {
       setGenerating(true);
-      generateManifesto(stressor, expandingBelief, goal.action || "action", fear, (text) => setManifesto(text))
+      // Use the level from analysis or default to 3 if undefined
+      const currentLevel = energyAnalysis?.level || 3;
+      generateManifesto(stressor, expandingBelief, goal.action || "action", fear, currentLevel, (text) => setManifesto(text))
         .then(res => { setIsOffline(res.isOffline); setGenerating(false); });
     }
   }, [isLocked, isBurnoutPath, manifesto]);
@@ -955,7 +1080,7 @@ const Integration: React.FC<any> = ({ goal, setGoal, goalStep, setGoalStep, isLo
            </div>
          ) : (
            <>
-             <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6" placeholder={current.ph} value={goal[current.id as keyof Goal]} onChange={e => setGoal({...goal, [current.id]: e.target.value})} onKeyDown={e => e.key === 'Enter' && (goalStep < 2 ? setGoalStep(goalStep+1) : setIsLocked(true))} />
+             <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6" placeholder={current.ph} value={goal[current.id as keyof Goal]} onChange={e => setGoal({...goal, [current.id]: current.id === 'outcome' ? formatGoalOutcome(e.target.value) : e.target.value})} onKeyDown={e => e.key === 'Enter' && (goalStep < 2 ? setGoalStep(goalStep+1) : setIsLocked(true))} />
              <div className="flex gap-3">
                  <button onClick={handleBack} className="px-4 py-3 rounded-xl border border-white/10 text-white/40 hover:text-white transition-colors">Back</button>
                  <button onClick={() => goalStep < 2 ? setGoalStep(goalStep+1) : setIsLocked(true)} disabled={!goal[current.id as keyof Goal]} className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase disabled:opacity-50">Next</button>
@@ -1177,6 +1302,7 @@ const App = () => {
   const [breathing, setBreathing] = useState(false);
   const [breathCount, setBreathCount] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [energyAnalysis, setEnergyAnalysis] = useState<any>(null);
 
   useEffect(() => {
     if (view === 'preservation') setBgState('preservation');
@@ -1216,8 +1342,11 @@ const App = () => {
              setView={setView} 
              toggleSound={toggleSound} 
              soundEnabled={soundEnabled} 
-             resetApp={resetApp} 
+             resetApp={resetApp}
+             setEnergyAnalysis={setEnergyAnalysis}
            />}
+           
+           {view === 'energy_reflection' && <EnergyReflection energyAnalysis={energyAnalysis} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            
            {view === 'preservation' && <Preservation setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setGoal={setGoal} setExpandingBelief={setExpandingBelief} setViewToIntegration={() => { setIsLocked(true); setView('integration'); }} />}
            
@@ -1241,7 +1370,7 @@ const App = () => {
            {view === 'alchemy' && <Alchemy setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            
            {/* UPDATED: Integration with upsells */}
-           {view === 'integration' && <Integration goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} isLocked={isLocked} setIsLocked={setIsLocked} expandingBelief={expandingBelief} stressor={stressor} fear={fear} sessionCount={sessionCount} completeSession={completeSession} resetApp={resetApp} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} somaticZones={somaticZones} isBurnoutPath={isBurnoutPath} userName={userName} />}
+           {view === 'integration' && <Integration goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} isLocked={isLocked} setIsLocked={setIsLocked} expandingBelief={expandingBelief} stressor={stressor} fear={fear} sessionCount={sessionCount} completeSession={completeSession} resetApp={resetApp} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} somaticZones={somaticZones} isBurnoutPath={isBurnoutPath} userName={userName} energyAnalysis={energyAnalysis} />}
            
            {view === 'insight' && <Insight expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
            {view === 'energy' && <EnergyAnalyzer setView={setView} />}
