@@ -36,6 +36,11 @@ interface SomaticZone {
   icon: React.ElementType;
 }
 
+interface EnergyAnalysis {
+  level: number;
+  reflection: string;
+}
+
 // --- 1. SOUND ENGINE ---
 class SoundEngine {
   ctx: AudioContext | null;
@@ -700,7 +705,7 @@ const PartsWork: React.FC<any> = ({ selectedPart, sensation, setSensation, prote
   );
 };
 
-const Perspective = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }) => {
+const Perspective: React.FC<any> = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }) => {
   const flowState = ability >= pressure;
   return (
     <div className="h-full flex flex-col">
@@ -732,7 +737,7 @@ const Perspective = ({ pressure, setPressure, ability, setAbility, setView, togg
   );
 };
 
-const Crossroads = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel }) => {
+const Crossroads: React.FC<any> = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel }) => {
   const recommendStillness = parseInt(stressLevel.toString()) > 70 && parseInt(energyLevel.toString()) < 40;
   return (
     <div className="h-full flex flex-col justify-center px-6">
@@ -756,7 +761,7 @@ const Crossroads = ({ setView, toggleSound, soundEnabled, stressLevel, energyLev
   );
 };
 
-const LaserCoaching = ({ stressor, perception, somatic, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, energyLevel, stressLevel }) => {
+const LaserCoaching: React.FC<any> = ({ stressor, perception, somatic, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, energyLevel, stressLevel }) => {
   const [step, setStep] = useState(0); 
   const [answers, setAnswers] = useState<any>({ topic: '', result: '', permission: '', action: '' });
   const [aiQuestions, setAiQuestions] = useState<string[]>([]);
@@ -778,7 +783,7 @@ const LaserCoaching = ({ stressor, perception, somatic, setView, toggleSound, so
     }
   }, []);
 
-  const starters = {
+  const starters: Record<number, string[]> = {
     0: ["My insight is...", "The real issue is...", "I'm realizing that...", "I sense..."],
     1: ["I would look like...", "I would feel...", "It would be done.", "I would be free."],
     2: ["To make a mess.", "To prioritize me.", "To let go.", "To trust myself."],
@@ -826,7 +831,7 @@ const LaserCoaching = ({ stressor, perception, somatic, setView, toggleSound, so
   );
 };
 
-const Breath = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }) => {
+const Breath: React.FC<any> = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }) => {
   const phase = breathCount < 4 ? "Inhale" : breathCount < 8 ? "Hold" : "Exhale";
   useEffect(() => { if (!breathing) return; const i = setInterval(() => setBreathCount((c: number) => (c + 1) % 16), 1000); return () => clearInterval(i); }, [breathing]);
   
@@ -848,7 +853,7 @@ const Breath = ({ breathing, setBreathing, breathCount, setBreathCount, setView,
   );
 };
 
-const Insight = ({ expandingBelief, setExpandingBelief, setView, toggleSound, soundEnabled }) => (
+const Insight: React.FC<any> = ({ expandingBelief, setExpandingBelief, setView, toggleSound, soundEnabled }) => (
   <div className="h-full flex flex-col justify-center px-6 text-center">
     <Nav title="The Clarity" subtitle="Harvesting" onBack={() => setView('regulate')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
     <div className="flex-1 flex flex-col justify-center">
@@ -859,7 +864,7 @@ const Insight = ({ expandingBelief, setExpandingBelief, setView, toggleSound, so
   </div>
 );
 
-const Alchemy = ({ setView, toggleSound, soundEnabled }) => (
+const Alchemy: React.FC<any> = ({ setView, toggleSound, soundEnabled }) => (
   <div className="h-full flex flex-col">
     <Nav title="Vitality Alchemy" subtitle="Select Chemistry" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
     <div className="flex-1 space-y-4 px-4 pt-4">
@@ -875,7 +880,7 @@ const Alchemy = ({ setView, toggleSound, soundEnabled }) => (
 );
 
 // --- PRIMING (Defined BEFORE Integration) ---
-const Priming = ({ onComplete }) => {
+const Priming: React.FC<any> = ({ onComplete }) => {
   const [step, setStep] = useState(0);
   const steps = [
     { icon: Mountain, title: "Physiology", instruction: "Change your state immediately. Stand up. Shoulders back. Deep breath. Look up.", action: "I am ready." },
@@ -899,7 +904,7 @@ const Priming = ({ onComplete }) => {
 };
 
 // --- INTEGRATION (Uses Priming) ---
-const Integration = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, fear, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath, userName, energyAnalysis }) => {
+const Integration = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, fear, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath, userName, energyAnalysis }: any) => {
   const [primingDone, setPrimingDone] = useState(false);
   const [manifesto, setManifesto] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -1302,7 +1307,7 @@ const App = () => {
   const [breathing, setBreathing] = useState(false);
   const [breathCount, setBreathCount] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(false);
-  const [energyAnalysis, setEnergyAnalysis] = useState<any>(null);
+  const [energyAnalysis, setEnergyAnalysis] = useState<EnergyAnalysis | null>(null);
 
   useEffect(() => {
     if (view === 'preservation') setBgState('preservation');
