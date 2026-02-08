@@ -216,7 +216,8 @@ const soundEngine = new SoundEngine();
 
 // --- 2. API HELPERS ---
 
-const apiKey = ""; // API Key injected by environment
+// Updated to read from Environment Variables with safety check for Preview environments
+const apiKey = import.meta.env?.VITE_GOOGLE_API_KEY || ""; 
 
 // Helper to reformat goals from "I would..." to "To..."
 const formatGoalOutcome = (text: string) => {
@@ -453,7 +454,7 @@ const Atmosphere: React.FC<{ bgState: string }> = ({ bgState }) => {
   const themes: Record<string, string> = {
     neutral: "from-[#0f172a] via-[#1e1b4b] to-[#0f172a]", 
     friction: "from-[#2a0a12] via-[#1a0505] to-[#2a0a12]", 
-    flow: "from-[#042f2e] via-[#022c22] to-[#042f2e]",      
+    flow: "from-[#042f2e] via-[#022c22] to-[#042f2e]",       
     preservation: "from-[#1c1917] via-[#292524] to-[#0c0a09]",
     laser: "from-[#1e1b4b] via-[#312e81] to-[#1e1b4b]"
   };
@@ -811,7 +812,7 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
               <p className="font-serif text-2xl text-white/90 italic mb-4">"What is it trying to do?"</p>
               <input autoFocus className="w-full bg-transparent border-b border-white/20 py-4 text-center text-white font-light text-lg focus:outline-none mb-6" placeholder="It is trying to..." value={protection} onChange={e => setProtection(e.target.value)} onKeyDown={e => e.key === 'Enter' && setPartsStep('channel')} />
               <div className="flex flex-wrap justify-center gap-2 mb-8">
-                 {["Prevent Failure", "Keep me Safe", "Control Outcomes"].map(p => <button key={p} onClick={() => setProtection(p)} className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-[10px] text-white/90 hover:bg-white/20 transition-all">{p}</button>)}
+                  {["Prevent Failure", "Keep me Safe", "Control Outcomes"].map(p => <button key={p} onClick={() => setProtection(p)} className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-[10px] text-white/90 hover:bg-white/20 transition-all">{p}</button>)}
               </div>
               <button onClick={() => setPartsStep('channel')} disabled={!protection} className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all">Acknowledge</button>
           </div>
