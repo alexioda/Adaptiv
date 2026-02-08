@@ -346,20 +346,20 @@ const generateCoachingQuestions = async (stressor: string, perception: string, s
 
 const generateManifesto = async (stressor: string, truth: string, action: string, fear: string, currentLevel: number, onUpdate: (text: string) => void) => {
   try {
-    const prompt = `Act as an Energy Leadership Master Practitioner (ELI-MP). Write a powerful "Alchemist Decree" for your client.
+    const prompt = `Act as a wise, grounded high-performance coach. Write a powerful "Alchemist Decree" for your client.
     
     Inputs:
     - Stressor: "${stressor}"
     - Hidden Fear: "${fear}"
-    - New Truth (Anabolic Insight): "${truth}"
+    - New Truth: "${truth}"
     - Commitment Action: "${action}"
-    - Current Energy Level: Level ${currentLevel} (Shift this to Level 5/6)
-
+    
     Guidelines:
     - First person ("I").
-    - Acknowledge the current energy (without judgment) and explicitly choose the higher frequency.
-    - Use empowering, resonant language.
+    - Acknowledge the challenge but explicitly choose the higher power/truth.
+    - Use empowering, resonant, universal language.
     - Keep it under 50 words.
+    - CRITICAL: Do NOT use technical jargon (e.g., do NOT use "Level 1", "Anabolic", "Catabolic", "Energy Leadership"). Use plain, powerful English suitable for anyone.
     - Output ONLY the text.`;
 
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
@@ -388,7 +388,7 @@ const generateManifesto = async (stressor: string, truth: string, action: string
 
 const generateEnergyInsight = async (level: number, type: string) => {
   try {
-    const prompt = `Provide a single, profound, 1-sentence insight about Energy Leadership (ELI) for someone experiencing Level ${level} ('${type}'). Tone: Mystical, grounded, empowering.`;
+    const prompt = `Provide a single, profound, 1-sentence insight about personal energy and leadership for someone experiencing '${type}'. Tone: Mystical, grounded, empowering. Do NOT use technical terms like 'Level ${level}'.`;
     
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
       method: 'POST',
@@ -552,7 +552,7 @@ const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, set
   return (
     <div className="h-full flex flex-col justify-center px-4 animate-enter">
       <Nav title="Current Resonance" subtitle="The Lens" isDashboard={false} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={5} />
-      <div className="flex-1 flex flex-col justify-center items-center text-center pb-12">
+      <div className="flex-1 flex flex-col justify-center items-center text-center pb-12 overflow-y-auto hide-scrollbar">
          <div className="mb-8 p-6 rounded-full bg-indigo-500/10 border border-indigo-500/20">
             <Compass size={48} className="text-indigo-300" />
          </div>
@@ -697,9 +697,9 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
 
 // --- NEW COMPONENT: THE FORK IN THE ROAD ---
 const ForkEntry: React.FC<ForkEntryProps> = ({ setView, toggleSound, soundEnabled }) => (
-  <div className="h-full flex flex-col justify-center px-4">
+  <div className="h-full flex flex-col px-4">
     <Nav title="The Source" subtitle="Origin Point" onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={10} />
-    <div className="flex-1 flex flex-col justify-center gap-6 animate-enter">
+    <div className="flex-1 flex flex-col justify-center gap-6 animate-enter overflow-y-auto hide-scrollbar pb-4">
       <div className="text-center mb-4">
         <h2 className="font-serif text-2xl text-white italic mb-2">Where is the friction loudest?</h2>
         <p className="text-xs text-white/50">Stress has two addresses. Choose the one calling for attention.</p>
@@ -737,7 +737,7 @@ const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setView, toggleSound
   return (
     <div className="h-full flex flex-col">
       <Nav title="The Filter" subtitle="Fact vs. Fiction" onBack={() => setView('fork_entry')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={25} />
-      <div className="flex-1 flex flex-col justify-center px-4 animate-enter">
+      <div className="flex-1 flex flex-col justify-center px-4 animate-enter overflow-y-auto hide-scrollbar pb-4">
         {step === 0 ? (
           <>
             <h3 className="font-serif text-2xl text-white italic mb-6 text-center">"What is the loudest loop?"</h3>
@@ -894,7 +894,7 @@ const Crossroads: React.FC<CrossroadsProps> = ({ setView, toggleSound, soundEnab
   return (
     <div className="h-full flex flex-col justify-center px-6">
       <Nav title="The Crossroads" subtitle="Choice Point" onBack={() => setView('lens')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={65} />
-      <div className="flex-1 flex flex-col justify-center">
+      <div className="flex-1 flex flex-col justify-center overflow-y-auto hide-scrollbar pb-4">
         <h1 className="font-serif text-4xl text-white text-center italic mb-8">Transformation</h1>
         <div className="grid gap-4">
           <button onClick={() => setView('regulate')} className={`p-8 rounded-[32px] glass-panel text-left hover:bg-white/10 ${recommendStillness ? 'border-teal-500/50 glow-pulse' : ''}`}>
@@ -990,7 +990,7 @@ const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, s
   return (
     <div className="h-full flex flex-col justify-center items-center">
       <Nav title="Regulation" subtitle="Breathe" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
-      <div className="flex-1 flex flex-col items-center justify-center relative">
+      <div className="flex-1 flex flex-col items-center justify-center relative overflow-y-auto hide-scrollbar pb-4">
          <div className="relative flex items-center justify-center">
             {breathing && <div className="absolute w-64 h-64 rounded-full border border-teal-500/30 ripple-ring"></div>}
             <div className={`w-64 h-64 rounded-full border border-white/10 flex items-center justify-center transition-all duration-1000 z-10 ${breathing ? 'bg-teal-900/20 shadow-[0_0_50px_rgba(20,184,166,0.2)]' : 'bg-white/5'}`} style={{ transform: `scale(${breathing ? (breathCount < 4 ? 1.5 : 1) : 1})` }}>
@@ -1008,7 +1008,7 @@ const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, s
 const Insight: React.FC<InsightProps> = ({ expandingBelief, setExpandingBelief, setView, toggleSound, soundEnabled }) => (
   <div className="h-full flex flex-col justify-center px-6 text-center">
     <Nav title="The Clarity" subtitle="Harvesting" onBack={() => setView('regulate')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
-    <div className="flex-1 flex flex-col justify-center">
+    <div className="flex-1 flex flex-col justify-center overflow-y-auto hide-scrollbar pb-4">
       <h3 className="font-serif text-2xl text-white italic mb-6">"In the stillness, what became clear?"</h3>
       <input autoFocus className="w-full bg-transparent border-b border-white/20 py-4 text-center text-white font-light text-lg focus:outline-none mb-12" placeholder="The truth is..." value={expandingBelief} onChange={e => setExpandingBelief(e.target.value)} onKeyDown={e => e.key === 'Enter' && setView('alchemy')} />
       <button onClick={() => setView('alchemy')} disabled={!expandingBelief} className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-0">Direct this Energy</button>
@@ -1019,7 +1019,7 @@ const Insight: React.FC<InsightProps> = ({ expandingBelief, setExpandingBelief, 
 const Alchemy: React.FC<AlchemyProps> = ({ setView, toggleSound, soundEnabled }) => (
   <div className="h-full flex flex-col">
     <Nav title="Vitality Alchemy" subtitle="Select Chemistry" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
-    <div className="flex-1 space-y-4 px-4 pt-4">
+    <div className="flex-1 space-y-4 px-4 pt-4 overflow-y-auto hide-scrollbar pb-4">
       {[{ id: 'perform', label: 'Performance', desc: 'Sharpen focus.', icon: Zap }, { id: 'connect', label: 'Connection', desc: 'Open heart.', icon: Heart }, { id: 'learn', label: 'Expansion', desc: 'Build new paths.', icon: BookOpen }].map(i => (
         <button key={i.id} onClick={() => setView('integration')} className="w-full p-6 rounded-[24px] glass-panel text-left hover:bg-white/5 transition-all">
           <i.icon className="text-white/80 mb-2" size={24} />
