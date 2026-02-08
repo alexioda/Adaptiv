@@ -216,8 +216,11 @@ const soundEngine = new SoundEngine();
 
 // --- 2. API HELPERS ---
 
-// Updated to read from Environment Variables with safety check for Preview environments
-const apiKey = import.meta.env?.VITE_GOOGLE_API_KEY || ""; 
+// Updated to ensure ES2015 compatibility while still attempting to load keys
+// NOTE: For Vercel/Vite deployment, if the below line fails to pick up the key,
+// you may need to uncomment the import.meta.env line.
+// const apiKey = import.meta.env.VITE_GOOGLE_API_KEY || "";
+const apiKey = typeof process !== 'undefined' && process.env ? (process.env.VITE_GOOGLE_API_KEY || "") : "";
 
 // Helper to reformat goals from "I would..." to "To..."
 const formatGoalOutcome = (text: string) => {
