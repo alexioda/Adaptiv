@@ -41,89 +41,129 @@ interface EnergyAnalysis {
   reflection: string;
 }
 
-interface BurnoutCheckProps {
+interface CommonProps {
   setView: (view: string) => void;
   toggleSound: () => void;
   soundEnabled: boolean;
-  setBurnoutPath: (val: boolean) => void;
 }
 
-interface VesselProps {
+interface EnergyReflectionProps extends CommonProps {
+    energyAnalysis: EnergyAnalysis | null;
+}
+
+interface HorizonProps extends CommonProps {
+  userName: string;
+  sessionCount: number;
+  stressor: string;
+  setStressor: (s: string) => void;
+  perception: string;
+  setPerception: (s: string) => void;
+  stressLevel: number;
+  setStressLevel: (n: number) => void;
+  energyLevel: number;
+  setEnergyLevel: (n: number) => void;
+  isBurnout: boolean;
+  resetApp: () => void;
+  setEnergyAnalysis: (a: EnergyAnalysis) => void;
+}
+
+interface ForkEntryProps extends CommonProps {}
+
+interface DiffuserProps extends CommonProps {
+  fear: string;
+  setFear: (s: string) => void;
+}
+
+interface VesselProps extends CommonProps {
   somaticZones: string[];
   setSomaticZones: (zones: string[]) => void;
-  setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
 }
 
-interface PartsWorkProps {
+interface PartsWorkProps extends CommonProps {
   selectedPart: string;
   sensation: string;
-  setSensation: (val: string) => void;
+  setSensation: (s: string) => void;
   protection: string;
-  setProtection: (val: string) => void;
+  setProtection: (s: string) => void;
+  fear: string;
+  setFear: (s: string) => void;
   expandingBelief: string;
-  setExpandingBelief: (val: string) => void;
+  setExpandingBelief: (s: string) => void;
   partsStep: string;
-  setPartsStep: (val: string) => void;
-  setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
+  setPartsStep: (s: string) => void;
 }
 
-interface LaserCoachingProps {
+interface LaserCoachingProps extends CommonProps {
   stressor: string;
   perception: string;
   somatic: string;
-  setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
-  setGoal: (val: any) => void;
-  setExpandingBelief: (val: string) => void;
+  setGoal: (g: any) => void;
+  setExpandingBelief: (s: string) => void;
   energyLevel: number;
   stressLevel: number;
 }
 
-interface PerspectiveProps {
+interface PerspectiveProps extends CommonProps {
   pressure: number;
-  setPressure: (val: number) => void;
+  setPressure: (n: number) => void;
   ability: number;
-  setAbility: (val: number) => void;
-  setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
+  setAbility: (n: number) => void;
 }
 
-interface CrossroadsProps {
-  setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
+interface CrossroadsProps extends CommonProps {
   stressLevel: number;
   energyLevel: number;
 }
 
-interface BreathProps {
+interface BreathProps extends CommonProps {
   breathing: boolean;
-  setBreathing: (val: boolean) => void;
+  setBreathing: (b: boolean) => void;
   breathCount: number;
-  setBreathCount: (val: number) => void;
-  setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
+  setBreathCount: React.Dispatch<React.SetStateAction<number>>;
 }
 
-interface InsightProps {
+interface InsightProps extends CommonProps {
   expandingBelief: string;
-  setExpandingBelief: (val: string) => void;
-  setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
+  setExpandingBelief: (s: string) => void;
 }
 
-interface AlchemyProps {
+interface AlchemyProps extends CommonProps {}
+
+interface PrimingProps {
+  onComplete: () => void;
+}
+
+interface IntegrationProps extends CommonProps {
+  goal: Goal;
+  setGoal: React.Dispatch<React.SetStateAction<Goal>>;
+  goalStep: number;
+  setGoalStep: (n: number) => void;
+  isLocked: boolean;
+  setIsLocked: (b: boolean) => void;
+  expandingBelief: string;
+  stressor: string;
+  fear: string;
+  sessionCount: number;
+  completeSession: () => void;
+  resetApp: () => void;
+  somaticZones: string[];
+  isBurnoutPath: boolean;
+  userName: string;
+  energyAnalysis: EnergyAnalysis | null;
+}
+
+interface PreservationProps extends CommonProps {
+  setGoal: (g: any) => void;
+  setExpandingBelief: (s: string) => void;
+  setViewToIntegration: () => void;
+}
+
+interface VitalityScanProps extends CommonProps {
+  setBurnoutPath: (b: boolean) => void;
+}
+
+interface EnergyAnalyzerProps {
   setView: (view: string) => void;
-  toggleSound: () => void;
-  soundEnabled: boolean;
 }
 
 // --- 1. SOUND ENGINE ---
@@ -318,7 +358,7 @@ const generateManifesto = async (stressor: string, truth: string, action: string
     console.error("Manifesto Error", error);
     // ELI-Informed Fallback Logic - Dynamic Construction
     // This ensures a "good flow" even without the API
-    const fallbackText = `I acknowledge the heaviness of "${stressor}" and the quiet fear that ${fear || 'I am insufficient'}. These are simply signals. I choose to shift. Standing in the truth that ${truth}, I direct my power forward. My commitment is clear: ${action}.`;
+    const fallbackText = `I observe the heavy energy of "${stressor}" and the quiet fear that ${fear || 'I am not enough'}. I honor it, but I do not reside there. I choose to shift. Standing in the truth that ${truth}, I reclaim my power. My action is my seal: ${action}.`;
     onUpdate(fallbackText);
     return { isOffline: true };
   }
@@ -486,7 +526,7 @@ const Identity: React.FC<{ userName: string; setUserName: (n: string) => void; o
 );
 
 // --- NEW COMPONENT: ENERGY REFLECTION (AI LENS) ---
-const EnergyReflection: React.FC<any> = ({ energyAnalysis, setView, toggleSound, soundEnabled }) => {
+const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, setView, toggleSound, soundEnabled }) => {
   return (
     <div className="h-full flex flex-col justify-center px-4 animate-enter">
       <Nav title="Current Resonance" subtitle="The Lens" isDashboard={false} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={5} />
@@ -517,7 +557,7 @@ const EnergyReflection: React.FC<any> = ({ energyAnalysis, setView, toggleSound,
   );
 };
 
-const Horizon: React.FC<any> = ({ userName, sessionCount, stressor, setStressor, perception, setPerception, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp, setEnergyAnalysis }) => {
+const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, perception, setPerception, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp, setEnergyAnalysis }) => {
   const [analyzing, setAnalyzing] = useState(false);
   const triggers = ['work', 'job', 'boss', 'career', 'team', 'project', 'deadline', 'email', 'monday', 'shift', 'burnout', 'tired', 'exhausted', 'drained', 'overwhelm', 'client'];
   const showWorkCheck = triggers.some(t => stressor.toLowerCase().includes(t));
@@ -634,7 +674,7 @@ const Horizon: React.FC<any> = ({ userName, sessionCount, stressor, setStressor,
 };
 
 // --- NEW COMPONENT: THE FORK IN THE ROAD ---
-const ForkEntry: React.FC<any> = ({ setView, toggleSound, soundEnabled }) => (
+const ForkEntry: React.FC<ForkEntryProps> = ({ setView, toggleSound, soundEnabled }) => (
   <div className="h-full flex flex-col justify-center px-4">
     <Nav title="The Source" subtitle="Origin Point" onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={10} />
     <div className="flex-1 flex flex-col justify-center gap-6 animate-enter">
@@ -669,7 +709,7 @@ const ForkEntry: React.FC<any> = ({ setView, toggleSound, soundEnabled }) => (
 );
 
 // --- NEW COMPONENT: THE DIFFUSER ---
-const Diffuser: React.FC<any> = ({ fear, setFear, setView, toggleSound, soundEnabled }) => {
+const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setView, toggleSound, soundEnabled }) => {
   const [step, setStep] = useState(0);
   
   return (
@@ -699,8 +739,8 @@ const Diffuser: React.FC<any> = ({ fear, setFear, setView, toggleSound, soundEna
 };
 
 // --- VESSEL ---
-const Vessel: React.FC<any> = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnabled }) => {
-  const zones = [
+const Vessel: React.FC<VesselProps> = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnabled }) => {
+  const zones: SomaticZone[] = [
     { id: 'Head', label: 'Head', icon: Brain }, { id: 'Eyes', label: 'Eyes', icon: Eye },
     { id: 'Throat', label: 'Throat', icon: MessageCircle }, { id: 'Chest', label: 'Chest', icon: Shield },
     { id: 'Solar', label: 'Solar Plexus', icon: Sun }, { id: 'Gut', label: 'Gut', icon: Disc },
@@ -724,7 +764,7 @@ const Vessel: React.FC<any> = ({ somaticZones, setSomaticZones, setView, toggleS
   );
 };
 
-const PartsWork: React.FC<any> = ({ selectedPart, sensation, setSensation, protection, setProtection, fear, setFear, expandingBelief, setExpandingBelief, partsStep, setPartsStep, setView, toggleSound, soundEnabled }) => {
+const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensation, protection, setProtection, fear, setFear, expandingBelief, setExpandingBelief, partsStep, setPartsStep, setView, toggleSound, soundEnabled }) => {
   const handleBack = () => {
     if (partsStep === 'experience') setView('somatic');
     else if (partsStep === 'unblend') setPartsStep('experience');
@@ -873,7 +913,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
     }
   }, []);
 
-  const starters: { [key: number]: string[] } = {
+  const starters: Record<number, string[]> = {
     0: ["My insight is...", "The real issue is...", "I'm realizing that...", "I sense..."],
     1: ["I would look like...", "I would feel...", "It would be done.", "I would be free."],
     2: ["To make a mess.", "To prioritize me.", "To let go.", "To trust myself."],
@@ -923,7 +963,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
 
 const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }) => {
   const phase = breathCount < 4 ? "Inhale" : breathCount < 8 ? "Hold" : "Exhale";
-  useEffect(() => { if (!breathing) return; const i = setInterval(() => setBreathCount((breathCount + 1) % 16), 1000); return () => clearInterval(i); }, [breathing, breathCount]);
+  useEffect(() => { if (!breathing) return; const i = setInterval(() => setBreathCount((c: number) => (c + 1) % 16), 1000); return () => clearInterval(i); }, [breathing]);
   
   return (
     <div className="h-full flex flex-col justify-center items-center">
@@ -970,7 +1010,7 @@ const Alchemy: React.FC<AlchemyProps> = ({ setView, toggleSound, soundEnabled })
 );
 
 // --- PRIMING (Defined BEFORE Integration) ---
-const Priming: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
+const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
   const [step, setStep] = useState(0);
   const steps = [
     { icon: Mountain, title: "Physiology", instruction: "Change your state immediately. Stand up. Shoulders back. Deep breath. Look up.", action: "I am ready." },
@@ -994,7 +1034,7 @@ const Priming: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
 };
 
 // --- INTEGRATION (Uses Priming) ---
-const Integration = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, fear, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath, userName, energyAnalysis }: any) => {
+const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, fear, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath, userName, energyAnalysis }: any) => {
   const [primingDone, setPrimingDone] = useState(false);
   const [manifesto, setManifesto] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -1184,7 +1224,7 @@ const Integration = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLock
            </div>
          ) : (
            <>
-             <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6" placeholder={current.ph} value={goal[current.id as keyof Goal]} onChange={e => setGoal({...goal, [current.id]: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleNextStep()} />
+             <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6" placeholder={current.ph} value={goal[current.id as keyof Goal]} onChange={e => setGoal({...goal, [current.id]: current.id === 'outcome' ? formatGoalOutcome(e.target.value) : e.target.value})} onKeyDown={e => e.key === 'Enter' && handleNextStep()} />
              <div className="flex gap-3">
                  <button onClick={handleBack} className="px-4 py-3 rounded-xl border border-white/10 text-white/40 hover:text-white transition-colors">Back</button>
                  <button onClick={handleNextStep} disabled={!goal[current.id as keyof Goal]} className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase disabled:opacity-50">Next</button>
@@ -1196,7 +1236,7 @@ const Integration = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLock
   );
 };
 
-const Preservation: React.FC<any> = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToIntegration }) => {
+const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToIntegration }) => {
   const [step, setStep] = useState(0);
   const recoverySteps = [
     { title: "Emergency Brake", icon: Anchor, desc: "We cannot 'push' through burnout. We must stop. Locate one part of your body that feels neutral (hands, feet). Focus there only.", action: "I am anchored." },
@@ -1227,7 +1267,7 @@ const Preservation: React.FC<any> = ({ setView, toggleSound, soundEnabled, setGo
   );
 };
 
-const VitalityScan: React.FC<any> = ({ setView, setBurnoutPath, toggleSound, soundEnabled }) => {
+const VitalityScan: React.FC<VitalityScanProps> = ({ setView, setBurnoutPath, toggleSound, soundEnabled }) => {
   const [step, setStep] = useState(0);
   const [score, setScore] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
@@ -1303,7 +1343,7 @@ const VitalityScan: React.FC<any> = ({ setView, setBurnoutPath, toggleSound, sou
   );
 };
 
-const EnergyAnalyzer: React.FC<any> = ({ setView }) => {
+const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
     const [step, setStep] = useState(0);
     const [score, setScore] = useState(0);
     const [result, setResult] = useState<number | null>(null);
@@ -1400,7 +1440,7 @@ const App = () => {
   const [expandingBelief, setExpandingBelief] = useState('');
   const [pressure, setPressure] = useState(50);
   const [ability, setAbility] = useState(50);
-  const [goal, setGoal] = useState<any>({ what: '', measure: '', when: '', outcome: '', action: '' });
+  const [goal, setGoal] = useState<Goal>({ what: '', measure: '', when: '', outcome: '', action: '' });
   const [goalStep, setGoalStep] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [breathing, setBreathing] = useState(false);
