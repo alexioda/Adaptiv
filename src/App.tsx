@@ -96,10 +96,14 @@ const apiKey = ""; // API Key injected by environment
 // Helper to reformat goals from "I would..." to "To..."
 const formatGoalOutcome = (text: string) => {
   if (!text) return "";
+  let clean = text.trim();
   // Regex to match starting phrases like "I would", "I want to", "I will", "I'd like to" case insensitive
-  const clean = text.replace(/^(I would|I want to|I will|I'd like to|I am going to)\s+/i, "");
-  // Prefix with "To " and capitalize the next letter
-  return "To " + clean.charAt(0).toLowerCase() + clean.slice(1);
+  clean = clean.replace(/^(I would like to|I would|I want to|I will|I am going to|I'd like to)\s+/i, "");
+  // If it already starts with "To ", leave it
+  if (/^To\s/i.test(clean)) return clean;
+  // Capitalize first letter
+  clean = clean.charAt(0).toLowerCase() + clean.slice(1);
+  return "To " + clean;
 };
 
 const getSmartQuestion = (energy: number, stress: number) => {
@@ -227,8 +231,9 @@ const generateManifesto = async (stressor: string, truth: string, action: string
     return { isOffline: false };
   } catch (error) {
     console.error("Manifesto Error", error);
-    // ELI-Informed Fallback Logic
-    const fallbackText = `I observe the heavy energy of "${stressor}" and the quiet fear that ${fear || 'I am not enough'}. I honor it, but I do not reside there. I choose to shift. Standing in the truth that ${truth}, I reclaim my power. My action is my seal: ${action}.`;
+    // ELI-Informed Fallback Logic - Dynamic Construction
+    // This ensures a "good flow" even without the API
+    const fallbackText = `I acknowledge the heaviness of "${stressor}" and the quiet fear that ${fear || 'I am insufficient'}. These are simply signals. I choose to shift. Standing in the truth that ${truth}, I direct my power forward. My commitment is clear: ${action}.`;
     onUpdate(fallbackText);
     return { isOffline: true };
   }
@@ -705,7 +710,7 @@ const PartsWork: React.FC<any> = ({ selectedPart, sensation, setSensation, prote
   );
 };
 
-const Perspective: React.FC<any> = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }) => {
+const Perspective = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }) => {
   const flowState = ability >= pressure;
   return (
     <div className="h-full flex flex-col">
@@ -737,7 +742,7 @@ const Perspective: React.FC<any> = ({ pressure, setPressure, ability, setAbility
   );
 };
 
-const Crossroads: React.FC<any> = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel }) => {
+const Crossroads = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel }) => {
   const recommendStillness = parseInt(stressLevel.toString()) > 70 && parseInt(energyLevel.toString()) < 40;
   return (
     <div className="h-full flex flex-col justify-center px-6">
@@ -761,7 +766,7 @@ const Crossroads: React.FC<any> = ({ setView, toggleSound, soundEnabled, stressL
   );
 };
 
-const LaserCoaching: React.FC<any> = ({ stressor, perception, somatic, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, energyLevel, stressLevel }) => {
+const LaserCoaching = ({ stressor, perception, somatic, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, energyLevel, stressLevel }) => {
   const [step, setStep] = useState(0); 
   const [answers, setAnswers] = useState<any>({ topic: '', result: '', permission: '', action: '' });
   const [aiQuestions, setAiQuestions] = useState<string[]>([]);
@@ -783,7 +788,7 @@ const LaserCoaching: React.FC<any> = ({ stressor, perception, somatic, setView, 
     }
   }, []);
 
-  const starters: Record<number, string[]> = {
+  const starters = {
     0: ["My insight is...", "The real issue is...", "I'm realizing that...", "I sense..."],
     1: ["I would look like...", "I would feel...", "It would be done.", "I would be free."],
     2: ["To make a mess.", "To prioritize me.", "To let go.", "To trust myself."],
@@ -831,7 +836,7 @@ const LaserCoaching: React.FC<any> = ({ stressor, perception, somatic, setView, 
   );
 };
 
-const Breath: React.FC<any> = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }) => {
+const Breath = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }) => {
   const phase = breathCount < 4 ? "Inhale" : breathCount < 8 ? "Hold" : "Exhale";
   useEffect(() => { if (!breathing) return; const i = setInterval(() => setBreathCount((c: number) => (c + 1) % 16), 1000); return () => clearInterval(i); }, [breathing]);
   
@@ -853,7 +858,7 @@ const Breath: React.FC<any> = ({ breathing, setBreathing, breathCount, setBreath
   );
 };
 
-const Insight: React.FC<any> = ({ expandingBelief, setExpandingBelief, setView, toggleSound, soundEnabled }) => (
+const Insight = ({ expandingBelief, setExpandingBelief, setView, toggleSound, soundEnabled }) => (
   <div className="h-full flex flex-col justify-center px-6 text-center">
     <Nav title="The Clarity" subtitle="Harvesting" onBack={() => setView('regulate')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
     <div className="flex-1 flex flex-col justify-center">
@@ -864,7 +869,7 @@ const Insight: React.FC<any> = ({ expandingBelief, setExpandingBelief, setView, 
   </div>
 );
 
-const Alchemy: React.FC<any> = ({ setView, toggleSound, soundEnabled }) => (
+const Alchemy = ({ setView, toggleSound, soundEnabled }) => (
   <div className="h-full flex flex-col">
     <Nav title="Vitality Alchemy" subtitle="Select Chemistry" onBack={() => setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} />
     <div className="flex-1 space-y-4 px-4 pt-4">
@@ -880,7 +885,7 @@ const Alchemy: React.FC<any> = ({ setView, toggleSound, soundEnabled }) => (
 );
 
 // --- PRIMING (Defined BEFORE Integration) ---
-const Priming: React.FC<any> = ({ onComplete }) => {
+const Priming = ({ onComplete }) => {
   const [step, setStep] = useState(0);
   const steps = [
     { icon: Mountain, title: "Physiology", instruction: "Change your state immediately. Stand up. Shoulders back. Deep breath. Look up.", action: "I am ready." },
@@ -925,6 +930,15 @@ const Integration = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLock
   const current = steps[Math.min(goalStep, 2)];
 
   const handleBack = () => { if (goalStep > 0) setGoalStep(goalStep - 1); else setView('alchemy'); };
+
+  const handleNextStep = () => {
+    if (current.id === 'outcome') {
+        const formatted = formatGoalOutcome(goal.outcome);
+        setGoal((prev: Goal) => ({ ...prev, outcome: formatted }));
+    }
+    if (goalStep < 2) setGoalStep(goalStep + 1);
+    else setIsLocked(true);
+  };
 
   const copyArtifact = () => {
     const text = `ADAPTIV DECREE\n\n${manifesto}\n\nCommitment: ${goal.action} (${goal.when})`;
@@ -1085,10 +1099,10 @@ const Integration = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLock
            </div>
          ) : (
            <>
-             <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6" placeholder={current.ph} value={goal[current.id as keyof Goal]} onChange={e => setGoal({...goal, [current.id]: current.id === 'outcome' ? formatGoalOutcome(e.target.value) : e.target.value})} onKeyDown={e => e.key === 'Enter' && (goalStep < 2 ? setGoalStep(goalStep+1) : setIsLocked(true))} />
+             <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6" placeholder={current.ph} value={goal[current.id as keyof Goal]} onChange={e => setGoal({...goal, [current.id]: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleNextStep()} />
              <div className="flex gap-3">
                  <button onClick={handleBack} className="px-4 py-3 rounded-xl border border-white/10 text-white/40 hover:text-white transition-colors">Back</button>
-                 <button onClick={() => goalStep < 2 ? setGoalStep(goalStep+1) : setIsLocked(true)} disabled={!goal[current.id as keyof Goal]} className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase disabled:opacity-50">Next</button>
+                 <button onClick={handleNextStep} disabled={!goal[current.id as keyof Goal]} className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase disabled:opacity-50">Next</button>
              </div>
            </>
          )}
