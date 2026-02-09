@@ -6,7 +6,7 @@ import {
   Waves, Volume2, VolumeX, ChevronRight, ChevronLeft, X, AlertCircle, Copy, LogOut, BarChart, RefreshCw,
   Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail, 
   MinusCircle, AlertTriangle, Info, FileText, Thermometer, Sparkles, Loader2, WifiOff, Home, BatteryWarning, ExternalLink, HelpCircle,
-  Split, CloudFog, Compass
+  Split, CloudFog, Compass, Music
 } from 'lucide-react';
 
 // Fix: Add declaration for process to resolve Vercel build error TS2580
@@ -68,6 +68,8 @@ interface HorizonProps extends CommonProps {
   isBurnout: boolean;
   resetApp: () => void;
   setEnergyAnalysis: (a: EnergyAnalysis) => void;
+  soundType: 'drone' | 'brown';
+  setSoundType: (t: 'drone' | 'brown') => void;
 }
 
 interface ForkEntryProps extends CommonProps {}
@@ -172,12 +174,12 @@ interface EnergyAnalyzerProps {
 // --- 1. SOUND ENGINE ---
 class SoundEngine {
   ctx: AudioContext | null;
-  osc: OscillatorNode | null;
+  activeNode: OscillatorNode | AudioBufferSourceNode | null;
   gain: GainNode | null;
 
   constructor() {
     this.ctx = null;
-    this.osc = null;
+    this.activeNode = null;
     this.gain = null;
   }
 
@@ -191,26 +193,53 @@ class SoundEngine {
     }
   }
 
-  playDrone() {
+  play(type: 'drone' | 'brown') {
     if (!this.ctx || !this.gain) this.init();
     if (this.ctx?.state === 'suspended') this.ctx.resume();
     
-    if (this.osc) { try { this.osc.stop(); this.osc.disconnect(); } catch (e) {} }
+    // Stop any currently playing node
+    if (this.activeNode) {
+        try { this.activeNode.stop(); this.activeNode.disconnect(); } catch (e) {}
+        this.activeNode = null;
+    }
 
-    this.osc = this.ctx!.createOscillator();
-    this.osc.type = 'sine';
-    this.osc.frequency.setValueAtTime(110, this.ctx!.currentTime); // 110Hz
-    
-    this.osc.connect(this.gain!);
-    this.osc.start();
-    this.gain!.gain.setTargetAtTime(0.05, this.ctx!.currentTime, 2); 
+    if (type === 'drone') {
+        const osc = this.ctx!.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(110, this.ctx!.currentTime); // 110Hz (A2)
+        osc.connect(this.gain!);
+        osc.start();
+        this.activeNode = osc;
+        this.gain!.gain.setTargetAtTime(0.05, this.ctx!.currentTime, 2); 
+    } else {
+        // Brown Noise Generation (Integrated White Noise)
+        const bufferSize = this.ctx!.sampleRate * 2; // 2 seconds buffer
+        const buffer = this.ctx!.createBuffer(1, bufferSize, this.ctx!.sampleRate);
+        const data = buffer.getChannelData(0);
+        let lastOut = 0;
+        for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            lastOut = (lastOut + (0.02 * white)) / 1.02;
+            lastOut *= 3.5; // Compensate for gain loss
+            data[i] = lastOut; 
+        }
+        
+        const noise = this.ctx!.createBufferSource();
+        noise.buffer = buffer;
+        noise.loop = true;
+        noise.connect(this.gain!);
+        noise.start();
+        this.activeNode = noise;
+        // Brown noise is softer perceptually, needs slightly more gain
+        this.gain!.gain.setTargetAtTime(0.12, this.ctx!.currentTime, 2); 
+    }
   }
 
   stop() {
     if (this.gain && this.ctx) {
       this.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.5);
       setTimeout(() => {
-        if (this.osc) { try { this.osc.stop(); this.osc.disconnect(); } catch (e) {} }
+        if (this.activeNode) { try { this.activeNode.stop(); this.activeNode.disconnect(); } catch (e) {} this.activeNode = null; }
       }, 600);
     }
   }
@@ -579,7 +608,7 @@ const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, set
   );
 };
 
-const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, perception, setPerception, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp, setEnergyAnalysis }) => {
+const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, perception, setPerception, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp, setEnergyAnalysis, soundType, setSoundType }) => {
   const [analyzing, setAnalyzing] = useState(false);
   const triggers = ['work', 'job', 'boss', 'career', 'team', 'project', 'deadline', 'email', 'monday', 'shift', 'burnout', 'tired', 'exhausted', 'drained', 'overwhelm', 'client'];
   const showWorkCheck = triggers.some(t => stressor.toLowerCase().includes(t));
@@ -639,6 +668,18 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
                     {[20, 40, 70, 90].map((val, i) => (
                         <button key={i} onClick={() => setStressLevel(val)} className={`py-2 rounded-lg text-[10px] uppercase font-bold border transition-all ${stressLevel === val ? 'bg-white text-slate-900 border-white' : 'bg-white/5 text-white/40 border-transparent hover:bg-white/10'}`}>{['Fun', 'Okay', 'Heavy', 'Crush'][i]}</button>
                     ))}
+                </div>
+            </div>
+
+            {/* SOUND SELECTION */}
+            <div className="pt-4 border-t border-white/5 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                    <Music size={14} className="text-white/50"/>
+                    <span className="font-sans text-[10px] tracking-widest text-white/50 uppercase">Ambience</span>
+                </div>
+                <div className="flex gap-2">
+                    <button onClick={() => setSoundType('drone')} className={`px-3 py-1 rounded-full text-[9px] uppercase tracking-widest transition-all border ${soundType === 'drone' ? 'bg-white text-slate-900 border-white' : 'bg-white/5 text-white/40 border-white/10 hover:bg-white/10'}`}>Drone</button>
+                    <button onClick={() => setSoundType('brown')} className={`px-3 py-1 rounded-full text-[9px] uppercase tracking-widest transition-all border ${soundType === 'brown' ? 'bg-white text-slate-900 border-white' : 'bg-white/5 text-white/40 border-white/10 hover:bg-white/10'}`}>Brown Noise</button>
                 </div>
             </div>
             
@@ -985,6 +1026,13 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
 
 const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }) => {
   const phase = breathCount < 4 ? "Inhale" : breathCount < 8 ? "Hold" : "Exhale";
+  
+  // Calculate specific count for current phase
+  let displayCount = 0;
+  if (breathCount < 4) displayCount = breathCount + 1;       // 1-4
+  else if (breathCount < 8) displayCount = breathCount - 3;  // 1-4
+  else displayCount = breathCount - 7;                       // 1-8
+
   useEffect(() => { if (!breathing) return; const i = setInterval(() => setBreathCount((c: number) => (c + 1) % 16), 1000); return () => clearInterval(i); }, [breathing]);
   
   return (
@@ -993,8 +1041,9 @@ const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, s
       <div className="flex-1 flex flex-col items-center justify-center relative overflow-y-auto hide-scrollbar pb-4">
          <div className="relative flex items-center justify-center">
             {breathing && <div className="absolute w-64 h-64 rounded-full border border-teal-500/30 ripple-ring"></div>}
-            <div className={`w-64 h-64 rounded-full border border-white/10 flex items-center justify-center transition-all duration-1000 z-10 ${breathing ? 'bg-teal-900/20 shadow-[0_0_50px_rgba(20,184,166,0.2)]' : 'bg-white/5'}`} style={{ transform: `scale(${breathing ? (breathCount < 4 ? 1.5 : 1) : 1})` }}>
+            <div className={`w-64 h-64 rounded-full border border-white/10 flex flex-col items-center justify-center transition-all duration-1000 z-10 ${breathing ? 'bg-teal-900/20 shadow-[0_0_50px_rgba(20,184,166,0.2)]' : 'bg-white/5'}`} style={{ transform: `scale(${breathing ? (breathCount < 4 ? 1.5 : 1) : 1})` }}>
               <span className="font-serif text-2xl text-white italic">{breathing ? phase : "Stillness"}</span>
+              {breathing && <span className="font-sans text-4xl text-white/50 font-light mt-2">{displayCount}</span>}
             </div>
          </div>
          <div className="h-24"></div> 
@@ -1468,6 +1517,7 @@ const App = () => {
   const [breathing, setBreathing] = useState(false);
   const [breathCount, setBreathCount] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [soundType, setSoundType] = useState<'drone' | 'brown'>('drone');
   const [energyAnalysis, setEnergyAnalysis] = useState<EnergyAnalysis | null>(null);
 
   useEffect(() => {
@@ -1479,9 +1529,20 @@ const App = () => {
 
   useEffect(() => { if (isBurnout) setIsBurnoutPath(true); }, [isBurnout]);
 
+  useEffect(() => {
+    if (soundEnabled) {
+        soundEngine.play(soundType);
+    }
+  }, [soundType]);
+
   const toggleSound = () => {
-    if (soundEnabled) { soundEngine.stop(); setSoundEnabled(false); }
-    else { soundEngine.playDrone(); setSoundEnabled(true); }
+    if (soundEnabled) { 
+        soundEngine.stop(); 
+        setSoundEnabled(false); 
+    } else { 
+        soundEngine.play(soundType); 
+        setSoundEnabled(true); 
+    }
   };
 
   const enterApp = () => { setView('manifesto'); };
@@ -1510,6 +1571,8 @@ const App = () => {
              soundEnabled={soundEnabled} 
              resetApp={resetApp}
              setEnergyAnalysis={setEnergyAnalysis}
+             soundType={soundType}
+             setSoundType={setSoundType}
            />}
            
            {view === 'energy_reflection' && <EnergyReflection energyAnalysis={energyAnalysis} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
