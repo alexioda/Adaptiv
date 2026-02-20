@@ -274,7 +274,7 @@ const safetySettings = [
 const formatGoalOutcome = (text: string) => {
   if (!text) return "";
   let clean = text.trim();
-  clean = clean.replace(/^(I would like to|I would|I want to|I will|I am going to|I'd like to)\s+/i, "");
+  clean = clean.replace(/^(My goal is to|My goal is|I would like to|I would|I want to|I will|I am going to|I'd like to)\s+/i, "");
   if (/^To\s/i.test(clean)) return clean;
   clean = clean.charAt(0).toLowerCase() + clean.slice(1);
   return "To " + clean;
@@ -343,15 +343,22 @@ const analyzeCurrentEnergy = async (stressor: string, perception: string, stress
 
 const generateCoachingQuestions = async (stressor: string, perception: string, somatic: string, energyLevel: number, stressLevel: number): Promise<string[]> => {
   try {
-    const prompt = `Generate 4 short, powerful, provocative coaching questions for a client using Energy Leadership principles.
+    const prompt = `Act as a world-class transformational coach and master of energy dynamics. Your goal is to elevate the client's perspective, shifting them gracefully from contraction/fear into expansion/opportunity, without using any technical coaching or "Energy Leadership" jargon.
+
     Context:
     - Situation: ${stressor}
     - Experience: ${perception}
     - Body sensation: ${somatic}
-    - Energy Level: ${energyLevel}%
+    - Energy Level: ${energyLevel}% (Lower means more drained/defensive, Higher means more engaged/creative)
     - Stress Level: ${stressLevel}%
 
-    Return ONLY a raw JSON object with a key "questions" containing an array of 4 strings. Do not use markdown formatting.`;
+    Return ONLY a raw JSON object with a key "questions" containing an array of exactly 4 strings. The questions must be short, powerful, and follow this transformational arc:
+    1. The Mirror: A question that gently exposes the hidden assumption, story, or blind spot in their current perspective.
+    2. The Pivot: A question that invites them to view this exact situation from a higher, more empowering vantage point (e.g., finding the gift, releasing the burden, or reclaiming their agency).
+    3. The Vision: If they embody this new perspective, what desired feeling, outcome, or state of being becomes possible?
+    4. The Catalyst: What is one bold, aligned step they can take right now to anchor this new energy?
+
+    Do not use markdown formatting. Return raw JSON.`;
 
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
       method: 'POST',
@@ -994,15 +1001,15 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
 
   const starters: Record<number, string[]> = {
     0: ["My insight is...", "The real issue is...", "I'm realizing that...", "I sense..."],
-    1: ["I would look like...", "I would feel...", "It would be done.", "I would be free."],
+    1: ["To feel...", "To achieve...", "To experience...", "To become..."],
     2: ["To make a mess.", "To prioritize me.", "To let go.", "To trust myself."],
     3: ["I will call...", "I will write...", "I will stop...", "I will start..."]
   };
   const currentQ = [
     { id: 'topic', label: 'The Insight', q: aiQuestions[0] || "Connecting to the field...", ph: 'My insight is...' },
-    { id: 'result', label: 'The Vision', q: "If this problem were already solved, what would be different?", ph: 'I would be...' },
-    { id: 'permission', label: 'Permission', q: "What permission do you need to give yourself to move forward?", ph: 'I give myself permission to...' },
-    { id: 'action', label: 'The Move', q: "What is the single boldest step that makes everything else easier?", ph: 'I will...' }
+    { id: 'result', label: 'The Vision', q: aiQuestions[1] || "If this shifted, what state or outcome would you experience?", ph: 'I want to...' },
+    { id: 'permission', label: 'Permission', q: aiQuestions[2] || "What permission do you need to give yourself to move forward?", ph: 'I give myself permission to...' },
+    { id: 'action', label: 'The Move', q: aiQuestions[3] || "What is the single boldest step that makes everything else easier?", ph: 'I will...' }
   ][step];
 
   const handleNext = () => {
@@ -1138,7 +1145,11 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
   }, [isLocked, isBurnoutPath, manifesto]);
 
   const quickTimes = ["Now", "Within 1 Hr", "Today", "Tomorrow"];
-  const steps = [{ id: 'outcome', q: 'The Goal', ph: 'Desired outcome?' }, { id: 'action', q: 'The Action', ph: 'Single step?' }, { id: 'when', q: 'The Commitment', ph: 'When?' }];
+  const steps = [
+    { id: 'outcome', q: 'The Goal', ph: 'Desired outcome?' }, 
+    { id: 'action', q: 'The Action', ph: 'Single step?' }, 
+    { id: 'when', q: 'The Commitment', ph: 'When?' }
+  ];
   const current = steps[Math.min(goalStep, 2)];
 
   const handleBack = () => { if (goalStep > 0) setGoalStep(goalStep - 1); else setView('alchemy'); };
