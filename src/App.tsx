@@ -9,9 +9,6 @@ import {
   Split, CloudFog, Compass, Music
 } from 'lucide-react';
 
-// Fix: Add declaration for process to resolve Vercel build error TS2580
-declare const process: any;
-
 // --- TYPES ---
 interface Goal {
   what: string;
@@ -248,26 +245,17 @@ const soundEngine = new SoundEngine();
 
 // --- 2. API HELPERS ---
 
-// Updated to ensure compatibility: Tries import.meta.env first (Vite standard), then fallback to process.env.
-const apiKey = (() => {
-  // Try Vite standard first
-  try {
-    // @ts-ignore
-    if (import.meta && import.meta.env && import.meta.env.VITE_GOOGLE_API_KEY) {
-      // @ts-ignore
-      return import.meta.env.VITE_GOOGLE_API_KEY;
-    }
-  } catch (e) {}
+// Safely retrieve API key for both Vite (Vercel) and preview environments
+let viteKey = "";
+try {
+  // @ts-ignore
+  viteKey = import.meta.env.VITE_GOOGLE_API_KEY;
+} catch (e) {
+  // Gracefully fail in non-Vite environments
+}
 
-  // Fallback to process.env (handled by declaration above)
-  try {
-    if (typeof process !== 'undefined' && process.env && process.env.VITE_GOOGLE_API_KEY) {
-      return process.env.VITE_GOOGLE_API_KEY;
-    }
-  } catch (e) {}
-
-  return "";
-})();
+const canvasKey = ""; // Environment securely injects key here if applicable
+const apiKey = viteKey || canvasKey;
 
 // Helper to reformat goals from "I would..." to "To..."
 const formatGoalOutcome = (text: string) => {
