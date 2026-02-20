@@ -9,6 +9,9 @@ import {
   Split, CloudFog, Compass, Music
 } from 'lucide-react';
 
+// Fix: Add declaration for process to resolve Vercel build error TS2580
+declare const process: any;
+
 // --- TYPES ---
 interface Goal {
   what: string;
@@ -254,18 +257,25 @@ try {
   // Gracefully fail in non-Vite environments
 }
 
-const canvasKey = ""; // Environment securely injects key here if applicable
-const apiKey = viteKey || canvasKey;
+const apiKey = viteKey || "";
+
+// Standard public model for live Vercel deployments. Preview environment requires its own alias.
+const aiModel = apiKey ? "gemini-2.5-flash" : "gemini-2.5-flash-preview-09-2025";
+
+// Disable safety settings so coaching queries about burnout/fear aren't falsely flagged
+const safetySettings = [
+  { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+];
 
 // Helper to reformat goals from "I would..." to "To..."
 const formatGoalOutcome = (text: string) => {
   if (!text) return "";
   let clean = text.trim();
-  // Regex to match starting phrases like "I would", "I want to", "I will", "I'd like to" case insensitive
   clean = clean.replace(/^(I would like to|I would|I want to|I will|I am going to|I'd like to)\s+/i, "");
-  // If it already starts with "To ", leave it
   if (/^To\s/i.test(clean)) return clean;
-  // Capitalize first letter
   clean = clean.charAt(0).toLowerCase() + clean.slice(1);
   return "To " + clean;
 };
@@ -298,16 +308,21 @@ const analyzeCurrentEnergy = async (stressor: string, perception: string, stress
 
     Return ONLY a raw JSON object: { "level": number, "reflection": "string" }. Do not use markdown formatting.`;
 
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { response_mime_type: "application/json" }
+        generationConfig: { responseMimeType: "application/json" },
+        safetySettings
       })
     });
 
-    if (!res.ok) throw new Error('API unavailable');
+    if (!res.ok) {
+        const errText = await res.text();
+        console.error("Energy Lens API Error:", errText);
+        throw new Error('API unavailable');
+    }
     
     const data = await res.json();
     let text = data.candidates[0].content.parts[0].text;
@@ -316,7 +331,6 @@ const analyzeCurrentEnergy = async (stressor: string, perception: string, stress
     return parsed; 
   } catch (error) {
     console.error("Energy Analysis Error", error);
-    // Fallback logic
     const isCatabolic = stressLevel > 60 || energyLevel < 40;
     return { 
       level: isCatabolic ? 2 : 3, 
@@ -339,16 +353,21 @@ const generateCoachingQuestions = async (stressor: string, perception: string, s
 
     Return ONLY a raw JSON object with a key "questions" containing an array of 4 strings. Do not use markdown formatting.`;
 
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { response_mime_type: "application/json" }
+        generationConfig: { responseMimeType: "application/json" },
+        safetySettings
       })
     });
 
-    if (!res.ok) throw new Error('API unavailable');
+    if (!res.ok) {
+        const errText = await res.text();
+        console.error("Laser Coaching API Error:", errText);
+        throw new Error('API unavailable');
+    }
     
     const data = await res.json();
     let text = data.candidates[0].content.parts[0].text;
@@ -379,15 +398,20 @@ const generateManifesto = async (stressor: string, truth: string, action: string
     - CRITICAL: Do NOT use technical jargon (e.g., do NOT use "Level 1", "Anabolic", "Catabolic", "Energy Leadership"). Use plain, powerful English suitable for anyone.
     - Output ONLY the text.`;
 
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
+        contents: [{ parts: [{ text: prompt }] }],
+        safetySettings
       })
     });
 
-    if (!res.ok) throw new Error('API unavailable');
+    if (!res.ok) {
+        const errText = await res.text();
+        console.error("Decree API Error:", errText);
+        throw new Error('API unavailable');
+    }
 
     const data = await res.json();
     const text = data.candidates[0].content.parts[0].text.trim();
@@ -396,7 +420,6 @@ const generateManifesto = async (stressor: string, truth: string, action: string
   } catch (error) {
     console.error("Manifesto Error", error);
     // ELI-Informed Fallback Logic - Dynamic Construction
-    // This ensures a "good flow" even without the API
     const fallbackText = `I observe the heavy energy of "${stressor}" and the quiet fear that ${fear || 'I am not enough'}. I honor it, but I do not reside there. I choose to shift. Standing in the truth that ${truth}, I reclaim my power. My action is my seal: ${action}.`;
     onUpdate(fallbackText);
     return { isOffline: true };
@@ -407,15 +430,20 @@ const generateEnergyInsight = async (level: number, type: string) => {
   try {
     const prompt = `Provide a single, profound, 1-sentence insight about personal energy and leadership for someone experiencing '${type}'. Tone: Mystical, grounded, empowering. Do NOT use technical terms like 'Level ${level}'.`;
     
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
+        contents: [{ parts: [{ text: prompt }] }],
+        safetySettings
       })
     });
 
-    if (!res.ok) throw new Error('API unavailable');
+    if (!res.ok) {
+        const errText = await res.text();
+        console.error("Energy Insight API Error:", errText);
+        throw new Error('API unavailable');
+    }
     const data = await res.json();
     return data.candidates[0].content.parts[0].text.trim();
   } catch (error) {
