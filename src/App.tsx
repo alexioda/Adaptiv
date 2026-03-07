@@ -872,34 +872,70 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
   );
 };
 
+// --- UPDATED PERSPECTIVE WITH SLIDERS AND CLINICAL PRIMER ---
 const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }) => {
   const flowState = ability >= pressure;
+  const deficit = pressure - ability;
+
   return (
     <div className="h-full flex flex-col">
       <Nav title="The Perspective" subtitle="Calibration" onBack={() => setView('fork_entry')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={50} />
-      <div className="flex-1 flex flex-col items-center justify-start pt-4 px-4 overflow-y-auto hide-scrollbar">
-        <div className={`relative w-40 h-40 rounded-full border border-white/10 flex items-center justify-center transition-all duration-1000 ${flowState ? 'shadow-[0_0_50px_rgba(20,184,166,0.2)]' : 'shadow-[0_0_50px_rgba(244,63,94,0.2)]'}`}>
-          <div className="text-center relative z-10 px-2">
-            <h2 className={`font-serif text-2xl italic ${flowState ? 'text-teal-100' : 'text-rose-100'}`}>{flowState ? 'Flow' : 'Friction'}</h2>
-            <p className="font-sans text-[9px] tracking-widest uppercase text-white/60 mt-1">{flowState ? 'Systems go.' : 'Brace for impact.'}</p>
-          </div>
+      <div className="flex-1 flex flex-col items-center justify-start pt-4 px-4 overflow-y-auto hide-scrollbar pb-8">
+        
+        {/* --- CLINICAL PRIMER --- */}
+        <div className="text-center mb-8 max-w-sm animate-enter">
+            <p className="font-serif text-lg text-white/70 italic leading-relaxed">
+                Friction is a mathematical equation. It occurs when external demand exceeds internal bandwidth. Quantify the gap.
+            </p>
         </div>
-        <div className="w-full space-y-6 mt-8">
-          <div className="space-y-2">
-            <p className="font-sans text-[10px] tracking-widest text-white/50 uppercase">Requirement Intensity</p>
-            <div className="grid grid-cols-4 gap-2">
-              {[20, 50, 80, 100].map((val, i) => <button key={i} onClick={() => setPressure(val)} className={`py-2 rounded-lg text-[10px] uppercase font-bold border ${pressure === val ? 'bg-white text-slate-900' : 'bg-white/5 text-white/40 border-transparent'}`}>{['Low', 'Med', 'High', 'Max'][i]}</button>)}
-            </div>
+
+        {/* THE VISUALIZER */}
+        <div className={`relative w-48 h-48 rounded-full border border-white/10 flex items-center justify-center transition-all duration-1000 mb-8 animate-enter delay-100 ${flowState ? 'shadow-[0_0_60px_rgba(20,184,166,0.2)] bg-teal-900/10' : 'shadow-[0_0_60px_rgba(244,63,94,0.2)] bg-rose-900/10'}`}>
+          <div className="text-center relative z-10 px-2">
+            <h2 className={`font-serif text-3xl italic mb-1 ${flowState ? 'text-teal-300' : 'text-rose-300'}`}>
+              {flowState ? 'Flow State' : 'High Friction'}
+            </h2>
+            <p className="font-sans text-[10px] tracking-widest uppercase text-white/60">
+              {flowState ? 'Capacity exceeds demand.' : `Capacity deficit: -${deficit}%`}
+            </p>
           </div>
+          <div className={`absolute inset-4 rounded-full border border-dashed opacity-30 ${flowState ? 'border-teal-400 animate-[spin_20s_linear_infinite]' : 'border-rose-400 animate-pulse'}`}></div>
+        </div>
+
+        <div className="w-full glass-panel p-6 rounded-[24px] border-white/10 space-y-8 animate-enter delay-200">
+          
+          {/* PRESSURE SLIDER */}
           <div className="space-y-2">
-            <p className="font-sans text-[10px] tracking-widest text-white/50 uppercase">Internal Capacity</p>
-            <div className="grid grid-cols-4 gap-2">
-              {[20, 50, 80, 100].map((val, i) => <button key={i} onClick={() => setAbility(val)} className={`py-2 rounded-lg text-[10px] uppercase font-bold border ${ability === val ? 'bg-white text-slate-900' : 'bg-white/5 text-white/40 border-transparent'}`}>{['Low', 'Med', 'High', 'Max'][i]}</button>)}
+            <div className="flex justify-between items-end mb-2">
+              <div>
+                <p className="font-sans text-[10px] tracking-widest text-amber-300 uppercase font-bold">Requirement Intensity</p>
+                <p className="text-[9px] text-white/40 uppercase tracking-widest mt-1">External Demand</p>
+              </div>
+              <div className="text-2xl font-serif italic text-amber-400">{pressure}%</div>
             </div>
+            <input type="range" min="1" max="100" value={pressure} onChange={(e) => setPressure(parseInt(e.target.value))} className="w-full slider-amber" />
           </div>
+
+          {/* ABILITY SLIDER */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-end mb-2">
+              <div>
+                <p className="font-sans text-[10px] tracking-widest text-indigo-300 uppercase font-bold">Internal Capacity</p>
+                <p className="text-[9px] text-white/40 uppercase tracking-widest mt-1">Current Bandwidth</p>
+              </div>
+              <div className="text-2xl font-serif italic text-indigo-400">{ability}%</div>
+            </div>
+            <input type="range" min="1" max="100" value={ability} onChange={(e) => setAbility(parseInt(e.target.value))} className="w-full slider-indigo" />
+          </div>
+          
         </div>
       </div>
-      <button onClick={() => setView('fork')} className="mt-4 w-full py-5 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] transition-all">Direct the Energy</button>
+      
+      <div className="px-4 pb-4 animate-enter delay-300">
+        <button onClick={() => setView('fork')} className="w-full py-5 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] transition-all">
+          Direct the Energy
+        </button>
+      </div>
     </div>
   );
 };
@@ -1218,7 +1254,7 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
                   </div>
                   <input type="range" min="1" max="100" value={postStressLevel} onChange={(e) => setPostStressLevel(parseInt(e.target.value))} className="w-full slider-amber" />
                   <div className="mt-2 text-[10px] font-bold tracking-widest text-right">
-                    {stressDelta < 0 ? <span className="text-teal-400">{stressDelta}% Pressure Metabolized</span> : stressDelta > 0 ? <span className="text-rose-400">+{stressDelta}% Pressure Gained</span> : <span className="text-white/40">Baseline Maintained</span>}
+                    {stressDelta < 0 ? <span className="text-teal-400">{Math.abs(stressDelta)}% Pressure Metabolized</span> : stressDelta > 0 ? <span className="text-rose-400">+{stressDelta}% Pressure Gained</span> : <span className="text-white/40">Baseline Maintained</span>}
                   </div>
                 </div>
               </div>
@@ -1564,7 +1600,9 @@ const App = () => {
           {view === 'somatic' && <Vessel somaticZones={somaticZones} setSomaticZones={setSomaticZones} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
           {view === 'partswork' && <PartsWork selectedPart={somaticZones[0] || 'Part'} sensation={sensation} setSensation={setSensation} protection={protection} setProtection={setProtection} fear={fear} setFear={setFear} expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief} partsStep={partsStep} setPartsStep={setPartsStep} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
           {view === 'laser' && <LaserCoaching stressor={stressor} perception={perception} somatic={somaticZones[0] || 'Body'} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setGoal={setGoal} setExpandingBelief={setExpandingBelief} energyLevel={energyLevel} stressLevel={stressLevel} />}
+          
           {view === 'lens' && <Perspective pressure={pressure} setPressure={setPressure} ability={ability} setAbility={setAbility} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
+          
           {view === 'fork' && <Crossroads stressLevel={stressLevel} energyLevel={energyLevel} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
           {view === 'regulate' && <Breath breathing={breathing} setBreathing={setBreathing} breathCount={breathCount} setBreathCount={setBreathCount} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
           {view === 'alchemy' && <Alchemy setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
