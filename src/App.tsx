@@ -267,6 +267,15 @@ const safetySettings = [
   { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
 ];
 
+const formatGoalOutcome = (text: string) => {
+  if (!text) return "";
+  let clean = text.trim();
+  clean = clean.replace(/^(My goal is to|My goal is|I would like to|I would|I want to|I will|I am going to|I'd like to)\s+/i, "");
+  if (/^To\s/i.test(clean)) return clean;
+  clean = clean.charAt(0).toLowerCase() + clean.slice(1);
+  return "To " + clean;
+};
+
 const getSmartQuestion = (energy: number, stress: number) => {
   if (stress > 60 || energy < 40) return "What specifically is threatened by this situation?";
   if (energy > 70) return "If you were coaching your best self, what would you tell them to do?";
@@ -562,7 +571,92 @@ const Identity: React.FC<{ userName: string; setUserName: (n: string) => void; o
   </div>
 );
 
-// --- UPDATED HORIZON WITH AI EMPATHY BRIDGE ---
+const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, setView, toggleSound, soundEnabled }) => {
+  return (
+    <div className="h-full flex flex-col justify-center px-4 animate-enter">
+      <Nav title="Current Resonance" subtitle="The Lens" isDashboard={false} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={5} />
+      <div className="flex-1 flex flex-col justify-center items-center text-center pb-12 overflow-y-auto hide-scrollbar">
+        <div className="mb-8 p-6 rounded-full bg-indigo-500/10 border border-indigo-500/20">
+          <Compass size={48} className="text-indigo-300" />
+        </div>
+        <h3 className="font-serif text-2xl text-white italic mb-6">"Here is what I sense..."</h3>
+        <div className="p-6 rounded-[24px] bg-white/5 border border-white/10 mb-8 max-w-sm">
+          <p className="font-serif text-lg text-white/90 italic leading-relaxed">
+            "{energyAnalysis?.reflection || "Connecting to your field..."}"
+          </p>
+        </div>
+        <p className="font-sans text-xs text-white/40 max-w-xs leading-relaxed mb-10">
+          This is your current energetic baseline. We will now shift this frequency.
+        </p>
+        <button onClick={() => setView('fork_entry')} className="w-full py-5 rounded-full bg-indigo-500 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-indigo-400 hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-all">
+          Shift This Energy
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const ForkEntry: React.FC<ForkEntryProps> = ({ setView, toggleSound, soundEnabled }) => (
+  <div className="h-full flex flex-col px-4">
+    <Nav title="The Source" subtitle="Origin Point" onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={10} />
+    <div className="flex-1 flex flex-col justify-center gap-6 animate-enter overflow-y-auto hide-scrollbar pb-4">
+      <div className="text-center mb-4">
+        <h2 className="font-serif text-2xl text-white italic mb-2">Where is the friction loudest?</h2>
+        <p className="text-xs text-white/50">Stress has two addresses. Choose the one calling for attention.</p>
+      </div>
+      <button onClick={() => setView('somatic')} className="p-6 rounded-[24px] glass-panel group text-left hover:bg-white/5 transition-all border border-transparent hover:border-teal-500/30">
+        <div className="flex items-center gap-4 mb-3">
+          <div className="p-3 rounded-full bg-teal-500/10 text-teal-300 group-hover:scale-110 transition-transform"><Activity size={24} /></div>
+          <div>
+            <h3 className="font-serif text-xl text-white italic">The Body</h3>
+            <p className="text-[10px] uppercase tracking-widest text-white/40">Heaviness & Tension</p>
+          </div>
+        </div>
+        <p className="text-xs text-white/60 leading-relaxed pl-[60px]">Tightness in chest, knot in gut, heavy shoulders, exhaustion.</p>
+      </button>
+      <button onClick={() => setView('diffuser')} className="p-6 rounded-[24px] glass-panel group text-left hover:bg-white/5 transition-all border border-transparent hover:border-indigo-500/30">
+        <div className="flex items-center gap-4 mb-3">
+          <div className="p-3 rounded-full bg-indigo-500/10 text-indigo-300 group-hover:scale-110 transition-transform"><CloudFog size={24} /></div>
+          <div>
+            <h3 className="font-serif text-xl text-white italic">The Mind</h3>
+            <p className="text-[10px] uppercase tracking-widest text-white/40">Racing Thoughts & Loops</p>
+          </div>
+        </div>
+        <p className="text-xs text-white/60 leading-relaxed pl-[60px]">Mental fog, analyzing, planning, replaying scenarios.</p>
+      </button>
+    </div>
+  </div>
+);
+
+const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setView, toggleSound, soundEnabled }) => {
+  const [step, setStep] = useState(0);
+  return (
+    <div className="h-full flex flex-col">
+      <Nav title="The Filter" subtitle="Fact vs. Fiction" onBack={() => setView('fork_entry')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={25} />
+      <div className="flex-1 flex flex-col justify-center px-4 animate-enter overflow-y-auto hide-scrollbar pb-4">
+        {step === 0 ? (
+          <>
+            <h3 className="font-serif text-2xl text-white italic mb-6 text-center">"What is the loudest loop?"</h3>
+            <input autoFocus className="w-full bg-transparent border-b border-indigo-500/50 py-4 text-center text-white font-light text-lg focus:outline-none mb-8" placeholder="I keep thinking about..." value={fear} onChange={e => setFear(e.target.value)} onKeyDown={e => e.key === 'Enter' && setStep(1)} />
+            <button onClick={() => setStep(1)} disabled={!fear} className="w-full py-4 rounded-full bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 font-sans text-xs tracking-widest uppercase hover:bg-indigo-500/30 transition-all">Capture Thought</button>
+          </>
+        ) : (
+          <div className="text-center">
+            <Split size={48} className="text-indigo-300 mx-auto mb-6" />
+            <h3 className="font-serif text-2xl text-white italic mb-4">The Filter</h3>
+            <p className="text-sm text-white/70 mb-8">Is this thought an absolute <strong>Fact</strong> (provable in court) or an <strong>Assumption</strong> (an interpretation)?</p>
+            <div className="grid grid-cols-2 gap-4">
+              <button onClick={() => setView('lens')} className="py-4 rounded-xl border border-white/10 hover:bg-white/5 transition-all text-xs uppercase tracking-widest">It's a Fact</button>
+              <button onClick={() => setView('lens')} className="py-4 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-200 hover:bg-indigo-500/30 transition-all text-xs uppercase tracking-widest">It's an Assumption</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- HORIZON WITH AI EMPATHY BRIDGE ---
 const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, perception, setPerception, setView, toggleSound, soundEnabled, resetApp }) => {
   const [step, setStep] = useState<'intake'|'chat'|'routing'>('intake');
   const [chatInput, setChatInput] = useState('');
@@ -748,90 +842,7 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
     </div>
   );
 };
-const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, setView, toggleSound, soundEnabled }) => {
-  return (
-    <div className="h-full flex flex-col justify-center px-4 animate-enter">
-      <Nav title="Current Resonance" subtitle="The Lens" isDashboard={false} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={5} />
-      <div className="flex-1 flex flex-col justify-center items-center text-center pb-12 overflow-y-auto hide-scrollbar">
-        <div className="mb-8 p-6 rounded-full bg-indigo-500/10 border border-indigo-500/20">
-          <Compass size={48} className="text-indigo-300" />
-        </div>
-        <h3 className="font-serif text-2xl text-white italic mb-6">"Here is what I sense..."</h3>
-        <div className="p-6 rounded-[24px] bg-white/5 border border-white/10 mb-8 max-w-sm">
-          <p className="font-serif text-lg text-white/90 italic leading-relaxed">
-            "{energyAnalysis?.reflection || "Connecting to your field..."}"
-          </p>
-        </div>
-        <p className="font-sans text-xs text-white/40 max-w-xs leading-relaxed mb-10">
-          This is your current energetic baseline. We will now shift this frequency.
-        </p>
-        <button onClick={() => setView('fork_entry')} className="w-full py-5 rounded-full bg-indigo-500 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-indigo-400 hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-all">
-          Shift This Energy
-        </button>
-      </div>
-    </div>
-  );
-};
 
-const ForkEntry: React.FC<ForkEntryProps> = ({ setView, toggleSound, soundEnabled }) => (
-  <div className="h-full flex flex-col px-4">
-    <Nav title="The Source" subtitle="Origin Point" onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={10} />
-    <div className="flex-1 flex flex-col justify-center gap-6 animate-enter overflow-y-auto hide-scrollbar pb-4">
-      <div className="text-center mb-4">
-        <h2 className="font-serif text-2xl text-white italic mb-2">Where is the friction loudest?</h2>
-        <p className="text-xs text-white/50">Stress has two addresses. Choose the one calling for attention.</p>
-      </div>
-      <button onClick={() => setView('somatic')} className="p-6 rounded-[24px] glass-panel group text-left hover:bg-white/5 transition-all border border-transparent hover:border-teal-500/30">
-        <div className="flex items-center gap-4 mb-3">
-          <div className="p-3 rounded-full bg-teal-500/10 text-teal-300 group-hover:scale-110 transition-transform"><Activity size={24} /></div>
-          <div>
-            <h3 className="font-serif text-xl text-white italic">The Body</h3>
-            <p className="text-[10px] uppercase tracking-widest text-white/40">Heaviness & Tension</p>
-          </div>
-        </div>
-        <p className="text-xs text-white/60 leading-relaxed pl-[60px]">Tightness in chest, knot in gut, heavy shoulders, exhaustion.</p>
-      </button>
-      <button onClick={() => setView('diffuser')} className="p-6 rounded-[24px] glass-panel group text-left hover:bg-white/5 transition-all border border-transparent hover:border-indigo-500/30">
-        <div className="flex items-center gap-4 mb-3">
-          <div className="p-3 rounded-full bg-indigo-500/10 text-indigo-300 group-hover:scale-110 transition-transform"><CloudFog size={24} /></div>
-          <div>
-            <h3 className="font-serif text-xl text-white italic">The Mind</h3>
-            <p className="text-[10px] uppercase tracking-widest text-white/40">Racing Thoughts & Loops</p>
-          </div>
-        </div>
-        <p className="text-xs text-white/60 leading-relaxed pl-[60px]">Mental fog, analyzing, planning, replaying scenarios.</p>
-      </button>
-    </div>
-  </div>
-);
-
-const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setView, toggleSound, soundEnabled }) => {
-  const [step, setStep] = useState(0);
-  return (
-    <div className="h-full flex flex-col">
-      <Nav title="The Filter" subtitle="Fact vs. Fiction" onBack={() => setView('fork_entry')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={25} />
-      <div className="flex-1 flex flex-col justify-center px-4 animate-enter overflow-y-auto hide-scrollbar pb-4">
-        {step === 0 ? (
-          <>
-            <h3 className="font-serif text-2xl text-white italic mb-6 text-center">"What is the loudest loop?"</h3>
-            <input autoFocus className="w-full bg-transparent border-b border-indigo-500/50 py-4 text-center text-white font-light text-lg focus:outline-none mb-8" placeholder="I keep thinking about..." value={fear} onChange={e => setFear(e.target.value)} onKeyDown={e => e.key === 'Enter' && setStep(1)} />
-            <button onClick={() => setStep(1)} disabled={!fear} className="w-full py-4 rounded-full bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 font-sans text-xs tracking-widest uppercase hover:bg-indigo-500/30 transition-all">Capture Thought</button>
-          </>
-        ) : (
-          <div className="text-center">
-            <Split size={48} className="text-indigo-300 mx-auto mb-6" />
-            <h3 className="font-serif text-2xl text-white italic mb-4">The Filter</h3>
-            <p className="text-sm text-white/70 mb-8">Is this thought an absolute <strong>Fact</strong> (provable in court) or an <strong>Assumption</strong> (an interpretation)?</p>
-            <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => setView('lens')} className="py-4 rounded-xl border border-white/10 hover:bg-white/5 transition-all text-xs uppercase tracking-widest">It's a Fact</button>
-              <button onClick={() => setView('lens')} className="py-4 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-200 hover:bg-indigo-500/30 transition-all text-xs uppercase tracking-widest">It's an Assumption</button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
 const Vessel: React.FC<VesselProps> = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnabled }) => {
   const zones: SomaticZone[] = [
     { id: 'Head', label: 'Head', icon: Brain }, { id: 'Eyes', label: 'Eyes', icon: Eye },
@@ -1584,7 +1595,8 @@ const App = () => {
           {view === 'energy_reflection' && <EnergyReflection energyAnalysis={energyAnalysis} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
           {view === 'preservation' && <Preservation setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setGoal={setGoal} setExpandingBelief={setExpandingBelief} setViewToIntegration={() => { setIsLocked(true); setView('integration'); }} />}
           {view === 'burnout_check' && <VitalityScan setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setBurnoutPath={setIsBurnoutPath} />}
-          
+          {view === 'fork_entry' && <ForkEntry setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
+          {view === 'diffuser' && <Diffuser fear={fear} setFear={setFear} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
           {view === 'somatic' && <Vessel somaticZones={somaticZones} setSomaticZones={setSomaticZones} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
           {view === 'partswork' && <PartsWork selectedPart={somaticZones[0] || 'Part'} sensation={sensation} setSensation={setSensation} protection={protection} setProtection={setProtection} fear={fear} setFear={setFear} expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief} partsStep={partsStep} setPartsStep={setPartsStep} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
           {view === 'laser' && <LaserCoaching stressor={stressor} perception={perception} somatic={somaticZones[0] || 'Body'} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setGoal={setGoal} setExpandingBelief={setExpandingBelief} energyLevel={energyLevel} stressLevel={stressLevel} />}
