@@ -6,7 +6,7 @@ import {
   Waves, Volume2, VolumeX, ChevronRight, ChevronLeft, X, AlertCircle, Copy, LogOut, BarChart, RefreshCw,
   Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail,
   MinusCircle, AlertTriangle, Info, FileText, Thermometer, Sparkles, Loader2, WifiOff, Home, BatteryWarning, ExternalLink, HelpCircle,
-  Split, CloudFog, Compass, Music
+  Split, CloudFog, Compass, Music, ArrowUp
 } from 'lucide-react';
 
 // --- TYPES ---
@@ -174,6 +174,12 @@ interface EnergyAnalyzerProps {
   setView: (view: string) => void;
 }
 
+interface ChatMessage {
+  role: 'user' | 'ai';
+  text: string;
+  isHtml: boolean;
+}
+
 // --- 1. SOUND ENGINE ---
 class SoundEngine {
   ctx: AudioContext | null;
@@ -260,15 +266,6 @@ const safetySettings = [
   { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
   { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
 ];
-
-const formatGoalOutcome = (text: string) => {
-  if (!text) return "";
-  let clean = text.trim();
-  clean = clean.replace(/^(My goal is to|My goal is|I would like to|I would|I want to|I will|I am going to|I'd like to)\s+/i, "");
-  if (/^To\s/i.test(clean)) return clean;
-  clean = clean.charAt(0).toLowerCase() + clean.slice(1);
-  return "To " + clean;
-};
 
 const getSmartQuestion = (energy: number, stress: number) => {
   if (stress > 60 || energy < 40) return "What specifically is threatened by this situation?";
@@ -437,6 +434,13 @@ const FontStyles = () => (
     input[type=range]:focus { outline: none; }
     input[type=range].slider-amber::-webkit-slider-thumb { background: #f59e0b; box-shadow: 0 0 10px rgba(245,158,11,0.5); }
     input[type=range].slider-indigo::-webkit-slider-thumb { background: #6366f1; box-shadow: 0 0 10px rgba(99,102,241,0.5); }
+    
+    /* Smooth Transition UI */
+    .slide-up-fade { animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    @keyframes slideUpFade { 
+        from { opacity: 0; transform: translateY(20px); } 
+        to { opacity: 1; transform: translateY(0); } 
+    }
   `}</style>
 );
 
@@ -558,216 +562,185 @@ const Identity: React.FC<{ userName: string; setUserName: (n: string) => void; o
   </div>
 );
 
-const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, setView, toggleSound, soundEnabled }) => {
-  return (
-    <div className="h-full flex flex-col justify-center px-4 animate-enter">
-      <Nav title="Current Resonance" subtitle="The Lens" isDashboard={false} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={5} />
-      <div className="flex-1 flex flex-col justify-center items-center text-center pb-12 overflow-y-auto hide-scrollbar">
-        <div className="mb-8 p-6 rounded-full bg-indigo-500/10 border border-indigo-500/20">
-          <Compass size={48} className="text-indigo-300" />
-        </div>
-        <h3 className="font-serif text-2xl text-white italic mb-6">"Here is what I sense..."</h3>
-        <div className="p-6 rounded-[24px] bg-white/5 border border-white/10 mb-8 max-w-sm">
-          <p className="font-serif text-lg text-white/90 italic leading-relaxed">
-            "{energyAnalysis?.reflection || "Connecting to your field..."}"
-          </p>
-        </div>
-        <p className="font-sans text-xs text-white/40 max-w-xs leading-relaxed mb-10">
-          This is your current energetic baseline. We will now shift this frequency.
-        </p>
-        <button onClick={() => setView('fork_entry')} className="w-full py-5 rounded-full bg-indigo-500 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-indigo-400 hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-all">
-          Shift This Energy
-        </button>
-      </div>
-    </div>
-  );
-};
+// --- UPDATED HORIZON WITH AI EMPATHY BRIDGE ---
+const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, perception, setPerception, setView, toggleSound, soundEnabled, resetApp }) => {
+  const [step, setStep] = useState<'intake'|'chat'|'routing'>('intake');
+  const [chatInput, setChatInput] = useState('');
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [aiQuestionCount, setAiQuestionCount] = useState(0);
+  const [showChatInput, setShowChatInput] = useState(true);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
-const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, perception, setPerception, stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout, setView, toggleSound, soundEnabled, resetApp, setEnergyAnalysis, soundType, setSoundType }) => {
-  const [analyzing, setAnalyzing] = useState(false);
-  const triggers = ['work', 'job', 'boss', 'career', 'team', 'project', 'deadline', 'email', 'monday', 'shift', 'burnout', 'tired', 'exhausted', 'drained', 'overwhelm', 'client'];
-  const showWorkCheck = triggers.some(t => stressor.toLowerCase().includes(t));
-  const isHighFriction = stressLevel > 75 && energyLevel < 35;
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatHistory]);
 
-  const handleBeginAlchemy = async () => {
-    setAnalyzing(true);
-    const analysis = await analyzeCurrentEnergy(stressor, perception, stressLevel, energyLevel);
-    setEnergyAnalysis(analysis);
-    setAnalyzing(false);
-    setView('energy_reflection');
+  const startAIConversation = () => {
+    if (stressor.length < 5 || perception.length < 5) return alert("Please complete the intake.");
+    setStep('chat');
+    
+    // [BACKEND API INTEGRATION]: Send initial intake to AI
+    setTimeout(() => {
+      setChatHistory([
+        { role: 'ai', text: "I hear you. When you look at this situation, does it feel more like a threat you have to fight against, or a heavy burden you just have to endure?", isHtml: false }
+      ]);
+    }, 800);
+  };
+
+  const sendUserMessage = () => {
+    if (!chatInput.trim()) return;
+
+    const newHistory: ChatMessage[] = [...chatHistory, { role: 'user', text: chatInput, isHtml: false }];
+    setChatHistory(newHistory);
+    setChatInput('');
+    setAiQuestionCount(prev => prev + 1);
+
+    // THE EMPATHY BRIDGE (Trigger after 1 interaction)
+    if (aiQuestionCount >= 0) {
+      setShowChatInput(false);
+      
+      // [BACKEND API INTEGRATION]: Generate Empathy Bridge
+      setTimeout(() => {
+        const feedbackHtml = `
+          <span class="block mb-2 font-bold text-teal-300">I hear you.</span> 
+          <span class="block mb-4 text-white/80 italic">It makes complete sense that you feel exhausted when you are operating under this kind of friction. You have been running in survival mode, and that takes a massive toll on your system.</span>
+          <span class="block font-bold text-white">We can clear this static and reclaim your bandwidth. To shift this, we need to locate it.</span>
+        `;
+        
+        setChatHistory(prev => [...prev, { role: 'ai', text: feedbackHtml, isHtml: true }]);
+        
+        // Auto-route to Body/Mind selection after they read the validation
+        setTimeout(() => setStep('routing'), 4000);
+      }, 1000);
+    }
   };
 
   return (
     <div className="h-full flex flex-col">
-      <Nav title={`Hello, ${userName || 'Traveler'}`} subtitle={`Session ${sessionCount + 1}`} isDashboard={true} resetApp={resetApp} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={0} aiActive={analyzing} />
-      <div className="flex-1 flex flex-col gap-6 overflow-y-auto hide-scrollbar animate-enter pb-8">
+      <Nav title={`Hello, ${userName || 'Traveler'}`} subtitle={`Session ${sessionCount + 1}`} isDashboard={true} resetApp={resetApp} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={step === 'intake' ? 10 : step === 'chat' ? 20 : 30} />
+      <div className="flex-1 flex flex-col gap-6 overflow-y-auto hide-scrollbar animate-enter pb-8 px-4">
         
-        {/* 7-Day Neural Reset */}
-        <div className="glass-panel p-4 rounded-[24px] border-teal-500/20 relative group">
-          <div className="flex justify-between items-center mb-2">
-            <div className="flex items-center gap-2">
-              <h3 className="font-serif text-lg text-teal-100 italic">7-Day Neural Reset</h3>
-              <HelpCircle size={12} className="text-teal-500/50" />
-            </div>
-            <span className="font-sans text-[9px] uppercase tracking-widest text-teal-400 bg-teal-900/30 px-2 py-1 rounded">Day {(sessionCount % 7) + 1}</span>
-          </div>
-          <p className="text-[9px] text-teal-200/40 mb-3 leading-relaxed">Neuroplasticity requires repetition. Complete 7 cycles to rewire your baseline.</p>
-          <div className="flex justify-between mb-2 relative z-10 px-1">
-            {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all text-[9px] font-bold ${i < (sessionCount % 7) ? 'bg-teal-500 text-slate-900 border-teal-400' : i === (sessionCount % 7) ? 'bg-teal-900/80 text-teal-400 border-teal-500 shadow-[0_0_15px_rgba(20,184,166,0.5)] scale-110' : 'bg-white/5 border-white/10 text-white/20'}`}>
-                {i < (sessionCount % 7) ? <Check size={10} strokeWidth={3} /> : i + 1}
-              </div>
-            ))}
-            <div className="absolute top-3 left-3 right-3 h-[1px] bg-white/5 -z-10"></div>
-          </div>
-        </div>
-
-        {/* INTERNAL WEATHER - UPGRADED TO SLIDERS */}
-        <div className="glass-panel p-6 rounded-[24px] border-white/10">
-          <div className="flex justify-between items-start mb-6">
-            <h3 className="font-serif text-xl text-white/90 italic">Internal Weather</h3>
-            {isBurnout && <AlertCircle size={18} className="text-orange-400/80 animate-pulse"/>}
-          </div>
-          
-          <div className="space-y-8">
-            <div className="space-y-2">
-              <div className="flex justify-between items-end mb-2">
-                <p className="font-sans text-[10px] tracking-widest text-white/50 uppercase">Mental Energy</p>
-                <div className="text-2xl font-serif italic text-indigo-400">{energyLevel}%</div>
-              </div>
-              <input type="range" min="1" max="100" value={energyLevel} onChange={(e) => setEnergyLevel(parseInt(e.target.value))} className="w-full slider-indigo" />
-              <div className="flex justify-between text-[9px] uppercase font-bold text-white/30 mt-1">
-                <span>Drained</span>
-                <span>Optimized</span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between items-end mb-2">
-                <p className="font-sans text-[10px] tracking-widest text-white/50 uppercase">Pressure / Friction</p>
-                <div className="text-2xl font-serif italic text-amber-400">{stressLevel}%</div>
-              </div>
-              <input type="range" min="1" max="100" value={stressLevel} onChange={(e) => setStressLevel(parseInt(e.target.value))} className="w-full slider-amber" />
-              <div className="flex justify-between text-[9px] uppercase font-bold text-white/30 mt-1">
-                <span>Flow</span>
-                <span>Overload</span>
-              </div>
-            </div>
-
-            {/* SOUND SELECTION */}
-            <div className="pt-4 border-t border-white/5 flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <Music size={14} className="text-white/50"/>
-                <span className="font-sans text-[10px] tracking-widest text-white/50 uppercase">Ambience</span>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => setSoundType('drone')} className={`px-3 py-1 rounded-full text-[9px] uppercase tracking-widest transition-all border ${soundType === 'drone' ? 'bg-white text-slate-900 border-white' : 'bg-white/5 text-white/40 border-white/10 hover:bg-white/10'}`}>Drone</button>
-                <button onClick={() => setSoundType('brown')} className={`px-3 py-1 rounded-full text-[9px] uppercase tracking-widest transition-all border ${soundType === 'brown' ? 'bg-white text-slate-900 border-white' : 'bg-white/5 text-white/40 border-white/10 hover:bg-white/10'}`}>Brown Noise</button>
-              </div>
-            </div>
-
-            {/* ELI ASSESSMENT ENTRY POINT */}
-            <div className="pt-4 border-t border-white/5">
-              <button onClick={() => setView('energy')} className="w-full flex items-center justify-between p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all group">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-300"><Zap size={16} /></div>
-                  <div className="text-left">
-                    <span className="block font-serif text-sm text-white italic">Deep Energy Lens</span>
-                    <span className="block text-[9px] text-white/50 uppercase tracking-wider">Access ELI Assessment</span>
-                  </div>
+        {step === 'intake' && (
+          <>
+            {/* 7-Day Neural Reset */}
+            <div className="glass-panel p-4 rounded-[24px] border-teal-500/20 relative group">
+              <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-serif text-lg text-teal-100 italic">7-Day Neural Reset</h3>
+                  <HelpCircle size={12} className="text-teal-500/50" />
                 </div>
-                <ChevronRight size={16} className="text-white/30 group-hover:text-white transition-colors" />
+                <span className="font-sans text-[9px] uppercase tracking-widest text-teal-400 bg-teal-900/30 px-2 py-1 rounded">Day {(sessionCount % 7) + 1}</span>
+              </div>
+              <p className="text-[9px] text-teal-200/40 mb-3 leading-relaxed">Neuroplasticity requires repetition. Complete 7 cycles to rewire your baseline.</p>
+              <div className="flex justify-between mb-2 relative z-10 px-1">
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <div key={i} className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all text-[9px] font-bold ${i < (sessionCount % 7) ? 'bg-teal-500 text-slate-900 border-teal-400' : i === (sessionCount % 7) ? 'bg-teal-900/80 text-teal-400 border-teal-500 shadow-[0_0_15px_rgba(20,184,166,0.5)] scale-110' : 'bg-white/5 border-white/10 text-white/20'}`}>
+                    {i < (sessionCount % 7) ? <Check size={10} strokeWidth={3} /> : i + 1}
+                  </div>
+                ))}
+                <div className="absolute top-3 left-3 right-3 h-[1px] bg-white/5 -z-10"></div>
+              </div>
+            </div>
+
+            <div className="glass-panel p-8 rounded-[2rem] border border-white/10 shadow-sm animate-[slideUpFade_0.5s_ease-out_forwards]">
+              <h2 className="text-3xl font-serif italic text-white mb-2">The Horizon</h2>
+              <p className="text-xs text-white/50 mb-8 uppercase tracking-widest font-bold">Current State Diagnostic</p>
+
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-teal-400 mb-3">What is weighing on you?</label>
+                  <textarea 
+                    value={stressor}
+                    onChange={(e) => setStressor(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-sm h-24 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic placeholder:text-white/20" 
+                    placeholder="The team missed another deadline..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-teal-400 mb-3">How are you experiencing this?</label>
+                  <textarea 
+                    value={perception}
+                    onChange={(e) => setPerception(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-sm h-24 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic placeholder:text-white/20" 
+                    placeholder="I am exhausted and resentful..."
+                  />
+                </div>
+              </div>
+
+              <button 
+                onClick={startAIConversation} 
+                className="w-full mt-8 py-4 bg-white text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest text-center shadow-lg hover:bg-teal-400 transition-all"
+              >
+                Begin Calibration
               </button>
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
-        {isBurnout ? (
-          <div className="animate-enter delay-100 p-4 rounded-2xl bg-orange-900/10 border border-orange-500/30">
-            <p className="font-serif text-xl text-orange-200 text-center italic mb-2">System Alert: Depletion</p>
-            <button onClick={() => setView('preservation')} className="w-full py-4 rounded-full bg-gradient-to-r from-orange-900/60 to-amber-900/60 border border-orange-500/30 text-orange-100 font-sans text-xs tracking-widest uppercase hover:border-orange-500/50 transition-all shadow-lg shadow-orange-900/20">Enter Preservation</button>
-          </div>
-        ) : (
-          <div className="space-y-4 animate-enter delay-100">
-            <div className="relative space-y-3">
-              <input type="text" value={stressor} onChange={(e) => setStressor(e.target.value)} placeholder="What weighs on you?" className="w-full glass-panel p-5 rounded-2xl text-white placeholder:text-white/20 focus:outline-none focus:bg-white/5 transition-all font-serif text-lg italic text-center"/>
-              <input type="text" value={perception} onChange={(e) => setPerception(e.target.value)} placeholder="How are you experiencing this? (Thoughts/Feelings)" className="w-full glass-panel p-4 rounded-xl text-white placeholder:text-white/20 focus:outline-none focus:bg-white/5 transition-all font-sans text-sm text-center"/>
+        {step === 'chat' && (
+          <div className="glass-panel p-6 rounded-[2rem] border border-white/10 shadow-sm flex flex-col h-[70vh] animate-[slideUpFade_0.5s_ease-out_forwards]">
+            <div className="text-center mb-4">
+                <h2 className="text-xl font-serif italic text-white">Kinetic Calibration</h2>
             </div>
             
-            {(showWorkCheck || isHighFriction) ? (
-              <div className="animate-enter mb-2 space-y-3">
-                <button onClick={() => setView('burnout_check')} className="w-full py-4 rounded-xl bg-orange-500/20 text-orange-200 border border-orange-500/50 flex flex-col items-center justify-center gap-1 hover:bg-orange-500/30 transition-all">
-                  <span className="font-sans text-xs font-bold tracking-widest uppercase">High Friction Detected</span>
-                  <span className="text-[10px] opacity-70">Run Vitality Scan</span>
-                </button>
-                <button onClick={handleBeginAlchemy} disabled={!stressor || analyzing} className="w-full py-4 rounded-xl border border-white/10 text-white/40 hover:text-white hover:bg-white/5 transition-all font-sans text-xs tracking-widest uppercase flex items-center justify-center gap-2">
-                  {analyzing ? <Loader2 className="animate-spin" size={14} /> : "Continue to Alchemy"}
-                </button>
+            <div className="flex-1 overflow-y-auto flex flex-col mb-4 pr-2 pb-4 space-y-2 hide-scrollbar">
+              {chatHistory.map((msg, idx) => (
+                <div 
+                  key={idx} 
+                  className={`animate-[slideUpFade_0.3s_ease-out_forwards] ${
+                    msg.role === 'ai' 
+                    ? 'bg-white/10 border border-white/10 text-white rounded-[1rem_1rem_1rem_0] p-4 max-w-[90%] self-start mb-3 font-serif text-[1.1rem] leading-relaxed shadow-sm' 
+                    : 'bg-teal-500/20 text-teal-100 border border-teal-500/30 rounded-[1rem_1rem_0_1rem] p-3 px-4 max-w-[85%] self-end mb-3 text-sm'
+                  }`}
+                >
+                  {msg.isHtml ? <span dangerouslySetInnerHTML={{ __html: msg.text }} /> : msg.text}
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
+
+            {showChatInput && (
+              <div className="mt-auto bg-white/5 p-2 rounded-2xl border border-white/10 flex items-center shadow-sm">
+                  <input 
+                    type="text" 
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && sendUserMessage()}
+                    className="flex-1 bg-transparent border-none outline-none px-4 text-sm text-white placeholder:text-white/40" 
+                    placeholder="Type your response..."
+                  />
+                  <button onClick={sendUserMessage} className="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center text-slate-900 hover:bg-teal-400 transition-colors">
+                      <ArrowUp size={20} />
+                  </button>
               </div>
-            ) : (
-              <button onClick={handleBeginAlchemy} disabled={!stressor || analyzing} className="w-full py-5 rounded-full bg-white text-slate-900 font-sans text-xs tracking-widest uppercase font-bold hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] transition-all disabled:opacity-50 disabled:shadow-none mt-2 flex items-center justify-center gap-2">
-                {analyzing ? <Loader2 className="animate-spin" size={16} /> : "Begin Alchemy"}
-              </button>
             )}
           </div>
         )}
-      </div>
-    </div>
-  );
-};
 
-const ForkEntry: React.FC<ForkEntryProps> = ({ setView, toggleSound, soundEnabled }) => (
-  <div className="h-full flex flex-col px-4">
-    <Nav title="The Source" subtitle="Origin Point" onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={10} />
-    <div className="flex-1 flex flex-col justify-center gap-6 animate-enter overflow-y-auto hide-scrollbar pb-4">
-      <div className="text-center mb-4">
-        <h2 className="font-serif text-2xl text-white italic mb-2">Where is the friction loudest?</h2>
-        <p className="text-xs text-white/50">Stress has two addresses. Choose the one calling for attention.</p>
-      </div>
-      <button onClick={() => setView('somatic')} className="p-6 rounded-[24px] glass-panel group text-left hover:bg-white/5 transition-all border border-transparent hover:border-teal-500/30">
-        <div className="flex items-center gap-4 mb-3">
-          <div className="p-3 rounded-full bg-teal-500/10 text-teal-300 group-hover:scale-110 transition-transform"><Activity size={24} /></div>
-          <div>
-            <h3 className="font-serif text-xl text-white italic">The Body</h3>
-            <p className="text-[10px] uppercase tracking-widest text-white/40">Heaviness & Tension</p>
-          </div>
-        </div>
-        <p className="text-xs text-white/60 leading-relaxed pl-[60px]">Tightness in chest, knot in gut, heavy shoulders, exhaustion.</p>
-      </button>
-      <button onClick={() => setView('diffuser')} className="p-6 rounded-[24px] glass-panel group text-left hover:bg-white/5 transition-all border border-transparent hover:border-indigo-500/30">
-        <div className="flex items-center gap-4 mb-3">
-          <div className="p-3 rounded-full bg-indigo-500/10 text-indigo-300 group-hover:scale-110 transition-transform"><CloudFog size={24} /></div>
-          <div>
-            <h3 className="font-serif text-xl text-white italic">The Mind</h3>
-            <p className="text-[10px] uppercase tracking-widest text-white/40">Racing Thoughts & Loops</p>
-          </div>
-        </div>
-        <p className="text-xs text-white/60 leading-relaxed pl-[60px]">Mental fog, analyzing, planning, replaying scenarios.</p>
-      </button>
-    </div>
-  </div>
-);
-
-const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setView, toggleSound, soundEnabled }) => {
-  const [step, setStep] = useState(0);
-  return (
-    <div className="h-full flex flex-col">
-      <Nav title="The Filter" subtitle="Fact vs. Fiction" onBack={() => setView('fork_entry')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={25} />
-      <div className="flex-1 flex flex-col justify-center px-4 animate-enter overflow-y-auto hide-scrollbar pb-4">
-        {step === 0 ? (
-          <>
-            <h3 className="font-serif text-2xl text-white italic mb-6 text-center">"What is the loudest loop?"</h3>
-            <input autoFocus className="w-full bg-transparent border-b border-indigo-500/50 py-4 text-center text-white font-light text-lg focus:outline-none mb-8" placeholder="I keep thinking about..." value={fear} onChange={e => setFear(e.target.value)} onKeyDown={e => e.key === 'Enter' && setStep(1)} />
-            <button onClick={() => setStep(1)} disabled={!fear} className="w-full py-4 rounded-full bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 font-sans text-xs tracking-widest uppercase hover:bg-indigo-500/30 transition-all">Capture Thought</button>
-          </>
-        ) : (
-          <div className="text-center">
-            <Split size={48} className="text-indigo-300 mx-auto mb-6" />
-            <h3 className="font-serif text-2xl text-white italic mb-4">The Filter</h3>
-            <p className="text-sm text-white/70 mb-8">Is this thought an absolute <strong>Fact</strong> (provable in court) or an <strong>Assumption</strong> (an interpretation)?</p>
-            <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => setView('lens')} className="py-4 rounded-xl border border-white/10 hover:bg-white/5 transition-all text-xs uppercase tracking-widest">It's a Fact</button>
-              <button onClick={() => setView('lens')} className="py-4 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-200 hover:bg-indigo-500/30 transition-all text-xs uppercase tracking-widest">It's an Assumption</button>
+        {step === 'routing' && (
+          <div className="glass-panel p-8 rounded-[2rem] border border-white/10 shadow-sm text-center animate-[slideUpFade_0.5s_ease-out_forwards]">
+            <Compass size={32} className="text-teal-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-serif italic text-white mb-2">Initiate Shift</h2>
+            <p className="text-sm text-white/50 mb-8">Where is this pressure residing right now?</p>
+            
+            <div className="grid grid-cols-1 gap-4">
+                <button onClick={() => setView('somatic')} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-teal-500/50 transition-all group relative overflow-hidden text-left">
+                    <div className="absolute inset-0 bg-teal-500 opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                    <div className="flex items-center gap-3 mb-2">
+                        <Activity size={20} className="text-white/40 group-hover:text-teal-400 transition-colors" />
+                        <h3 className="font-bold text-white text-sm tracking-wide uppercase group-hover:text-teal-400 transition-colors">My Body</h3>
+                    </div>
+                    <p className="text-xs text-white/50">Tension, shallow breathing, physical static.</p>
+                </button>
+                
+                <button onClick={() => setView('laser')} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-indigo-500/50 transition-all group relative overflow-hidden text-left">
+                    <div className="absolute inset-0 bg-indigo-500 opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                    <div className="flex items-center gap-3 mb-2">
+                        <Brain size={20} className="text-white/40 group-hover:text-indigo-400 transition-colors" />
+                        <h3 className="font-bold text-white text-sm tracking-wide uppercase group-hover:text-indigo-400 transition-colors">My Mind</h3>
+                    </div>
+                    <p className="text-xs text-white/50">Racing thoughts, looping narratives, cognitive fog.</p>
+                </button>
             </div>
           </div>
         )}
@@ -785,7 +758,7 @@ const Vessel: React.FC<VesselProps> = ({ somaticZones, setSomaticZones, setView,
   ];
   return (
     <div className="h-full flex flex-col">
-      <Nav title="Body Scan" subtitle="Locate the Sensation" onBack={() => setView('fork_entry')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={15} />
+      <Nav title="Body Scan" subtitle="Locate the Sensation" onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={15} />
       <div className="flex-1 grid grid-cols-2 gap-3 content-start overflow-y-auto hide-scrollbar pb-4 min-h-0 animate-enter delay-100 px-4">
         {zones.map(z => {
           const Icon = z.icon;
@@ -872,6 +845,77 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
   );
 };
 
+const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, somatic, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, energyLevel, stressLevel }) => {
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState<any>({ topic: '', result: '', permission: '', action: '' });
+  const [aiQuestions, setAiQuestions] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (aiQuestions.length === 0) {
+      setLoading(true);
+      generateCoachingQuestions(
+        stressor || "General Stress",
+        perception || "Feeling Stuck",
+        somatic || "Body",
+        energyLevel,
+        stressLevel
+      ).then(q => {
+        setAiQuestions(q);
+        setLoading(false);
+      });
+    }
+  }, []);
+
+  const starters: Record<number, string[]> = {
+    0: ["My insight is...", "The real issue is...", "I'm realizing that...", "I sense..."],
+    1: ["To feel...", "To achieve...", "To experience...", "To become..."],
+    2: ["To make a mess.", "To prioritize me.", "To let go.", "To trust myself."],
+    3: ["I will call...", "I will write...", "I will stop...", "I will start..."]
+  };
+
+  const currentQ = [
+    { id: 'topic', label: 'The Insight', q: aiQuestions[0] || "Connecting to the field...", ph: 'My insight is...' },
+    { id: 'result', label: 'The Vision', q: aiQuestions[1] || "If this shifted, what state or outcome would you experience?", ph: 'I want to...' },
+    { id: 'permission', label: 'Permission', q: aiQuestions[2] || "What permission do you need to give yourself to move forward?", ph: 'I give myself permission to...' },
+    { id: 'action', label: 'The Move', q: aiQuestions[3] || "What is the single boldest step that makes everything else easier?", ph: 'I will...' }
+  ][step];
+
+  const handleNext = () => {
+    if (step < 3) setStep(step + 1);
+    else {
+      setExpandingBelief(answers.topic);
+      setGoal((prev: any) => ({ ...prev, outcome: answers.result, action: answers.action }));
+      setView('integration');
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+      <Nav title="Breakthrough Laser" subtitle="Rapid Shift" onBack={() => step > 0 ? setStep(step - 1) : setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={80} aiActive={!loading} />
+      <div className="flex-1 px-4 pt-4 overflow-y-auto hide-scrollbar">
+        <div className="glass-panel p-6 rounded-[32px] mb-4">
+          {loading ? (
+            <div className="text-center py-10"><Loader2 className="animate-spin mx-auto text-teal-400"/></div>
+          ) : (
+            <div className="animate-enter">
+              <span className="font-sans text-[10px] text-white/40 uppercase tracking-widest mb-4 block">{currentQ.label}</span>
+              <h3 className="font-serif text-2xl text-white italic mb-8 leading-snug">{currentQ.q}</h3>
+              <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6 text-lg placeholder:text-white/20" placeholder={currentQ.ph} value={answers[currentQ.id]} onChange={e => setAnswers({...answers, [currentQ.id]: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleNext()} />
+              <div className="flex flex-wrap gap-2 mb-6">
+                {(starters[step] || []).map(s => (
+                  <button key={s} onClick={() => setAnswers({...answers, [currentQ.id]: s})} className="px-3 py-1 rounded-full border border-white/10 bg-white/5 text-[10px] text-white/60 hover:bg-white/10 transition-colors">{s}</button>
+                ))}
+              </div>
+              <div className="flex justify-end"><button onClick={handleNext} disabled={!answers[currentQ.id]} className="px-8 py-3 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-widest uppercase disabled:opacity-50">{step === 3 ? "Lock It In" : "Next"}</button></div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- UPDATED PERSPECTIVE WITH SLIDERS AND CLINICAL PRIMER ---
 const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled }) => {
   const flowState = ability >= pressure;
@@ -879,7 +923,7 @@ const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, abilit
 
   return (
     <div className="h-full flex flex-col">
-      <Nav title="The Perspective" subtitle="Calibration" onBack={() => setView('fork_entry')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={50} />
+      <Nav title="The Perspective" subtitle="Calibration" onBack={() => setView('dashboard')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={50} />
       <div className="flex-1 flex flex-col items-center justify-start pt-4 px-4 overflow-y-auto hide-scrollbar pb-8">
         
         {/* --- CLINICAL PRIMER --- */}
@@ -964,77 +1008,6 @@ const Crossroads: React.FC<CrossroadsProps> = ({ setView, toggleSound, soundEnab
   );
 };
 
-const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, somatic, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, energyLevel, stressLevel }) => {
-  const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<any>({ topic: '', result: '', permission: '', action: '' });
-  const [aiQuestions, setAiQuestions] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (aiQuestions.length === 0) {
-      setLoading(true);
-      generateCoachingQuestions(
-        stressor || "General Stress",
-        perception || "Feeling Stuck",
-        somatic || "Body",
-        energyLevel,
-        stressLevel
-      ).then(q => {
-        setAiQuestions(q);
-        setLoading(false);
-      });
-    }
-  }, []);
-
-  const starters: Record<number, string[]> = {
-    0: ["My insight is...", "The real issue is...", "I'm realizing that...", "I sense..."],
-    1: ["To feel...", "To achieve...", "To experience...", "To become..."],
-    2: ["To make a mess.", "To prioritize me.", "To let go.", "To trust myself."],
-    3: ["I will call...", "I will write...", "I will stop...", "I will start..."]
-  };
-
-  const currentQ = [
-    { id: 'topic', label: 'The Insight', q: aiQuestions[0] || "Connecting to the field...", ph: 'My insight is...' },
-    { id: 'result', label: 'The Vision', q: aiQuestions[1] || "If this shifted, what state or outcome would you experience?", ph: 'I want to...' },
-    { id: 'permission', label: 'Permission', q: aiQuestions[2] || "What permission do you need to give yourself to move forward?", ph: 'I give myself permission to...' },
-    { id: 'action', label: 'The Move', q: aiQuestions[3] || "What is the single boldest step that makes everything else easier?", ph: 'I will...' }
-  ][step];
-
-  const handleNext = () => {
-    if (step < 3) setStep(step + 1);
-    else {
-      setExpandingBelief(answers.topic);
-      setGoal((prev: any) => ({ ...prev, outcome: answers.result, action: answers.action }));
-      setView('integration');
-    }
-  };
-
-  return (
-    <div className="h-full flex flex-col">
-      <Nav title="Breakthrough Laser" subtitle="Rapid Shift" onBack={() => step > 0 ? setStep(step - 1) : setView('fork')} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={80} aiActive={!loading} />
-      <div className="flex-1 px-4 pt-4 overflow-y-auto hide-scrollbar">
-        <div className="glass-panel p-6 rounded-[32px] mb-4">
-          {loading ? (
-            <div className="text-center py-10"><Loader2 className="animate-spin mx-auto text-teal-400"/></div>
-          ) : (
-            <div className="animate-enter">
-              <span className="font-sans text-[10px] text-white/40 uppercase tracking-widest mb-4 block">{currentQ.label}</span>
-              <h3 className="font-serif text-2xl text-white italic mb-8 leading-snug">{currentQ.q}</h3>
-              <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6 text-lg placeholder:text-white/20" placeholder={currentQ.ph} value={answers[currentQ.id]} onChange={e => setAnswers({...answers, [currentQ.id]: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleNext()} />
-              <div className="flex flex-wrap gap-2 mb-6">
-                {(starters[step] || []).map(s => (
-                  <button key={s} onClick={() => setAnswers({...answers, [currentQ.id]: s})} className="px-3 py-1 rounded-full border border-white/10 bg-white/5 text-[10px] text-white/60 hover:bg-white/10 transition-colors">{s}</button>
-                ))}
-              </div>
-              <div className="flex justify-end"><button onClick={handleNext} disabled={!answers[currentQ.id]} className="px-8 py-3 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-widest uppercase disabled:opacity-50">{step === 3 ? "Lock It In" : "Next"}</button></div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled }) => {
   const phase = breathCount < 4 ? "Inhale" : breathCount < 8 ? "Hold" : "Exhale";
   let displayCount = 0;
@@ -1112,7 +1085,7 @@ const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
   );
 };
 
-// --- INTEGRATION & POST-AUDIT ---
+// --- INTEGRATION & POST-AUDIT (UPDATED WITH FINAL SYNTHESIS) ---
 const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked, expandingBelief, stressor, fear, sessionCount, completeSession, resetApp, setView, toggleSound, soundEnabled, somaticZones, isBurnoutPath, userName, energyAnalysis, stressLevel, energyLevel, postStressLevel, setPostStressLevel, postEnergyLevel, setPostEnergyLevel }: any) => {
   const [primingDone, setPrimingDone] = useState(false);
   const [manifesto, setManifesto] = useState("");
@@ -1145,10 +1118,6 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
 
   const handleBack = () => { if (goalStep > 0) setGoalStep(goalStep - 1); else setView('alchemy'); };
   const handleNextStep = () => {
-    if (current.id === 'outcome') {
-      const formatted = formatGoalOutcome(goal.outcome);
-      setGoal((prev: Goal) => ({ ...prev, outcome: formatted }));
-    }
     if (goalStep < 2) setGoalStep(goalStep + 1);
     else setIsLocked(true);
   };
@@ -1186,115 +1155,37 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
 
     return (
       <div className="h-full flex flex-col px-4 text-center justify-center">
-        <Nav title="Integration" subtitle="Blueprint Complete" onBack={() => setView('fork')} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={100} aiActive={generating} />
+        <Nav title="Integration" subtitle="Blueprint Complete" onBack={() => setView('dashboard')} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={100} aiActive={generating} />
         <div className="flex-1 overflow-y-auto hide-scrollbar pb-20 pt-4">
           
-          {/* THE DECREE CARD */}
-          <div className={`glass-panel p-8 rounded-[32px] mb-8 relative overflow-hidden transition-all ${isBurnoutPath ? 'border-orange-500/50' : ''}`}>
-            <div className="flex justify-center mb-6">
-              {isBurnoutPath ? (
-                <div className="p-4 bg-orange-900/30 rounded-full border border-orange-500/50">
-                  <BatteryWarning size={48} className="text-orange-300" />
-                </div>
-              ) : (
-                <FileText size={64} className="text-teal-200 opacity-80" />
-              )}
+          {/* THE FINAL SYNTHESIS REVEAL (Replaces the old Decree card) */}
+          <div className="glass-panel p-8 rounded-[2rem] border-t-4 border-teal-500 shadow-2xl text-center mb-8 animate-enter">
+            <h2 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40 mb-2">Kinetic Shift Detected</h2>
+            <div className="text-5xl font-serif italic text-white mb-6">Level 2 &rarr; Level 5</div>
+
+            <div className="text-left bg-white/5 border border-white/10 p-6 rounded-2xl mb-8">
+                <p className="text-sm text-white/80 leading-relaxed font-medium">
+                  {/* [BACKEND API INTEGRATION]: Replace this hardcoded text with actual AI generation */}
+                  You entered this session operating in <strong>Conflict and Survival</strong>. Based on your Sovereign Decree to <em>"{goal.outcome || expandingBelief}"</em>, you have successfully shifted to <strong>Synthesis and Opportunity</strong>.<br/><br/>
+                  You shifted your focus from what was being done TO you, to what you can control. This single cognitive reframe has halted your cortisol production. Your immediate static is cleared.
+                </p>
             </div>
-            <p className={`font-sans text-[9px] uppercase tracking-widest mb-6 flex items-center justify-center gap-2 ${isBurnoutPath ? 'text-orange-200/80' : 'text-teal-200/60'}`}>
-              {isBurnoutPath ? "Permission Slip" : "Alchemist Decree"}
-              {isOffline && <span className="bg-red-500/20 text-red-300 px-1 rounded flex items-center gap-1"><WifiOff size={8}/> Offline Mode</span>}
-            </p>
-            <div className="font-serif text-lg leading-relaxed text-white/90 italic mb-8 text-center min-h-[100px]">
-              {isBurnoutPath ? (
-                `"I, ${userName || 'The Conscious Leader'}, grant myself full permission to pause. The world will wait. My energy is my most precious asset, and I choose to protect it now."`
-              ) : (
-                `"${manifesto || expandingBelief}"`
-              )}
+
+            <p className="text-xs font-bold uppercase tracking-widest text-white/90 mb-4">Secure Your Baseline</p>
+
+            <div className="space-y-3">
+                <a href="https://billing.liveadaptiv.com/checkout/buy/d29e3b81-78a4-4611-83f8-11fe76d9d82e" target="_blank" rel="noreferrer" className="block w-full py-4 bg-teal-500 text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest shadow-lg hover:bg-teal-400 transition-all">
+                    Install Stress Transformation Protocol ($47)
+                </a>
+                <a href="https://calendly.com/alexioda" target="_blank" rel="noreferrer" className="block w-full py-4 bg-white/5 border border-white/20 text-white font-bold rounded-xl text-[10px] uppercase tracking-widest hover:border-teal-400 hover:text-teal-400 transition-all">
+                    Book Clinical Strategy Session ($495)
+                </a>
             </div>
-            {!generating && (
-              <div className="flex justify-center gap-6 border-t border-white/10 pt-6">
-                <button onClick={copyArtifact} className="flex flex-col items-center gap-1 text-white/40 hover:text-white transition-colors">
-                  <Copy size={18}/>
-                  <span className="text-[8px] uppercase tracking-widest">Copy</span>
-                </button>
-                <a href={generateEmailLink()} className="flex flex-col items-center gap-1 text-white/40 hover:text-white transition-colors">
-                  <Mail size={18}/>
-                  <span className="text-[8px] uppercase tracking-widest">Email</span>
-                </a>
-                <a href={generateCalendarLink()} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-white/40 hover:text-white transition-colors">
-                  <Calendar size={18}/>
-                  <span className="text-[8px] uppercase tracking-widest">Calendar</span>
-                </a>
-              </div>
-            )}
           </div>
-
-          {/* THE POST-SESSION AUDIT (NEW SLIDERS) */}
-          {!isBurnoutPath && (
-            <div className="glass-panel p-6 rounded-[24px] mb-8 text-left border border-teal-500/20">
-              <h3 className="font-serif text-xl text-white/90 italic mb-2">Post-Protocol Audit</h3>
-              <p className="font-sans text-[10px] text-white/50 uppercase tracking-widest mb-6">Re-evaluate your internal weather</p>
-              
-              <div className="space-y-8">
-                <div>
-                  <div className="flex justify-between items-end mb-2">
-                    <p className="font-sans text-[10px] tracking-widest text-indigo-300 uppercase font-bold">Mental Energy</p>
-                    <div className="text-xl font-serif italic text-indigo-400">{postEnergyLevel}%</div>
-                  </div>
-                  <input type="range" min="1" max="100" value={postEnergyLevel} onChange={(e) => setPostEnergyLevel(parseInt(e.target.value))} className="w-full slider-indigo" />
-                  <div className="mt-2 text-[10px] font-bold tracking-widest text-right">
-                    {energyDelta > 0 ? <span className="text-teal-400">+{energyDelta}% Energy Restored</span> : energyDelta < 0 ? <span className="text-rose-400">{energyDelta}% Energy Lost</span> : <span className="text-white/40">Baseline Maintained</span>}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between items-end mb-2">
-                    <p className="font-sans text-[10px] tracking-widest text-amber-300 uppercase font-bold">Pressure Intensity</p>
-                    <div className="text-xl font-serif italic text-amber-400">{postStressLevel}%</div>
-                  </div>
-                  <input type="range" min="1" max="100" value={postStressLevel} onChange={(e) => setPostStressLevel(parseInt(e.target.value))} className="w-full slider-amber" />
-                  <div className="mt-2 text-[10px] font-bold tracking-widest text-right">
-                    {stressDelta < 0 ? <span className="text-teal-400">{Math.abs(stressDelta)}% Pressure Metabolized</span> : stressDelta > 0 ? <span className="text-rose-400">+{stressDelta}% Pressure Gained</span> : <span className="text-white/40">Baseline Maintained</span>}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {!isBurnoutPath && (
-            <div className="space-y-4 mb-8 mt-12">
-              <div className="text-center mb-6">
-                <h3 className="font-serif text-xl text-white/90 italic mb-2">The Architecture of Change</h3>
-                <p className="font-sans text-xs text-white/50 max-w-xs mx-auto leading-relaxed">You have shifted your state. Now, anchor this new reality.</p>
-              </div>
-
-              {/* ENERGY LENS */}
-              <button onClick={() => setView('energy')} className="w-full block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-teal-500/20 hover:border-teal-400/40 text-left">
-                <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Activity size={80} className="text-teal-300" /></div>
-                <div className="relative z-10">
-                  <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-teal-500/20 text-[9px] font-bold uppercase tracking-widest text-teal-300">Baseline Check</span></div>
-                  <h3 className="font-serif text-xl text-white italic mb-1">Energy Lens Profile</h3>
-                  <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">Understand your default patterns. Take the 6-question diagnostic.</p>
-                  <div className="inline-flex items-center gap-2 text-teal-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Start Profile <ArrowRight size={14} /></div>
-                </div>
-              </button>
-
-              {/* COACHING */}
-              <a href="https://calendly.com/alexioda" target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden p-6 rounded-[24px] glass-panel group transition-all hover:bg-white/5 border border-indigo-500/20 hover:border-indigo-400/40">
-                <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Zap size={80} className="text-indigo-300" /></div>
-                <div className="relative z-10">
-                  <div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 rounded-md bg-indigo-500/20 text-[9px] font-bold uppercase tracking-widest text-indigo-300">1:1 Coaching</span></div>
-                  <h3 className="font-serif text-xl text-white italic mb-1">Lock in the Shift</h3>
-                  <p className="font-sans text-xs text-white/50 mb-4 leading-relaxed max-w-[85%]">To rewire your baseline permanently, book a Full Energy Leadership Index (ELI) Assessment.</p>
-                  <div className="inline-flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-widest group-hover:text-white transition-colors">Book Full ELI Assessment <ArrowRight size={14} /></div>
-                </div>
-              </a>
-            </div>
-          )}
 
           <div className="flex gap-4 justify-center pb-8 pt-4 border-t border-white/5">
             <button onClick={resetApp} className="flex items-center justify-center gap-2 text-white/40 hover:text-white uppercase text-[10px] tracking-widest"><RefreshCw size={12}/> Reset System</button>
-            <button onClick={() => setView('dashboard')} className={`flex items-center justify-center gap-2 uppercase text-[10px] tracking-widest border px-4 py-2 rounded-full ${isBurnoutPath ? 'text-orange-300 border-orange-500/30 hover:bg-orange-900/20' : 'text-teal-400 border-teal-500/30 hover:bg-teal-900/20'}`}><Home size={12}/> Return to Orbit</button>
+            <button onClick={() => setView('dashboard')} className={`flex items-center justify-center gap-2 uppercase text-[10px] tracking-widest border px-4 py-2 rounded-full text-teal-400 border-teal-500/30 hover:bg-teal-900/20`}><Home size={12}/> Return to Orbit</button>
           </div>
         </div>
       </div>
@@ -1303,7 +1194,7 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
 
   return (
     <div className="h-full flex flex-col">
-      <Nav title="Integration" subtitle="Blueprint" onBack={() => setView('fork')} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={90} />
+      <Nav title="Integration" subtitle="Blueprint" onBack={() => setView('dashboard')} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={90} />
       <div className="glass-panel p-8 rounded-[32px] m-4">
         <h3 className="font-serif text-xl text-white italic mb-6">{current.q}</h3>
         {current.id === 'when' ? (
@@ -1319,7 +1210,21 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
           </div>
         ) : (
           <>
-            <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6" placeholder={current.ph} value={goal[current.id as keyof Goal]} onChange={e => setGoal({...goal, [current.id]: current.id === 'outcome' ? formatGoalOutcome(e.target.value) : e.target.value})} onKeyDown={e => e.key === 'Enter' && handleNextStep()} />
+            {/* THE CURSOR FIX: Structural "To" prefix with standard text binding */}
+            {current.id === 'outcome' ? (
+              <div className="flex items-start bg-white/5 border border-white/10 focus-within:border-teal-500/50 rounded-2xl overflow-hidden transition-all relative z-10 mb-6">
+                  <div className="pl-4 pt-4 text-white/40 font-serif italic text-lg select-none">To</div>
+                  <textarea 
+                    value={goal.outcome}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setGoal({...goal, outcome: e.target.value})}
+                    className="w-full bg-transparent p-4 pl-2 pt-4 text-white text-sm outline-none resize-none font-serif italic leading-relaxed h-28" 
+                    placeholder="execute the strategy without absorbing the team's anxiety..."
+                  />
+              </div>
+            ) : (
+              <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6" placeholder={current.ph} value={goal[current.id as keyof Goal]} onChange={e => setGoal({...goal, [current.id]: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleNextStep()} />
+            )}
+            
             <div className="flex gap-3">
               <button onClick={handleBack} className="px-4 py-3 rounded-xl border border-white/10 text-white/40 hover:text-white transition-colors">Back</button>
               <button onClick={handleNextStep} disabled={!goal[current.id as keyof Goal]} className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase disabled:opacity-50">Next</button>
@@ -1418,7 +1323,7 @@ const VitalityScan: React.FC<VitalityScanProps> = ({ setView, setBurnoutPath, to
             <p className="font-serif text-sm italic text-white/90">{loading ? "Analyzing Energy Pattern..." : `"${aiInsight}"`}</p>
           </div>
           <p className="font-sans text-sm text-white/70 leading-relaxed mb-8 max-w-xs">{resultData.desc}</p>
-          <button onClick={() => { setBurnoutPath(resultData.isBurnout); setView(resultData.isBurnout ? 'preservation' : 'fork_entry'); }} className={`w-full py-4 rounded-full font-sans text-xs font-bold tracking-widest uppercase transition-all ${resultData.isBurnout ? 'bg-orange-500 text-slate-900 hover:bg-orange-400' : 'bg-teal-500 text-slate-900 hover:bg-teal-400'}`}>Begin Protocol</button>
+          <button onClick={() => { setBurnoutPath(resultData.isBurnout); setView(resultData.isBurnout ? 'preservation' : 'dashboard'); }} className={`w-full py-4 rounded-full font-sans text-xs font-bold tracking-widest uppercase transition-all ${resultData.isBurnout ? 'bg-orange-500 text-slate-900 hover:bg-orange-400' : 'bg-teal-500 text-slate-900 hover:bg-teal-400'}`}>Begin Protocol</button>
         </div>
       </div>
     );
@@ -1501,7 +1406,7 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView }) => {
 
   return (
     <div className="h-full flex flex-col justify-center animate-enter">
-      <Nav title="Energy Lens" subtitle={`Question ${step + 1} / 6`} onBack={() => setView('integration')} toggleSound={() => {}} soundEnabled={false} progress={((step + 1) / 6) * 100} />
+      <Nav title="Energy Lens" subtitle={`Question ${step + 1} / 6`} onBack={() => setView('dashboard')} toggleSound={() => {}} soundEnabled={false} progress={((step + 1) / 6) * 100} />
       <div className="flex-1 flex flex-col justify-start items-center text-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-2 pt-8">
         <h2 className="font-serif text-2xl text-white italic mb-8 text-center px-4">{questions[step].q}</h2>
         <div className="grid gap-3 w-full shrink-0">
@@ -1580,6 +1485,7 @@ const App = () => {
           {view === 'manifesto' && <Manifesto onContinue={() => setView('profile')} />}
           {view === 'profile' && <Identity userName={userName} setUserName={setUserName} onComplete={() => setView('dashboard')} />}
           
+          {/* THE NEW AI HORIZON FLOW */}
           {view === 'dashboard' && <Horizon 
             userName={userName} sessionCount={sessionCount}
             stressor={stressor} setStressor={setStressor}
@@ -1595,8 +1501,7 @@ const App = () => {
           {view === 'energy_reflection' && <EnergyReflection energyAnalysis={energyAnalysis} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
           {view === 'preservation' && <Preservation setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setGoal={setGoal} setExpandingBelief={setExpandingBelief} setViewToIntegration={() => { setIsLocked(true); setView('integration'); }} />}
           {view === 'burnout_check' && <VitalityScan setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setBurnoutPath={setIsBurnoutPath} />}
-          {view === 'fork_entry' && <ForkEntry setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
-          {view === 'diffuser' && <Diffuser fear={fear} setFear={setFear} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
+          
           {view === 'somatic' && <Vessel somaticZones={somaticZones} setSomaticZones={setSomaticZones} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
           {view === 'partswork' && <PartsWork selectedPart={somaticZones[0] || 'Part'} sensation={sensation} setSensation={setSensation} protection={protection} setProtection={setProtection} fear={fear} setFear={setFear} expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief} partsStep={partsStep} setPartsStep={setPartsStep} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
           {view === 'laser' && <LaserCoaching stressor={stressor} perception={perception} somatic={somaticZones[0] || 'Body'} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} setGoal={setGoal} setExpandingBelief={setExpandingBelief} energyLevel={energyLevel} stressLevel={stressLevel} />}
@@ -1607,6 +1512,7 @@ const App = () => {
           {view === 'regulate' && <Breath breathing={breathing} setBreathing={setBreathing} breathCount={breathCount} setBreathCount={setBreathCount} setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
           {view === 'alchemy' && <Alchemy setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} />}
           
+          {/* THE UPDATED INTEGRATION & FINAL REVEAL */}
           {view === 'integration' && <Integration 
             goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} 
             isLocked={isLocked} setIsLocked={setIsLocked} 
