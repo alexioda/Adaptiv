@@ -434,7 +434,7 @@ const generateHorizonValidation = async (stressor: string, perception: string, h
     
     Task: Deliver a final empathetic validation in exactly 3 parts, using HTML for formatting.
     1. <span class="block mb-2 font-bold text-teal-300">I hear you.</span> (or similar brief acknowledgement).
-    2. <span class="block mb-4 text-white/80 italic">Validate their specific experience based on their answers, explaining why it makes sense they feel this way (mentioning survival mode, friction, or bandwidth).</span>
+    2. <span class="block mb-4 text-white/80 italic">Validate their specific experience based on their answers, explaining why it makes sense they feel this way without sounding like a robot diagnosing them.</span>
     3. <span class="block font-bold text-white">We can clear this static and reclaim your bandwidth. To shift this, we need to locate it.</span> (MUST include this exact final sentence).
     
     Return ONLY the raw HTML string. No markdown code blocks.`;
@@ -451,7 +451,7 @@ const generateHorizonValidation = async (stressor: string, perception: string, h
   } catch (error) {
     return `
       <span class="block mb-2 font-bold text-teal-300">I hear you.</span> 
-      <span class="block mb-4 text-white/80 italic">It makes complete sense that you feel this way. You have been running in survival mode, and that takes a massive toll on your system.</span>
+      <span class="block mb-4 text-white/80 italic">It makes complete sense that you feel this way. You have been running on empty, and that takes a massive toll on your system.</span>
       <span class="block font-bold text-white">We can clear this static and reclaim your bandwidth. To shift this, we need to locate it.</span>
     `;
   }
@@ -694,7 +694,7 @@ const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setView, toggleSound
   );
 };
 
-// --- HORIZON WITH TRUE AI EMPATHY BRIDGE & LOADING STATE ---
+// --- HORIZON WITH TRUE AI EMPATHY BRIDGE & BURNOUT INTERCEPT ---
 const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, perception, setPerception, setView, toggleSound, soundEnabled, resetApp, onBack }) => {
   const [step, setStep] = useState<'intake'|'chat'|'routing'>('intake');
   const [chatInput, setChatInput] = useState('');
@@ -703,16 +703,23 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
   const [showChatInput, setShowChatInput] = useState(true);
   const [showRouteButton, setShowRouteButton] = useState(false); 
   const [isTyping, setIsTyping] = useState(false); 
+  const [isBurnoutIntercept, setIsBurnoutIntercept] = useState(false); 
+
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatHistory, isTyping]);
+  }, [chatHistory, isTyping, isBurnoutIntercept]);
 
   const handleInternalBack = () => {
     if (step === 'routing') setStep('chat');
     else if (step === 'chat') setStep('intake');
     else if (onBack) onBack(); 
+  };
+
+  const checkDepletion = (text: string) => {
+    const triggers = ['burnout', 'exhausted', 'drained', 'empty', 'depleted', 'overwhelm', 'overwhelmed', 'done', 'tired'];
+    return triggers.some(word => text.toLowerCase().includes(word));
   };
 
   const startAIConversation = async () => {
@@ -721,8 +728,21 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
     setAiQuestionCount(0);
     setShowChatInput(false);
     setShowRouteButton(false);
-    setIsTyping(true);
+    setIsBurnoutIntercept(false);
     
+    if (checkDepletion(stressor) || checkDepletion(perception)) {
+      setTimeout(() => {
+        setChatHistory([{ 
+          role: 'ai', 
+          text: "<span class='text-orange-300 font-bold flex items-center gap-2'><AlertTriangle size={16}/> Pause: Deep Exhaustion Sensed</span><br/>I am hearing a lot of heavy exhaustion in what you just shared. When you are running on empty, trying to 'push through' can sometimes drain you further. Would you like to take a quick Vitality Scan to check your reserves, or do you feel ready to continue?", 
+          isHtml: true 
+        }]);
+        setIsBurnoutIntercept(true);
+      }, 800);
+      return;
+    }
+
+    setIsTyping(true);
     const firstQ = await generateHorizonQuestion(stressor, perception, "No history yet.");
     setChatHistory([{ role: 'ai', text: firstQ, isHtml: false }]);
     setIsTyping(false);
@@ -734,13 +754,25 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
 
     const newHistory: ChatMessage[] = [...chatHistory, { role: 'user', text: chatInput, isHtml: false }];
     setChatHistory(newHistory);
+    const currentUserText = chatInput;
     setChatInput('');
     setShowChatInput(false); 
-    setIsTyping(true);
     
+    if (checkDepletion(currentUserText)) {
+      setTimeout(() => {
+        setChatHistory(prev => [...prev, { 
+          role: 'ai', 
+          text: "<span class='text-orange-300 font-bold flex items-center gap-2'><AlertTriangle size={16}/> Pause: Deep Exhaustion Sensed</span><br/>It sounds like you are running on absolute empty right now. Before we try to solve this, we need to make sure you have the energy for it. Would you like to pause for a quick Vitality Scan, or are you okay to keep going?", 
+          isHtml: true 
+        }]);
+        setIsBurnoutIntercept(true);
+      }, 800);
+      return;
+    }
+
+    setIsTyping(true);
     const newCount = aiQuestionCount + 1;
     setAiQuestionCount(newCount);
-
     const historyText = newHistory.map(m => `${m.role}: ${m.text}`).join(' | ');
 
     if (newCount < 3) {
@@ -753,8 +785,17 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
       setChatHistory(prev => [...prev, { role: 'ai', text: validationHtml, isHtml: true }]);
       setTimeout(() => setShowRouteButton(true), 1500);
     }
-    
     setIsTyping(false);
+  };
+
+  const bypassBurnout = async () => {
+    setIsBurnoutIntercept(false);
+    setIsTyping(true);
+    const historyText = chatHistory.map(m => `${m.role}: ${m.text}`).join(' | ');
+    const nextQ = await generateHorizonQuestion(stressor, perception, historyText + " | User bypassed burnout scan, proceeding with calibration.");
+    setChatHistory(prev => [...prev, { role: 'ai', text: nextQ, isHtml: false }]);
+    setIsTyping(false);
+    setShowChatInput(true);
   };
 
   return (
@@ -844,10 +885,22 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
                 </div>
               )}
               
+              {isBurnoutIntercept && (
+                <div className="animate-enter flex flex-col gap-3 mt-4">
+                  <button onClick={() => setView('burnout_check')} className="w-full py-4 bg-orange-500/20 border border-orange-500/50 text-orange-200 font-bold rounded-xl text-[10px] uppercase tracking-widest shadow-lg hover:bg-orange-500/30 transition-all flex flex-col items-center">
+                    <span>Run Vitality Scan</span>
+                    <span className="text-[8px] opacity-70 mt-1">(Recommended)</span>
+                  </button>
+                  <button onClick={bypassBurnout} className="w-full py-3 bg-transparent border border-white/10 text-white/50 font-bold rounded-xl text-[10px] uppercase tracking-widest hover:text-white hover:bg-white/5 transition-all">
+                    I have the energy to continue
+                  </button>
+                </div>
+              )}
+
               <div ref={chatEndRef} />
             </div>
 
-            {showChatInput && (
+            {showChatInput && !isBurnoutIntercept && (
               <div className="mt-auto bg-white/5 p-2 rounded-2xl border border-white/10 flex items-center shadow-sm">
                   <input 
                     type="text" 
@@ -1641,7 +1694,6 @@ const App = () => {
           
           {view === 'profile' && <Identity userName={userName} setUserName={setUserName} onComplete={() => setView('dashboard')} onBack={() => setView('manifesto')} />}
           
-          {/* THE NEW AI HORIZON FLOW */}
           {view === 'dashboard' && <Horizon 
             userName={userName} sessionCount={sessionCount}
             stressor={stressor} setStressor={setStressor}
@@ -1679,7 +1731,6 @@ const App = () => {
           
           {view === 'alchemy' && <Alchemy setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} onBack={() => setView('fork')} />}
           
-          {/* THE UPDATED INTEGRATION & FINAL REVEAL */}
           {view === 'integration' && <Integration 
             goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} 
             isLocked={isLocked} setIsLocked={setIsLocked} 
