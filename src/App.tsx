@@ -400,6 +400,59 @@ const generateManifesto = async (stressor: string, truth: string, action: string
 };
 
 const generateEnergyInsight = async (level: number, type: string) => {
+  const generateHorizonQuestion = async (stressor: string, perception: string, historyText: string) => {
+  try {
+    const prompt = `Act as an expert transformational coach using Energy Leadership Index principles (but DO NOT use ELI jargon). 
+    Client's initial issue: "${stressor}"
+    Client's feeling: "${perception}"
+    Conversation context: ${historyText}
+    
+    Task: Ask exactly ONE short, profound, open-ended coaching question to uncover the root of their kinetic friction. Help them see their blind spots. Do NOT give advice. Keep it under 20 words.`;
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], safetySettings })
+    });
+    if (!res.ok) throw new Error('API unavailable');
+    const data = await res.json();
+    return data.candidates[0].content.parts[0].text.trim();
+  } catch (error) {
+    return "What specifically feels most threatened by this situation right now?";
+  }
+};
+
+const generateHorizonValidation = async (stressor: string, perception: string, historyText: string) => {
+  try {
+    const prompt = `Act as an expert transformational coach. 
+    Client's issue: "${stressor}"
+    Client's feeling: "${perception}"
+    Conversation context: ${historyText}
+    
+    Task: Deliver a final empathetic validation in exactly 3 parts, using HTML for formatting.
+    1. <span class="block mb-2 font-bold text-teal-300">I hear you.</span> (or similar brief acknowledgement).
+    2. <span class="block mb-4 text-white/80 italic">Validate their specific experience based on their answers, explaining why it makes sense they feel this way (mentioning survival mode, friction, or bandwidth).</span>
+    3. <span class="block font-bold text-white">We can clear this static and reclaim your bandwidth. To shift this, we need to locate it.</span> (MUST include this exact final sentence).
+    
+    Return ONLY the raw HTML string. No markdown code blocks.`;
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], safetySettings })
+    });
+    if (!res.ok) throw new Error('API unavailable');
+    const data = await res.json();
+    let text = data.candidates[0].content.parts[0].text.trim();
+    return text.replace(/```html|```/g, '').trim();
+  } catch (error) {
+    return `
+      <span class="block mb-2 font-bold text-teal-300">I hear you.</span> 
+      <span class="block mb-4 text-white/80 italic">It makes complete sense that you feel this way. You have been running in survival mode, and that takes a massive toll on your system.</span>
+      <span class="block font-bold text-white">We can clear this static and reclaim your bandwidth. To shift this, we need to locate it.</span>
+    `;
+  }
+};
   try {
     const prompt = `Provide a single, profound, 1-sentence insight about personal energy and leadership for someone experiencing '${type}'. Tone: Mystical, grounded, empowering. Do NOT use technical terms like 'Level ${level}'.`;
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
@@ -661,6 +714,7 @@ const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setView, toggleSound
 };
 
 // --- HORIZON WITH AI EMPATHY BRIDGE (FIXED ROUTING & BACK BUTTONS) ---
+// --- HORIZON WITH TRUE AI EMPATHY BRIDGE & LOADING STATE ---
 const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, perception, setPerception, setView, toggleSound, soundEnabled, resetApp, onBack }) => {
   const [step, setStep] = useState<'intake'|'chat'|'routing'>('intake');
   const [chatInput, setChatInput] = useState('');
@@ -668,11 +722,12 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
   const [aiQuestionCount, setAiQuestionCount] = useState(0);
   const [showChatInput, setShowChatInput] = useState(true);
   const [showRouteButton, setShowRouteButton] = useState(false); 
+  const [isTyping, setIsTyping] = useState(false); // UI Loader
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatHistory]);
+  }, [chatHistory, isTyping]);
 
   const handleInternalBack = () => {
     if (step === 'routing') setStep('chat');
@@ -680,55 +735,49 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
     else if (onBack) onBack(); 
   };
 
-  const startAIConversation = () => {
+  const startAIConversation = async () => {
     if (stressor.length < 5 || perception.length < 5) return alert("Please complete the intake.");
     setStep('chat');
     setAiQuestionCount(0);
-    setShowChatInput(true);
+    setShowChatInput(false);
     setShowRouteButton(false);
+    setIsTyping(true);
     
-    // [BACKEND API INTEGRATION]: Send initial intake to AI
-    setTimeout(() => {
-      setChatHistory([
-        { role: 'ai', text: "I hear you. When you look at this situation, does it feel more like a threat you have to fight against, or a heavy burden you just have to endure?", isHtml: false }
-      ]);
-    }, 800);
+    // True AI Call for the First Question
+    const firstQ = await generateHorizonQuestion(stressor, perception, "No history yet.");
+    setChatHistory([{ role: 'ai', text: firstQ, isHtml: false }]);
+    setIsTyping(false);
+    setShowChatInput(true);
   };
 
-  const sendUserMessage = () => {
+  const sendUserMessage = async () => {
     if (!chatInput.trim()) return;
 
     const newHistory: ChatMessage[] = [...chatHistory, { role: 'user', text: chatInput, isHtml: false }];
     setChatHistory(newHistory);
     setChatInput('');
+    setShowChatInput(false); // Hide input while AI thinks
+    setIsTyping(true);
     
     const newCount = aiQuestionCount + 1;
     setAiQuestionCount(newCount);
 
-    // AI ASKS A FOLLOW UP
-    if (newCount === 1) {
-      setTimeout(() => {
-        setChatHistory(prev => [...prev, { role: 'ai', text: "And how long has this specific dynamic been draining your energy?", isHtml: false }]);
-      }, 1000);
+    const historyText = newHistory.map(m => `${m.role}: ${m.text}`).join(' | ');
+
+    // AI ASKS 2 MORE FOLLOW UPS (Making it feel thorough)
+    if (newCount < 3) {
+      const nextQ = await generateHorizonQuestion(stressor, perception, historyText);
+      setChatHistory(prev => [...prev, { role: 'ai', text: nextQ, isHtml: false }]);
+      setShowChatInput(true);
     } 
-    // THE EMPATHY BRIDGE & HANDOFF
-    else if (newCount >= 2) {
-      setShowChatInput(false);
-      
-      // [BACKEND API INTEGRATION]: Generate Empathy Bridge
-      setTimeout(() => {
-        const feedbackHtml = `
-          <span class="block mb-2 font-bold text-teal-300">I hear you.</span> 
-          <span class="block mb-4 text-white/80 italic">It makes complete sense that you feel exhausted when you are operating under this kind of friction. You have been running in survival mode, and takes a massive toll on your system.</span>
-          <span class="block font-bold text-white">We can clear this static and reclaim your bandwidth. To shift this, we need to locate it.</span>
-        `;
-        
-        setChatHistory(prev => [...prev, { role: 'ai', text: feedbackHtml, isHtml: true }]);
-        
-        // Present the button so the user decides when to proceed
-        setTimeout(() => setShowRouteButton(true), 1500);
-      }, 1000);
+    // THE DYNAMIC EMPATHY BRIDGE & HANDOFF
+    else {
+      const validationHtml = await generateHorizonValidation(stressor, perception, historyText);
+      setChatHistory(prev => [...prev, { role: 'ai', text: validationHtml, isHtml: true }]);
+      setTimeout(() => setShowRouteButton(true), 1500);
     }
+    
+    setIsTyping(false);
   };
 
   return (
@@ -812,6 +861,13 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
                   {msg.isHtml ? <span dangerouslySetInnerHTML={{ __html: msg.text }} /> : msg.text}
                 </div>
               ))}
+              
+              {isTyping && (
+                <div className="bg-white/10 border border-white/10 text-white rounded-[1rem_1rem_1rem_0] p-4 max-w-[90%] self-start mb-3 font-serif text-[1.1rem] shadow-sm animate-pulse flex items-center gap-2">
+                  <Loader2 className="animate-spin text-teal-400" size={16} /> <span className="text-sm opacity-50">Calibrating...</span>
+                </div>
+              )}
+              
               <div ref={chatEndRef} />
             </div>
 
@@ -821,7 +877,7 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
                     type="text" 
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && sendUserMessage()}
+                    onKeyDown={(e) => e.key === 'Enter' && sendUserMessage()}
                     className="flex-1 bg-transparent border-none outline-none px-4 text-sm text-white placeholder:text-white/40" 
                     placeholder="Type your response..."
                   />
@@ -831,7 +887,6 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
               </div>
             )}
 
-            {/* THE MANUAL CONTINUE BUTTON */}
             {showRouteButton && (
               <button 
                 onClick={() => setStep('routing')} 
@@ -874,7 +929,6 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
     </div>
   );
 };
-
 const Vessel: React.FC<VesselProps> = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnabled, onBack }) => {
   const zones: SomaticZone[] = [
     { id: 'Head', label: 'Head', icon: Brain }, { id: 'Eyes', label: 'Eyes', icon: Eye },
