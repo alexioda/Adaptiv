@@ -298,10 +298,9 @@ const analyzeCurrentEnergy = async (stressor: string, perception: string, stress
     2. Write a "Reflection": A compassionate, direct, 2-sentence mirror statement to the client about how they are likely viewing this.
     Constraints for Reflection:
     - Use "You" statements.
-    - NO ELI jargon (Do NOT use words like "Level 1", "Catabolic", "Anabolic", "Victim", "Conflict").
-    - Focus on the *feeling* and the *perspective* (e.g., "You are feeling cornered...", "You are carrying the weight of...", "You are seeing this as a battle...").
-    - Be empathetic but truthful.
-    Return ONLY a raw JSON object: { "level": number, "reflection": "string" }. Do not use markdown formatting.`;
+    - NO ELI jargon.
+    - Focus on the *feeling* and the *perspective*.
+    Return ONLY a raw JSON object: { "level": number, "reflection": "string" }.`;
 
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
       method: 'POST',
@@ -330,19 +329,17 @@ const analyzeCurrentEnergy = async (stressor: string, perception: string, stress
 
 const generateCoachingQuestions = async (stressor: string, perception: string, somatic: string, energyLevel: number, stressLevel: number): Promise<string[]> => {
   try {
-    const prompt = `Act as a world-class transformational coach and master of energy dynamics. Your goal is to elevate the client's perspective, shifting them gracefully from contraction/fear into expansion/opportunity, without using any technical coaching or "Energy Leadership" jargon.
+    const prompt = `Act as a world-class transformational coach. Your goal is to elevate the client's perspective gracefully.
     Context:
     - Situation: ${stressor}
     - Experience: ${perception}
     - Body sensation: ${somatic}
-    - Energy Level: ${energyLevel}%
-    - Stress Level: ${stressLevel}%
-    Return ONLY a raw JSON object with a key "questions" containing an array of exactly 4 strings. The questions must be short, powerful, and follow this transformational arc:
-    1. The Mirror: A question that gently exposes the hidden assumption, story, or blind spot in their current perspective.
-    2. The Pivot: A question that invites them to view this exact situation from a higher, more empowering vantage point.
-    3. The Vision: If they embody this new perspective, what desired feeling, outcome, or state of being becomes possible?
-    4. The Catalyst: What is one bold, aligned step they can take right now to anchor this new energy?
-    Do not use markdown formatting. Return raw JSON.`;
+    Return ONLY a raw JSON object with a key "questions" containing an array of exactly 4 strings.
+    1. The Mirror: A question exposing a hidden assumption.
+    2. The Pivot: A question inviting a higher vantage point.
+    3. The Vision: What outcome becomes possible?
+    4. The Catalyst: What is one bold step?
+    Return raw JSON.`;
 
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
       method: 'POST',
@@ -365,27 +362,18 @@ const generateCoachingQuestions = async (stressor: string, perception: string, s
 
 const generateManifesto = async (stressor: string, truth: string, action: string, fear: string, currentLevel: number, onUpdate: (text: string) => void) => {
   try {
-    const prompt = `Act as a wise, grounded high-performance coach. Write a powerful "Alchemist Decree" for your client.
+    const prompt = `Act as a wise high-performance coach. Write a powerful "Alchemist Decree".
     Inputs:
     - Stressor: "${stressor}"
     - Hidden Fear: "${fear}"
     - New Truth: "${truth}"
     - Commitment Action: "${action}"
-    Guidelines:
-    - First person ("I").
-    - Acknowledge the challenge but explicitly choose the higher power/truth.
-    - Use empowering, resonant, universal language.
-    - Keep it under 50 words.
-    - CRITICAL: Do NOT use technical jargon.
-    - Output ONLY the text.`;
+    Guidelines: First person ("I"). Keep it under 50 words. Do NOT use technical jargon. Output ONLY the text.`;
 
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        safetySettings
-      })
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], safetySettings })
     });
     if (!res.ok) throw new Error('API unavailable');
     const data = await res.json();
@@ -400,9 +388,24 @@ const generateManifesto = async (stressor: string, truth: string, action: string
 };
 
 const generateEnergyInsight = async (level: number, type: string) => {
-  const generateHorizonQuestion = async (stressor: string, perception: string, historyText: string) => {
   try {
-    const prompt = `Act as an expert transformational coach using Energy Leadership Index principles (but DO NOT use ELI jargon). 
+    const prompt = `Provide a single, profound, 1-sentence insight about personal energy for someone experiencing '${type}'. Tone: Mystical, grounded, empowering. Do NOT use technical terms.`;
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], safetySettings })
+    });
+    if (!res.ok) throw new Error('API unavailable');
+    const data = await res.json();
+    return data.candidates[0].content.parts[0].text.trim();
+  } catch (error) {
+    return "Your energy is your currency. How you spend it determines your reality.";
+  }
+};
+
+const generateHorizonQuestion = async (stressor: string, perception: string, historyText: string) => {
+  try {
+    const prompt = `Act as an expert transformational coach. 
     Client's initial issue: "${stressor}"
     Client's feeling: "${perception}"
     Conversation context: ${historyText}
@@ -453,23 +456,6 @@ const generateHorizonValidation = async (stressor: string, perception: string, h
     `;
   }
 };
-  try {
-    const prompt = `Provide a single, profound, 1-sentence insight about personal energy and leadership for someone experiencing '${type}'. Tone: Mystical, grounded, empowering. Do NOT use technical terms like 'Level ${level}'.`;
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        safetySettings
-      })
-    });
-    if (!res.ok) throw new Error('API unavailable');
-    const data = await res.json();
-    return data.candidates[0].content.parts[0].text.trim();
-  } catch (error) {
-    return "Your energy is your currency. How you spend it determines your reality.";
-  }
-};
 
 // --- SHARED STYLES ---
 const FontStyles = () => (
@@ -491,7 +477,6 @@ const FontStyles = () => (
     .glow-pulse { animation: glowPulse 3s infinite; }
     @keyframes glowPulse { 0% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4); border-color: rgba(20, 184, 166, 0.6); } 50% { box-shadow: 0 0 20px 0 rgba(20, 184, 166, 0.2); border-color: rgba(20, 184, 166, 1); } 100% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4); border-color: rgba(20, 184, 166, 0.6); } }
     
-    /* CUSTOM RANGE SLIDERS FOR DARK MODE */
     input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
     input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #14b8a6; cursor: pointer; margin-top: -8px; box-shadow: 0 0 10px rgba(20,184,166,0.5); }
     input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: rgba(255,255,255,0.2); border-radius: 2px; }
@@ -499,12 +484,8 @@ const FontStyles = () => (
     input[type=range].slider-amber::-webkit-slider-thumb { background: #f59e0b; box-shadow: 0 0 10px rgba(245,158,11,0.5); }
     input[type=range].slider-indigo::-webkit-slider-thumb { background: #6366f1; box-shadow: 0 0 10px rgba(99,102,241,0.5); }
     
-    /* Smooth Transition UI */
     .slide-up-fade { animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-    @keyframes slideUpFade { 
-        from { opacity: 0; transform: translateY(20px); } 
-        to { opacity: 1; transform: translateY(0); } 
-    }
+    @keyframes slideUpFade { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   `}</style>
 );
 
@@ -713,7 +694,6 @@ const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setView, toggleSound
   );
 };
 
-// --- HORIZON WITH AI EMPATHY BRIDGE (FIXED ROUTING & BACK BUTTONS) ---
 // --- HORIZON WITH TRUE AI EMPATHY BRIDGE & LOADING STATE ---
 const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, setStressor, perception, setPerception, setView, toggleSound, soundEnabled, resetApp, onBack }) => {
   const [step, setStep] = useState<'intake'|'chat'|'routing'>('intake');
@@ -722,7 +702,7 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
   const [aiQuestionCount, setAiQuestionCount] = useState(0);
   const [showChatInput, setShowChatInput] = useState(true);
   const [showRouteButton, setShowRouteButton] = useState(false); 
-  const [isTyping, setIsTyping] = useState(false); // UI Loader
+  const [isTyping, setIsTyping] = useState(false); 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -743,7 +723,6 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
     setShowRouteButton(false);
     setIsTyping(true);
     
-    // True AI Call for the First Question
     const firstQ = await generateHorizonQuestion(stressor, perception, "No history yet.");
     setChatHistory([{ role: 'ai', text: firstQ, isHtml: false }]);
     setIsTyping(false);
@@ -756,7 +735,7 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
     const newHistory: ChatMessage[] = [...chatHistory, { role: 'user', text: chatInput, isHtml: false }];
     setChatHistory(newHistory);
     setChatInput('');
-    setShowChatInput(false); // Hide input while AI thinks
+    setShowChatInput(false); 
     setIsTyping(true);
     
     const newCount = aiQuestionCount + 1;
@@ -764,13 +743,11 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
 
     const historyText = newHistory.map(m => `${m.role}: ${m.text}`).join(' | ');
 
-    // AI ASKS 2 MORE FOLLOW UPS (Making it feel thorough)
     if (newCount < 3) {
       const nextQ = await generateHorizonQuestion(stressor, perception, historyText);
       setChatHistory(prev => [...prev, { role: 'ai', text: nextQ, isHtml: false }]);
       setShowChatInput(true);
     } 
-    // THE DYNAMIC EMPATHY BRIDGE & HANDOFF
     else {
       const validationHtml = await generateHorizonValidation(stressor, perception, historyText);
       setChatHistory(prev => [...prev, { role: 'ai', text: validationHtml, isHtml: true }]);
@@ -787,7 +764,6 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
         
         {step === 'intake' && (
           <>
-            {/* 7-Day Neural Reset */}
             <div className="glass-panel p-4 rounded-[24px] border-teal-500/20 relative group">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
@@ -929,6 +905,7 @@ const Horizon: React.FC<HorizonProps> = ({ userName, sessionCount, stressor, set
     </div>
   );
 };
+
 const Vessel: React.FC<VesselProps> = ({ somaticZones, setSomaticZones, setView, toggleSound, soundEnabled, onBack }) => {
   const zones: SomaticZone[] = [
     { id: 'Head', label: 'Head', icon: Brain }, { id: 'Eyes', label: 'Eyes', icon: Eye },
@@ -1340,8 +1317,12 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
 
             <div className="text-left bg-white/5 border border-white/10 p-6 rounded-2xl mb-8">
                 <p className="text-sm text-white/80 leading-relaxed font-medium">
-                  You entered this session operating in <strong>Conflict and Survival</strong>. Based on your Sovereign Decree to <em>"{goal.outcome || expandingBelief}"</em>, you have successfully shifted to <strong>Synthesis and Opportunity</strong>.<br/><br/>
-                  You shifted your focus from what was being done TO you, to what you can control. This single cognitive reframe has halted your cortisol production. Your immediate static is cleared.
+                  {generating ? "Synthesizing your state shift..." : (
+                    <>
+                      You entered this session operating in <strong>Conflict and Survival</strong>. Based on your Sovereign Decree to <em>"{goal.outcome || expandingBelief}"</em>, you have successfully shifted to <strong>Synthesis and Opportunity</strong>.<br/><br/>
+                      You shifted your focus from what was being done TO you, to what you can control. This single cognitive reframe has halted your cortisol production. Your immediate static is cleared.
+                    </>
+                  )}
                 </p>
             </div>
 
@@ -1660,6 +1641,7 @@ const App = () => {
           
           {view === 'profile' && <Identity userName={userName} setUserName={setUserName} onComplete={() => setView('dashboard')} onBack={() => setView('manifesto')} />}
           
+          {/* THE NEW AI HORIZON FLOW */}
           {view === 'dashboard' && <Horizon 
             userName={userName} sessionCount={sessionCount}
             stressor={stressor} setStressor={setStressor}
@@ -1697,6 +1679,7 @@ const App = () => {
           
           {view === 'alchemy' && <Alchemy setView={setView} toggleSound={toggleSound} soundEnabled={soundEnabled} onBack={() => setView('fork')} />}
           
+          {/* THE UPDATED INTEGRATION & FINAL REVEAL */}
           {view === 'integration' && <Integration 
             goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep} 
             isLocked={isLocked} setIsLocked={setIsLocked} 
