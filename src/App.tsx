@@ -548,27 +548,63 @@ const Atmosphere: React.FC<{ bgState: string }> = ({ bgState }) => {
 
 // --- COMPONENTS ---
 
-const Welcome: React.FC<{ onEnter: () => void }> = ({ onEnter }) => (
-  <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
-    <div className="min-h-full flex flex-col justify-center items-center py-10">
-      <div className="flex-1"></div>
-      <div className="flex flex-col items-center">
-        <div className="mb-6 relative">
-          <div className="absolute inset-0 bg-teal-500/10 blur-xl rounded-full"></div>
-          <Activity size={64} className="text-teal-200/80 relative z-10 animate-breathe" strokeWidth={0.8} />
+const WelcomeLocked: React.FC<{ onEnter: () => void }> = ({ onEnter }) => {
+  const [code, setCode] = useState('');
+  const [error, setError] = useState(false);
+
+  const handleUnlock = () => {
+    if (code.toUpperCase() === 'ALCHEMY') {
+      onEnter();
+    } else {
+      setError(true);
+      setCode('');
+      setTimeout(() => setError(false), 2000);
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
+      <div className="min-h-full flex flex-col justify-center items-center py-10 w-full">
+        <div className="flex-1"></div>
+        <div className="flex flex-col items-center w-full max-w-xs">
+          <div className="mb-6 relative">
+            <div className="absolute inset-0 bg-teal-500/10 blur-xl rounded-full"></div>
+            <Activity size={64} className="text-teal-200/80 relative z-10 animate-breathe" strokeWidth={0.8} />
+          </div>
+          <h1 className="font-serif text-5xl text-white italic tracking-wide leading-tight animate-enter">Adaptiv</h1>
+          <p className="font-sans text-xs text-white/50 uppercase tracking-[0.3em] animate-enter delay-100 mt-4 mb-12">Alchemy for the Soul</p>
+          
+          <div className="w-full space-y-4 animate-enter delay-200">
+            <div className="relative">
+              <Lock size={14} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${error ? 'text-rose-500' : 'text-white/30'}`} />
+              <input 
+                type="password" 
+                value={code} 
+                onChange={(e) => setCode(e.target.value)} 
+                onKeyDown={(e) => e.key === 'Enter' && code && handleUnlock()}
+                placeholder="Enter Access Code" 
+                className={`w-full bg-white/5 border ${error ? 'border-rose-500/50 text-rose-200' : 'border-white/10 text-white'} py-4 pl-10 pr-4 rounded-xl text-center font-sans text-sm tracking-widest uppercase placeholder:text-white/20 focus:outline-none focus:border-teal-500/50 transition-all`} 
+              />
+            </div>
+            <button 
+              onClick={handleUnlock} 
+              disabled={!code} 
+              className="w-full py-4 rounded-xl bg-white/10 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-white/20 transition-all disabled:opacity-50 border border-white/5"
+            >
+              {error ? 'Access Denied' : 'Unlock Access'}
+            </button>
+          </div>
+
         </div>
-        <h1 className="font-serif text-5xl text-white italic tracking-wide leading-tight animate-enter">Adaptiv</h1>
-        <p className="font-sans text-xs text-white/50 uppercase tracking-[0.3em] animate-enter delay-100 mt-4">Alchemy for the Soul</p>
-        <button onClick={onEnter} className="mt-12 px-8 py-4 rounded-full bg-white/10 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-white/20 hover:scale-105 transition-all animate-enter delay-300 border border-white/5">Enter the Space</button>
-      </div>
-      <div className="flex-1"></div>
-      <div className="mt-8 flex flex-col items-center opacity-60 shrink-0">
-        <p className="font-sans text-[8px] text-white/30 uppercase tracking-widest mb-2">Powered By</p>
-        <p className="font-serif italic text-white/80 text-xs">LiveAdaptiv</p>
+        <div className="flex-1"></div>
+        <div className="mt-8 flex flex-col items-center opacity-60 shrink-0">
+          <p className="font-sans text-[8px] text-white/30 uppercase tracking-widest mb-2">Restricted Access</p>
+          <p className="font-serif italic text-white/80 text-xs">LiveAdaptiv</p>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const Manifesto: React.FC<{ onContinue: () => void, onBack: () => void }> = ({ onContinue, onBack }) => (
   <div className="h-full flex flex-col justify-center animate-enter px-6 overflow-y-auto hide-scrollbar text-center relative">
@@ -1337,18 +1373,6 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
     alert("Decree copied to clipboard");
   };
 
-  const generateEmailLink = () => {
-    const subject = `My Adaptiv Decree`;
-    const body = `${manifesto}\n\nMy Commitment: ${goal.action} (${goal.when})`;
-    return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  };
-
-  const generateCalendarLink = () => {
-    const text = `Adaptiv Commitment: ${goal.action}`;
-    const details = `${manifesto}\n\nGenerated by Adaptiv`;
-    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(text)}&details=${encodeURIComponent(details)}`;
-  };
-
   if (isLocked && !primingDone && !isBurnoutPath) {
     return (
       <div className="h-full flex flex-col relative z-20">
@@ -1368,15 +1392,33 @@ const Integration: React.FC<IntegrationProps> = ({ goal, setGoal, goalStep, setG
             <h2 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40 mb-2">Kinetic Shift Detected</h2>
             <div className="text-5xl font-serif italic text-white mb-6">Level 2 &rarr; Level 5</div>
 
-            <div className="text-left bg-white/5 border border-white/10 p-6 rounded-2xl mb-8">
-                <p className="text-sm text-white/80 leading-relaxed font-medium">
-                  {generating ? "Synthesizing your state shift..." : (
+            {/* RESTORED DECREE BLOCK */}
+            <div className="text-left bg-white/5 border border-white/10 p-6 rounded-2xl mb-8 relative group">
+                {generating ? (
+                    <p className="text-sm text-white/80 leading-relaxed font-medium text-center py-4 flex flex-col items-center justify-center gap-3">
+                        <Loader2 className="animate-spin text-teal-400" size={24} /> 
+                        <span>Synthesizing your Alchemist Decree...</span>
+                    </p>
+                ) : (
                     <>
-                      You entered this session operating in <strong>Conflict and Survival</strong>. Based on your Sovereign Decree to <em>"{goal.outcome || expandingBelief}"</em>, you have successfully shifted to <strong>Synthesis and Opportunity</strong>.<br/><br/>
-                      You shifted your focus from what was being done TO you, to what you can control. This single cognitive reframe has halted your cortisol production. Your immediate static is cleared.
+                        <h3 className="text-[10px] font-bold uppercase tracking-widest text-teal-400 mb-4 flex items-center gap-2">
+                            <Sparkles size={12} /> Your Sovereign Decree
+                        </h3>
+                        <p className="text-xl text-white/90 leading-relaxed font-serif italic mb-6">
+                          "{manifesto}"
+                        </p>
+                        
+                        <div className="border-t border-white/10 pt-6 mt-2">
+                          <p className="text-sm text-white/80 leading-relaxed font-medium">
+                            You entered this session operating in <strong>Conflict and Survival</strong>. By committing to <em>"{goal.outcome || expandingBelief}"</em>, you have successfully shifted to <strong>Synthesis and Opportunity</strong>. Your immediate static is cleared.
+                          </p>
+                        </div>
+                        
+                        <button onClick={copyArtifact} className="absolute top-4 right-4 p-2 bg-white/10 rounded-lg text-white/50 hover:text-white hover:bg-white/20 transition-all border border-transparent hover:border-white/20" title="Copy Decree">
+                            <Copy size={14} />
+                        </button>
                     </>
-                  )}
-                </p>
+                )}
             </div>
 
             <p className="text-xs font-bold uppercase tracking-widest text-white/90 mb-4">Secure Your Baseline</p>
@@ -1688,7 +1730,7 @@ const App = () => {
       <div className="fixed inset-0 bg-slate-950 text-white font-sans overflow-hidden flex justify-center">
         <Atmosphere bgState={bgState} />
         <div className="w-full max-w-md h-full relative z-10 p-6">
-          {view === 'welcome' && <Welcome onEnter={enterApp} />}
+          {view === 'welcome' && <WelcomeLocked onEnter={enterApp} />}
           
           {view === 'manifesto' && <Manifesto onContinue={() => setView('profile')} onBack={() => setView('welcome')} />}
           
