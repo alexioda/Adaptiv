@@ -979,7 +979,7 @@ const Horizon: React.FC<HorizonProps> = ({
             <h2 className="text-2xl font-serif italic text-white mb-2">Initiate Shift</h2>
             <p className="text-sm text-white/50 mb-8">Where is this pressure residing right now?</p>
             <div className="grid grid-cols-1 gap-4">
-              <button onClick={() => setView('somatic')} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-teal-500/50 transition-all group relative overflow-hidden text-left">
+              <button onClick={() => { setFrictionSource('body'); setView('somatic'); }} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-teal-500/50 transition-all group relative overflow-hidden text-left">
                 <div className="absolute inset-0 bg-teal-500 opacity-0 group-hover:opacity-10 transition-opacity" />
                 <div className="flex items-center gap-3 mb-2">
                   <Activity size={20} className="text-white/40 group-hover:text-teal-400 transition-colors" />
@@ -987,7 +987,7 @@ const Horizon: React.FC<HorizonProps> = ({
                 </div>
                 <p className="text-xs text-white/50">Tension, shallow breathing, physical static.</p>
               </button>
-              <button onClick={() => setView('laser')} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-indigo-500/50 transition-all group relative overflow-hidden text-left">
+              <button onClick={() => { setFrictionSource('mind'); setView('laser'); }} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-indigo-500/50 transition-all group relative overflow-hidden text-left">
                 <div className="absolute inset-0 bg-indigo-500 opacity-0 group-hover:opacity-10 transition-opacity" />
                 <div className="flex items-center gap-3 mb-2">
                   <Brain size={20} className="text-white/40 group-hover:text-indigo-400 transition-colors" />
@@ -1561,45 +1561,10 @@ const Integration: React.FC<IntegrationProps> = ({
         <div className="flex-1 overflow-y-auto hide-scrollbar pb-20 pt-4">
 
           <div className="glass-panel p-8 rounded-[2rem] border-t-4 border-teal-500 shadow-2xl text-center mb-6 animate-enter">
-            <h2 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40 mb-4">Kinetic Shift Detected</h2>
-
-            <div className="flex items-center justify-center gap-4 mb-6">
-              <div className="text-center">
-                <div className="text-3xl font-serif italic text-rose-400">Level {entryLevel}</div>
-                <div className="text-[9px] uppercase tracking-widest text-white/30 mt-1">{ELI_LABELS[entryLevel]}</div>
-              </div>
-              <ArrowRight size={20} className="text-teal-400" />
-              <div className="text-center">
-                <div className="text-3xl font-serif italic text-teal-400">Level {exitLevel}</div>
-                <div className="text-[9px] uppercase tracking-widest text-white/30 mt-1">{ELI_LABELS[exitLevel]}</div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                <p className="text-[9px] uppercase tracking-widest text-white/30 mb-2">Stress</p>
-                <div className="flex items-center justify-center gap-2">
-                  <span className="font-serif text-xl text-rose-400">{stressLevel}</span>
-                  <TrendingDown size={14} className={stressDelta < 0 ? "text-teal-400" : "text-rose-400"} />
-                  <span className="font-serif text-xl text-teal-400">{postStress}</span>
-                </div>
-                <p className={`text-[10px] font-bold mt-1 ${stressDelta < 0 ? 'text-teal-400' : 'text-rose-400'}`}>
-                  {stressDelta < 0 ? `${Math.abs(stressDelta)} points metabolized` : stressDelta === 0 ? 'Baseline held' : `+${stressDelta} (review)` }
-                </p>
-              </div>
-              <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                <p className="text-[9px] uppercase tracking-widest text-white/30 mb-2">Energy</p>
-                <div className="flex items-center justify-center gap-2">
-                  <span className="font-serif text-xl text-white/50">{energyLevel}</span>
-                  <ArrowRight size={14} className="text-teal-400" />
-                  <span className="font-serif text-xl text-teal-400">{postEnergy}</span>
-                </div>
-                <p className="text-[10px] font-bold mt-1 text-teal-400/60">Exit baseline</p>
-              </div>
-            </div>
-
-            <div className="text-left mb-6 space-y-6 pt-4 border-t border-white/10">
-              <h3 className="text-[10px] uppercase tracking-widest text-white/50 font-bold mb-4">Re-Assess Internal Weather</h3>
+            
+            {/* ── 1. SLIDERS ON TOP (Active Calibration) ── */}
+            <div className="text-left mb-8 space-y-6">
+              <h3 className="text-[10px] uppercase tracking-widest text-white/50 font-bold mb-4">1. Re-Assess Internal Weather</h3>
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="text-xs uppercase tracking-widest text-white/70">Current Stress</label>
@@ -1616,22 +1581,67 @@ const Integration: React.FC<IntegrationProps> = ({
               </div>
             </div>
 
+            {/* ── 2. SHIFT READOUT IN MIDDLE (The Result) ── */}
+            <div className="pt-6 border-t border-white/10 mb-8">
+              <h2 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40 mb-6">2. Kinetic Shift Detected</h2>
+              
+              {/* Level Shift */}
+              <div className="flex items-center justify-center gap-4 mb-6">
+                <div className="text-center">
+                  <div className="text-3xl font-serif italic text-rose-400">Level {entryLevel}</div>
+                  <div className="text-[9px] uppercase tracking-widest text-white/30 mt-1">{ELI_LABELS[entryLevel]}</div>
+                </div>
+                <ArrowRight size={20} className={stressDelta < 0 || energyDelta > 0 ? "text-teal-400" : "text-white/20"} />
+                <div className="text-center">
+                  <div className="text-3xl font-serif italic text-teal-400">Level {exitLevel}</div>
+                  <div className="text-[9px] uppercase tracking-widest text-white/30 mt-1">{ELI_LABELS[exitLevel]}</div>
+                </div>
+              </div>
+
+              {/* Delta Meters */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                  <p className="text-[9px] uppercase tracking-widest text-white/30 mb-2">Stress</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="font-serif text-xl text-rose-400">{stressLevel}</span>
+                    <TrendingDown size={14} className={stressDelta < 0 ? "text-teal-400" : stressDelta === 0 ? "text-white/30" : "text-rose-400"} />
+                    <span className="font-serif text-xl text-teal-400">{postStress}</span>
+                  </div>
+                  <p className={`text-[10px] font-bold mt-1 ${stressDelta < 0 ? 'text-teal-400' : stressDelta === 0 ? 'text-white/40' : 'text-rose-400'}`}>
+                    {stressDelta < 0 ? `${Math.abs(stressDelta)} points metabolized` : stressDelta === 0 ? 'Baseline held' : `+${stressDelta} (review)` }
+                  </p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                  <p className="text-[9px] uppercase tracking-widest text-white/30 mb-2">Energy</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="font-serif text-xl text-white/50">{energyLevel}</span>
+                    <ArrowRight size={14} className={energyDelta > 0 ? "text-teal-400" : energyDelta === 0 ? "text-white/30" : "text-rose-400"} />
+                    <span className="font-serif text-xl text-teal-400">{postEnergy}</span>
+                  </div>
+                  <p className={`text-[10px] font-bold mt-1 ${energyDelta > 0 ? 'text-teal-400' : energyDelta === 0 ? 'text-white/40' : 'text-rose-400'}`}>
+                    {energyDelta > 0 ? `+${energyDelta} expanded` : energyDelta === 0 ? 'Exit baseline' : `${energyDelta} drained`}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ── 3. CLINICAL READ AT BOTTOM (The Synthesis) ── */}
             <div className="bg-white/5 border border-white/10 p-6 rounded-2xl mb-8 text-left shadow-sm transition-all duration-500">
-              <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/40 mb-3">Clinical Read</p>
+              <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/40 mb-3">3. Clinical Read</p>
               <h3 className={`font-serif text-2xl italic mb-3 transition-colors duration-500 ${assessment.color}`}>{assessment.status}</h3>
               <p className="font-sans text-sm text-white/70 leading-relaxed">{assessment.read}</p>
             </div>
 
-            {/* ── FIX 2: Epic Decree Formatting ── */}
-            <div className="bg-white/5 border border-white/10 p-6 rounded-2xl mb-6 text-center">
+            {/* ── 4. EPIC DECREE ── */}
+            <div className="bg-white/5 border border-white/10 p-6 md:p-8 rounded-2xl mb-6 text-center shadow-inner">
               {generating ? (
                 <div className="flex items-center justify-center gap-2 text-white/40 text-sm"><Loader2 size={16} className="animate-spin" /> Synthesizing your decree...</div>
               ) : (
-                <p className="font-serif text-2xl text-white leading-relaxed italic">"{manifesto}"</p>
+                <p className="font-serif text-2xl md:text-3xl text-white leading-relaxed italic drop-shadow-md">"{manifesto}"</p>
               )}
             </div>
 
-            {/* ── FIX 3: Personalized Recommendation ── */}
+            {/* ── PERSONALIZED RECOMMENDATION ── */}
             {!generating && manifesto && (
               <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-6 text-left">
                 <div className="flex items-center gap-2 mb-3">
@@ -1660,6 +1670,7 @@ const Integration: React.FC<IntegrationProps> = ({
               </div>
             )}
 
+            {/* ── ACTION BUTTONS ── */}
             {!generating && manifesto && (
               <div className="flex gap-3 mb-6">
                 <button onClick={copyArtifact} className="flex-1 py-3 rounded-xl border border-white/10 text-white/50 hover:text-white hover:bg-white/5 transition-all text-[10px] uppercase tracking-widest flex items-center justify-center gap-2">
@@ -1953,7 +1964,7 @@ const App = () => {
   const [isBurnoutPath,    setIsBurnoutPath]  = useState(false);
   const [somaticZones,     setSomaticZones]   = useState<string[]>([]);
   
-  // ── FIX 1: Global Friction Source State ──
+  // ── Global Friction Source State ──
   const [frictionSource,   setFrictionSource] = useState('body');
   
   const [partsStep,        setPartsStep]      = useState('experience');
@@ -2036,7 +2047,6 @@ const App = () => {
           )}
 
           {view === 'energy_reflection' && <EnergyReflection {...common} energyAnalysis={energyAnalysis} onBack={() => setView('dashboard')} />}
-          {/* ── FIX 1: Passing setFrictionSource to ForkEntry ── */}
           {view === 'fork_entry'        && <ForkEntry {...common} setFrictionSource={setFrictionSource} onBack={() => setView('dashboard')} />}
           {view === 'diffuser'          && <Diffuser {...common} fear={fear} setFear={setFear} onBack={() => setView('fork_entry')} />}
           {view === 'somatic'           && <Vessel {...common} somaticZones={somaticZones} setSomaticZones={setSomaticZones} onBack={() => setView('dashboard')} />}
