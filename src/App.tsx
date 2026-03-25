@@ -328,6 +328,7 @@ const getSmartQuestion = (energy: number, stress: number) => {
   return "What is one assumption you are making that might not be true?";
 };
 
+// ── FIX 1: Body/Mind path reflected in AI reflection ──
 const analyzeCurrentEnergy = async (
   stressor: string, perception: string, stressLevel: number, energyLevel: number, frictionSource: string
 ): Promise<EnergyAnalysis> => {
@@ -371,6 +372,7 @@ Return ONLY raw JSON: { "questions": ["Mirror question", "Pivot question", "Visi
   }
 };
 
+// ── FIX 2: Decree font size and motivational strength ──
 const generateManifesto = async (
   stressor: string, truth: string, action: string, fear: string,
   currentLevel: number, onUpdate: (text: string) => void
@@ -1683,15 +1685,21 @@ const Integration: React.FC<IntegrationProps> = ({
               </div>
             )}
 
-            <p className="text-xs font-bold uppercase tracking-widest text-white/90 mb-4">Secure Your Baseline</p>
-            <div className="space-y-3">
-              <a href="https://billing.liveadaptiv.com/checkout/buy/d29e3b81-78a4-4611-83f8-11fe76d9d82e" target="_blank" rel="noreferrer" className="block w-full py-4 bg-teal-500 text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest shadow-lg hover:bg-teal-400 transition-all">
-                Install Stress Transformation Protocol ($47)
-              </a>
-              <a href="https://calendly.com/alexioda" target="_blank" rel="noreferrer" className="block w-full py-4 bg-white/5 border border-white/20 text-white font-bold rounded-xl text-[10px] uppercase tracking-widest hover:border-teal-400 hover:text-teal-400 transition-all">
-                Book Clinical Strategy Session ($495)
-              </a>
-            </div>
+            {/* ── 6. UPSELLS (Hidden for Burnout Path) ── */}
+            {!isBurnoutPath && (
+              <>
+                <p className="text-xs font-bold uppercase tracking-widest text-white/90 mb-4">Secure Your Baseline</p>
+                <div className="space-y-3">
+                  <a href="https://billing.liveadaptiv.com/checkout/buy/d29e3b81-78a4-4611-83f8-11fe76d9d82e" target="_blank" rel="noreferrer" className="block w-full py-4 bg-teal-500 text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest shadow-lg hover:bg-teal-400 transition-all">
+                    Install Stress Transformation Protocol ($47)
+                  </a>
+                  <a href="https://calendly.com/alexioda" target="_blank" rel="noreferrer" className="block w-full py-4 bg-white/5 border border-white/20 text-white font-bold rounded-xl text-[10px] uppercase tracking-widest hover:border-teal-400 hover:text-teal-400 transition-all">
+                    Book Clinical Strategy Session ($495)
+                  </a>
+                </div>
+              </>
+            )}
+
           </div>
 
           <div className="flex gap-4 justify-center pb-8 pt-4 border-t border-white/5">
