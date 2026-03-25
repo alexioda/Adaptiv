@@ -73,6 +73,7 @@ interface HorizonProps extends CommonProps {
   soundType: 'drone' | 'brown';
   setSoundType: (t: 'drone' | 'brown') => void;
   sessionHistory: SessionRecord[];
+  setFrictionSource: (s: string) => void;
 }
 interface ForkEntryProps extends CommonProps {
   setFrictionSource: (s: string) => void;
@@ -327,7 +328,6 @@ const getSmartQuestion = (energy: number, stress: number) => {
   return "What is one assumption you are making that might not be true?";
 };
 
-// ── FIX 1: Body/Mind path reflected in AI reflection ──
 const analyzeCurrentEnergy = async (
   stressor: string, perception: string, stressLevel: number, energyLevel: number, frictionSource: string
 ): Promise<EnergyAnalysis> => {
@@ -371,7 +371,6 @@ Return ONLY raw JSON: { "questions": ["Mirror question", "Pivot question", "Visi
   }
 };
 
-// ── FIX 2: Decree font size and motivational strength ──
 const generateManifesto = async (
   stressor: string, truth: string, action: string, fear: string,
   currentLevel: number, onUpdate: (text: string) => void
@@ -715,6 +714,7 @@ const Horizon: React.FC<HorizonProps> = ({
   setView, toggleSound, soundEnabled, resetApp, setEnergyAnalysis,
   soundType, setSoundType, onBack, sessionHistory,
   stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout,
+  setFrictionSource
 }) => {
   const [step, setStep]                   = useState<'intake'|'chat'|'routing'>('intake');
   const [chatInput, setChatInput]         = useState('');
@@ -1436,7 +1436,7 @@ const Integration: React.FC<IntegrationProps> = ({
   const energyDelta = postEnergy - energyLevel;
   const entryLevel   = energyAnalysis?.level ?? 2;
   
-  // ── FIX 3: Dynamic Level Math ──
+  // ── Dynamic Level Math ──
   const exitLevel = Math.min(7, Math.max(entryLevel,
     entryLevel + (stressDelta <= -4 ? 3 : stressDelta <= -2 ? 2 : stressDelta < 0 ? 1 : 0)
   ));
@@ -1562,7 +1562,7 @@ const Integration: React.FC<IntegrationProps> = ({
 
           <div className="glass-panel p-8 rounded-[2rem] border-t-4 border-teal-500 shadow-2xl text-center mb-6 animate-enter">
             
-            {/* ── 1. SLIDERS ON TOP (Active Calibration) ── */}
+            {/* ── 1. SLIDERS ON TOP ── */}
             <div className="text-left mb-8 space-y-6">
               <h3 className="text-[10px] uppercase tracking-widest text-white/50 font-bold mb-4">1. Re-Assess Internal Weather</h3>
               <div>
@@ -1581,11 +1581,10 @@ const Integration: React.FC<IntegrationProps> = ({
               </div>
             </div>
 
-            {/* ── 2. SHIFT READOUT IN MIDDLE (The Result) ── */}
+            {/* ── 2. SHIFT READOUT ── */}
             <div className="pt-6 border-t border-white/10 mb-8">
               <h2 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40 mb-6">2. Kinetic Shift Detected</h2>
               
-              {/* Level Shift */}
               <div className="flex items-center justify-center gap-4 mb-6">
                 <div className="text-center">
                   <div className="text-3xl font-serif italic text-rose-400">Level {entryLevel}</div>
@@ -1598,7 +1597,6 @@ const Integration: React.FC<IntegrationProps> = ({
                 </div>
               </div>
 
-              {/* Delta Meters */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-white/5 rounded-xl p-4 border border-white/5">
                   <p className="text-[9px] uppercase tracking-widest text-white/30 mb-2">Stress</p>
@@ -1625,7 +1623,7 @@ const Integration: React.FC<IntegrationProps> = ({
               </div>
             </div>
 
-            {/* ── 3. CLINICAL READ AT BOTTOM (The Synthesis) ── */}
+            {/* ── 3. CLINICAL READ ── */}
             <div className="bg-white/5 border border-white/10 p-6 rounded-2xl mb-8 text-left shadow-sm transition-all duration-500">
               <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/40 mb-3">3. Clinical Read</p>
               <h3 className={`font-serif text-2xl italic mb-3 transition-colors duration-500 ${assessment.color}`}>{assessment.status}</h3>
@@ -1641,9 +1639,9 @@ const Integration: React.FC<IntegrationProps> = ({
               )}
             </div>
 
-            {/* ── PERSONALIZED RECOMMENDATION ── */}
+            {/* ── 5. PERSONALIZED RECOMMENDATION ── */}
             {!generating && manifesto && (
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-6 text-left">
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-6 text-left shadow-sm">
                 <div className="flex items-center gap-2 mb-3">
                   <Sparkles size={14} className="text-indigo-400" />
                   <span className="text-[9px] uppercase tracking-widest text-indigo-400 font-bold">
@@ -2042,6 +2040,7 @@ const App = () => {
               setEnergyAnalysis={setEnergyAnalysis}
               soundType={soundType} setSoundType={setSoundType}
               sessionHistory={sessionHistory}
+              setFrictionSource={setFrictionSource}
               onBack={() => setView('profile')}
             />
           )}
