@@ -1,22 +1,3 @@
-// CipherGate.tsx
-// ─────────────────────────────────────────────────────────────
-// Drop this component into your project alongside App.tsx.
-// It wraps the entire app and blocks access until a valid
-// cipher is confirmed by the server-side API.
-//
-// Usage in main.tsx (or wherever you render App):
-//
-//   import CipherGate from './CipherGate';
-//   import App from './App';
-//
-//   ReactDOM.createRoot(document.getElementById('root')!).render(
-//     <CipherGate>
-//       <App />
-//     </CipherGate>
-//   );
-//
-// ─────────────────────────────────────────────────────────────
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Activity, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -343,7 +324,6 @@ const CipherGate: React.FC<CipherGateProps> = ({ children }) => {
       }
     } catch {
       // Network error — fail open with a message
-      // For offline/dev use, you can remove this and fail closed
       setError('Connection error. Please check your network and try again.');
     } finally {
       setLoading(false);
@@ -354,8 +334,14 @@ const CipherGate: React.FC<CipherGateProps> = ({ children }) => {
     if (e.key === 'Enter') handleSubmit();
   };
 
-  // Already authenticated — render app directly
-  if (authenticated) return <>{children}</>;
+  // THE FIX: Provide a full-height dark boundary so App.tsx styles render correctly
+  if (authenticated) {
+    return (
+      <div className="w-screen h-screen m-0 p-0 overflow-hidden bg-slate-950 text-white font-sans">
+        {children}
+      </div>
+    );
+  }
 
   return (
     <>
@@ -428,4 +414,3 @@ const CipherGate: React.FC<CipherGateProps> = ({ children }) => {
 };
 
 export default CipherGate;
-
