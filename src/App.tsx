@@ -76,7 +76,7 @@ interface HorizonProps extends CommonProps {
   rapidFire?: boolean;
 }
 interface ForkEntryProps extends CommonProps {}
-interface DiffuserProps extends CommonProps { fear: string; setFear: (s: string) => void; }
+interface DiffuserProps extends CommonProps { fear: string; setFear: (s: string) => void; expandingBelief: string; setExpandingBelief: (s: string) => void; }
 interface VesselProps extends CommonProps {
   somaticZones: string[];
   setSomaticZones: (zones: string[]) => void;
