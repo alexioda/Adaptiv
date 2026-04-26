@@ -35,9 +35,9 @@ interface NavProps {
 interface SomaticZone { id: string; label: string; icon: React.ElementType; }
 interface EnergyAnalysis { level: number; reflection: string; }
 
-// ── NEW: Session Record stored in localStorage ──
+// ── Session Record stored in localStorage ──
 interface SessionRecord {
-  date: string; // ISO string
+  date: string;           
   stressor: string;
   preStress: number;
   postStress: number;
@@ -46,7 +46,7 @@ interface SessionRecord {
   coreFear: string;
   expandingBelief: string;
   commitment: string;
-  energyLevel: number; // ELI 1-7
+  energyLevel: number;    
 }
 
 interface CommonProps {
@@ -73,10 +73,12 @@ interface HorizonProps extends CommonProps {
   soundType: 'drone' | 'brown';
   setSoundType: (t: 'drone' | 'brown') => void;
   sessionHistory: SessionRecord[];
-  rapidFire?: boolean;
+  setFrictionSource: (s: string) => void;
 }
-interface ForkEntryProps extends CommonProps {}
-interface DiffuserProps extends CommonProps { fear: string; setFear: (s: string) => void; expandingBelief: string; setExpandingBelief: (s: string) => void; }
+interface ForkEntryProps extends CommonProps {
+  setFrictionSource: (s: string) => void;
+}
+interface DiffuserProps extends CommonProps { fear: string; setFear: (s: string) => void; }
 interface VesselProps extends CommonProps {
   somaticZones: string[];
   setSomaticZones: (zones: string[]) => void;
@@ -100,7 +102,6 @@ interface LaserCoachingProps extends CommonProps {
   somatic: string;
   setGoal: (g: any) => void;
   setExpandingBelief: (s: string) => void;
-  setGoalStep: (n: number) => void;
   energyLevel: number;
   stressLevel: number;
 }
@@ -156,17 +157,15 @@ interface PreservationProps extends CommonProps {
 }
 interface VitalityScanProps extends CommonProps { setBurnoutPath: (b: boolean) => void; }
 interface EnergyAnalyzerProps { setView: (view: string) => void; onBack?: () => void; }
-interface ChatMessage { role: 'user' | 'ai'; text: string; isHtml: boolean; }
+interface ChatMessage { role: 'user' | 'ai'; text: any; isHtml: boolean; }
 
 // ─────────────────────────────────────────────
-// STORAGE HELPERS (localStorage, graceful fallback)
+// STORAGE HELPERS  (localStorage)
 // ─────────────────────────────────────────────
 const STORAGE_KEYS = {
-  USER_NAME: 'adaptiv_userName',
-  SESSION_COUNT: 'adaptiv_sessionCount',
+  USER_NAME:       'adaptiv_userName',
+  SESSION_COUNT:   'adaptiv_sessionCount',
   SESSION_HISTORY: 'adaptiv_sessionHistory',
-  RAPID_FIRE: 'adaptiv_rapidFire',
-  ACCOUNTABILITY_SHOWN: 'adaptiv_acct_shown', // sessionStorage key
 };
 
 function storageGet<T>(key: string, fallback: T): T {
@@ -181,7 +180,6 @@ function storageSet(key: string, value: unknown) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
 }
 
-// Keep only the last 10 sessions to respect free-tier memory limits
 function appendSession(record: SessionRecord): SessionRecord[] {
   const history = storageGet<SessionRecord[]>(STORAGE_KEYS.SESSION_HISTORY, []);
   const updated = [record, ...history].slice(0, 10);
@@ -190,13 +188,10 @@ function appendSession(record: SessionRecord): SessionRecord[] {
 }
 
 // ─────────────────────────────────────────────
-// SANITIZE – prevents XSS in dangerouslySetInnerHTML
-// Strips everything except safe inline elements & attributes
+// SANITIZE
 // ─────────────────────────────────────────────
 function sanitizeHtml(dirty: string): string {
-  // Allow only span/strong/em/br with class attribute
   const allowed = /<(\/?)((span|strong|em|br)(\s+class="[^"]*")?)\s*\/?>/gi;
-  // Replace all tags with either the allowed ones or nothing
   return dirty.replace(/<[^>]+>/g, (tag) => {
     const match = tag.match(/^<(\/?)((span|strong|em|br)(\s+class="[^"]*")?)\s*\/?>$/i);
     return match ? tag : '';
@@ -257,7 +252,6 @@ class SoundEngine {
     }
   }
 
-  // NEW: play a short tone for breath phase transitions
   playBreathTone(freq: number, duration = 0.3) {
     this.init();
     if (!this.ctx || !this.gain) return;
@@ -290,27 +284,17 @@ class SoundEngine {
 const soundEngine = new SoundEngine();
 
 // ─────────────────────────────────────────────
-// 2. API HELPERS
-// IMPORTANT: Replace VITE_GOOGLE_API_KEY with your env var.
-// For production, proxy through a serverless function so the key
-// never ships in the client bundle.
-// e.g. POST /api/ai → Vercel/Netlify Edge Function holding the key.
+// 2. SECURE API CALLER
 // ─────────────────────────────────────────────
-const apiKey = (typeof window !== "undefined" && (window as any).__GOOGLE_API_KEY__) || "";
-const aiModel = "gemini-2.5-flash";
-
 const safetySettings = [
-  { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-  { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-  { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-  { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_HARASSMENT",        threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_HATE_SPEECH",        threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",  threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_DANGEROUS_CONTENT",  threshold: "BLOCK_NONE" },
 ];
 
-/** Central AI caller – swap the URL here when you move to a proxy */
 async function callAI(prompt: string, jsonMode = false): Promise<string> {
-  const url = apiKey
-    ? `https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`
-    : `/api/ai`; // ← your serverless proxy endpoint
+  const url = '/api/ai'; // Secure backend
 
   const body: any = {
     contents: [{ parts: [{ text: prompt }] }],
@@ -344,65 +328,32 @@ const getSmartQuestion = (energy: number, stress: number) => {
   return "What is one assumption you are making that might not be true?";
 };
 
-// ─────────────────────────────────────────────
-// VOICE IDENTITY — used across all AI calls
-// ─────────────────────────────────────────────
-const COACH_VOICE = `You are a world-class transformational coach, brilliant psychologist, and expert motivational interviewer with deep mastery of Energy Leadership.
-
-Your voice:
-- Short, warm, direct sentences. Never more than 3 sentences in a reflection.
-- You validate before you question. Always.
-- You normalize without minimizing. "No wonder you feel this way" is more powerful than any technique.
-- You ask ONE question at a time. Never two. Never a question with a sub-question inside it.
-- Your questions open something in the person — they don't seek information, they create movement.
-- You respond to what's underneath the words, not just the words themselves.
-- You use metaphor naturally. "If this had a voice, what would it say?" lands deeper than "How does this make you feel?"
-- You never explain your framework. You never mention energy levels. You just use what you know.
-- You are comfortable being brief. Less is always more.
-
-Your signature move: brief validation → normalization → one question that moves from cognitive to experiential.`;
-
+// ── FIX 1: Body/Mind path reflected in AI reflection ──
 const analyzeCurrentEnergy = async (
-  stressor: string, perception: string, stressLevel: number, energyLevel: number
+  stressor: string, perception: string, stressLevel: number, energyLevel: number, frictionSource: string
 ): Promise<EnergyAnalysis> => {
   try {
-    const prompt = `${COACH_VOICE}
-
-A person has shared what's weighing on them:
-- What's happening: "${stressor}"
-- How they're experiencing it: "${perception}"
-- Stress level (self-rated 1-10, higher = more stressed): ${stressLevel}
-- Energy level (self-rated 1-10, higher = more energized): ${energyLevel}
-
-Your task has two parts:
-
-PART 1 — Assess their current energy level (1-7) based on the emotional and cognitive content of what they shared. Use the numbers only as secondary context. What matters most is the quality of their perception and relationship to the situation.
-
-ELI levels (internal reference only — never name these in your response):
-1: Victim — powerless, "why me," no sense of agency
-2: Fighter — defensive, conflicted, "I win you lose"
-3: Rationalizer — coping, explaining, tolerating
-4: Caregiver — compassion-led but self-depleting, "you win"
-5: Opportunist — sees possibility, "we both win"
-6: Visionary — intuitive, systemic awareness, "everyone wins"
-7: Creator — pure purpose, generative, "I create"
-
-PART 2 — Write a reflection in your voice. 2 sentences maximum.
-- First sentence: validate what it must feel like. Use "It must feel..." or "That sounds..." or "Of course you'd feel..."
-- Second sentence: name something specific underneath what they described — the thing they may not have said directly but that you sense is there.
-
-Do not ask a question here. Just reflect. The question comes later.
-
+    const prompt = `Act as an expert Energy Leadership Master Practitioner (ELI-MP). Analyze the client's state.
+Inputs:
+- Situation/Stressor: "${stressor}"
+- Perception/Thoughts: "${perception}"
+- Self-Rated Stress: ${stressLevel}%
+- Self-Rated Energy: ${energyLevel}%
+- Primary Friction Location: ${frictionSource === 'mind' ? 'The Mind (racing thoughts, mental loops, cognitive fog)' : 'The Body (physical tension, heaviness, somatic weight)'}
+Task:
+1. Identify the likely Energy Level (1-7).
+2. Write a compassionate, direct, 2-sentence "Reflection" mirror statement that specifically references whether this is showing up as mental or physical friction.
+Constraints: Use "You" statements. NO ELI jargon. Be specific to the friction location.
 Return ONLY raw JSON: { "level": number, "reflection": "string" }`;
     const raw = await callAI(prompt, true);
     return JSON.parse(raw.replace(/```json|```/g, '').trim());
   } catch {
-    const isCatabolic = stressLevel > 6 || energyLevel < 4;
+    const isCatabolic = stressLevel > 60 || energyLevel < 40;
     return {
       level: isCatabolic ? 2 : 3,
       reflection: isCatabolic
-        ? "It must feel hard — not knowing what to do and how to handle it. No wonder you feel this way. You've been carrying something that was never meant to be carried alone."
-        : "That kind of quiet pressure is its own kind of exhausting. It makes sense that your system is looking for a way through.",
+        ? "You are feeling the weight of this situation and perhaps a need to protect yourself from a negative outcome."
+        : "You are coping with this situation logically, but may be tolerating more than you realize.",
     };
   }
 };
@@ -411,71 +362,37 @@ const generateCoachingQuestions = async (
   stressor: string, perception: string, somatic: string, energyLevel: number, stressLevel: number
 ): Promise<string[]> => {
   try {
-    const prompt = `${COACH_VOICE}
-
-A person is working through something:
-- What's happening: "${stressor}"
-- How they experience it: "${perception}"
-- Where they feel it in their body: "${somatic}"
-
-Generate 4 coaching questions in your voice. Each one should be short, open, and do a specific kind of work:
-
-Question 1 — Mirror: Reflect something back that names what's underneath the situation. Not what they said — what you sense beneath it. Example style: "What's the part of this that feels most unfair?"
-
-Question 2 — Pivot: Gently shift their relationship to the situation. Not toxic positivity — a genuine reframe. Example style: "If this situation had something to teach you, what would it be trying to say?"
-
-Question 3 — Experiential bridge: Move them from thinking about it to feeling into it. Use metaphor. Example style: "If this stress had a voice right now, what would it say to you?"
-
-Question 4 — Vision: Open something forward. Not "what do you want" — something more specific and alive. Example style: "What would it feel like in your body if this wasn't weighing on you anymore?"
-
-Rules:
-- Each question is one sentence. Under 20 words.
-- Never two questions in one.
-- Never start with "How" — it's too analytical. Start with "What," "When," "Where," or a soft statement that opens into a question.
-
-Return ONLY raw JSON: { "questions": ["q1", "q2", "q3", "q4"] }`;
+    const prompt = `Act as a world-class transformational coach elevating the client's perspective.
+Context: Situation: ${stressor} | Experience: ${perception} | Body/Mind Focus: ${somatic}
+Return ONLY raw JSON: { "questions": ["Mirror question", "Pivot question", "Vision question", "Catalyst question"] }`;
     const raw = await callAI(prompt, true);
     return JSON.parse(raw.replace(/```json|```/g, '').trim()).questions;
   } catch {
-    return [
-      "What is the part of this that feels most unfair?",
-      "If this situation had something to teach you, what would it be trying to say?",
-      "If this stress had a voice right now, what would it say to you?",
-      "What would it feel like in your body if this wasn't weighing on you anymore?",
-    ];
+    return [getSmartQuestion(energyLevel, stressLevel)];
   }
 };
 
+// ── FIX 2: Decree font size and motivational strength ──
 const generateManifesto = async (
   stressor: string, truth: string, action: string, fear: string,
   currentLevel: number, onUpdate: (text: string) => void
 ): Promise<{ isOffline: boolean }> => {
   try {
-    const prompt = `${COACH_VOICE}
-
-A person has just completed a deep transformation session. Here is what they worked through:
-- What was weighing on them: "${stressor}"
-- The fear underneath it: "${fear}"
-- The new truth they've claimed: "${truth}"
-- The action they've committed to: "${action}"
-
-Write their Alchemist Decree — a personal declaration they will carry with them.
-
-Voice and form:
-- First person. Spoken directly from them, not about them.
-- Begin by acknowledging what they were carrying — one brief line that honors the weight without dwelling in it.
-- Move to the turn — the moment they chose differently.
-- Land on the truth they now stand in and the action that seals it.
-- Under 60 words total.
-- No jargon. No coaching language. No framework references.
-- It should feel like something worth reading twice.
-
+    const prompt = `Act as a world-class performance coach writing a battle cry — not a journal entry.
+Inputs: Stressor: "${stressor}" | Hidden Fear: "${fear}" | New Truth: "${truth}" | Commitment: "${action}"
+Guidelines:
+- First person ("I"). Under 60 words.
+- Open with a declaration of power, not an observation.
+- Use active, muscular language. No passive voice.
+- Must contain one moment of defiance — the person rejecting the old pattern.
+- End with the commitment as an unbreakable seal.
+- NO therapy language. NO jargon. Sound like a warrior who has just won a battle.
 Output ONLY the decree text. Nothing else.`;
     const text = (await callAI(prompt)).trim();
     onUpdate(text);
     return { isOffline: false };
   } catch {
-    const fallback = `I carried "${stressor}" longer than it deserved. Underneath it lived the fear that ${fear || 'I am not enough'}. I see it now — and I choose differently. The truth I stand in: ${truth}. The action that seals it: ${action}. This is my decree.`;
+    const fallback = `I hear the noise of "${stressor}" and the fear that ${fear || 'I am not enough'}. I honor the friction, but I refuse to reside in it. Standing in the undeniable truth that ${truth}, I am reclaiming my sovereignty. My action is my seal: ${action}.`;
     onUpdate(fallback);
     return { isOffline: true };
   }
@@ -483,69 +400,45 @@ Output ONLY the decree text. Nothing else.`;
 
 const generateEnergyInsight = async (level: number, type: string): Promise<string> => {
   try {
-    const prompt = `${COACH_VOICE}
-
-Someone is experiencing "${type}" right now.
-
-Write ONE sentence — a grounded, warm insight about energy and transformation that speaks directly to where they are.
-
-Not advice. Not a question. A truth that lands.
-Under 20 words. No jargon. No technical language. Make it feel like something a wise person would say quietly, not announce loudly.
-
-Output ONLY the sentence.`;
+    const prompt = `Provide ONE profound, 1-sentence insight about personal energy for someone experiencing '${type}'. Tone: Mystical, grounded, empowering. No technical terms.`;
     return (await callAI(prompt)).trim();
   } catch {
-    return "What you're feeling is information — not a verdict.";
+    return "Your energy is your currency. How you spend it determines your reality.";
   }
 };
 
 const generateHorizonQuestion = async (stressor: string, perception: string, historyText: string): Promise<string> => {
   try {
-    const prompt = `${COACH_VOICE}
-
-Someone is working through something real:
-- What's happening: "${stressor}"
-- How they experience it: "${perception}"
-- Some context about their pattern: ${historyText}
-
-Ask them ONE question in your voice.
-
-It should do one of these things:
-- Name what's underneath what they've described
-- Use a metaphor that creates experiential contact ("If this had a voice...")
-- Open something forward without bypassing where they are
-
-Under 20 words. One sentence. No sub-questions.
-Start with "What" or "Where" or a soft statement that opens into a question.
-
-Output ONLY the question.`;
+    const prompt = `Act as an expert transformational coach.
+Client's issue: "${stressor}" | Feeling: "${perception}" | Context: ${historyText}
+Ask ONE short, profound, open-ended coaching question (under 20 words) to uncover root friction.`;
     return (await callAI(prompt)).trim();
   } catch {
-    return "What is the part of this you haven't let yourself say out loud yet?";
+    return "What specifically feels most threatened by this situation right now?";
   }
 };
 
-const generateHorizonValidation = async (stressor: string, perception: string, historyText: string): Promise<string> => {
+const generateHorizonValidation = async (stressor: string, perception: string, historyText: string) => {
   try {
-    const prompt = `${COACH_VOICE}
-
-Someone has just shared what's weighing on them:
-- What's happening: "${stressor}"
-- How they're experiencing it: "${perception}"
-
-Deliver a warm, grounded validation in three parts. Use these exact HTML spans:
-
-1. <span class="block mb-2 font-bold text-teal-300">A short, specific acknowledgment — not "I hear you" but something that names what they're actually in. 5 words or fewer.</span>
-
-2. <span class="block mb-4 text-white/80 italic">Two sentences that honor the specific weight of their situation. Validate the experience without fixing it. Use "It must feel..." or "Of course..." or "No wonder...". Name something underneath what they said — the thing they may not have said directly but that you sense is there.</span>
-
-3. <span class="block font-bold text-white">One sentence that opens a door forward — not a pep talk, not a promise. Something that creates a felt sense of possibility without bypassing where they are.</span>
-
-Return ONLY the raw HTML. No markdown. No extra text.`;
-    const raw = (await callAI(prompt)).trim().replace(/```html|```/g, '').trim();
-    return sanitizeHtml(raw);
+    const prompt = `Act as an expert transformational coach. 
+    Client's issue: "${stressor}"
+    Client's feeling: "${perception}"
+    Conversation context: ${historyText}
+    
+    Task: Deliver a final empathetic validation. Return ONLY a raw JSON object with three keys:
+    1. "acknowledgment": A short, 2-3 word phrase (e.g., "I hear you.")
+    2. "validation": A specific, empathetic validation of their experience.
+    3. "pivot": The exact string "We can clear this static and reclaim your bandwidth. To shift this, we need to locate it."
+    
+    Return raw JSON only. No markdown formatting.`;
+    const raw = await callAI(prompt, true);
+    return JSON.parse(raw.replace(/```json|```/g, '').trim());
   } catch {
-    return sanitizeHtml(`<span class="block mb-2 font-bold text-teal-300">That's real weight.</span><span class="block mb-4 text-white/80 italic">It must feel hard, not knowing what to do and how to handle it. No wonder you feel this way — you've been holding something that has no clean answer.</span><span class="block font-bold text-white">What if this is the moment it starts to shift.</span>`);
+    return {
+      acknowledgment: "I hear you.",
+      validation: "It makes complete sense that you feel this way. You have been running on empty, and that takes a massive toll on your system.",
+      pivot: "We can clear this static and reclaim your bandwidth. To shift this, we need to locate it."
+    };
   }
 };
 
@@ -555,72 +448,24 @@ const generatePatternInsight = async (history: SessionRecord[]): Promise<string>
     const summary = history.slice(0, 5).map((s, i) =>
       `Session ${i + 1} (${new Date(s.date).toLocaleDateString()}): Stressor="${s.stressor}", Fear="${s.coreFear}", Stress ${s.preStress}→${s.postStress}`
     ).join('\n');
-    const prompt = `${COACH_VOICE}
-
-You are reviewing a person's recent session history:
+    const prompt = `You are an expert transformational coach reviewing a client's recent session history.
 ${summary}
-
-In 1-2 sentences, name the single most important pattern you see across these sessions.
-Be direct, warm, and specific. Not clinical. Not generic.
-Start with "I notice..." — then say something true that they may not have seen yet.
-No jargon. No framework language.`;
+In 1-2 sentences, identify the single most important pattern you notice across these sessions.
+Be direct, compassionate, and specific. No jargon. Start with "I notice..."`;
     return (await callAI(prompt)).trim();
   } catch {
     return "";
   }
 };
 
-const assessExitEnergy = async (
-  stressor: string,
-  expandingBelief: string,
-  commitment: string,
-  postStress: number,
-  postEnergy: number,
-  entryLevel: number
-): Promise<number> => {
-  try {
-    const prompt = `You are an expert Energy Leadership Master Practitioner (ELI-MP) assessing a client's energetic state after a transformation session.
-
-Entry: They began at Level ${entryLevel}.
-
-What they worked through:
-- Original stressor: "${stressor}"
-- New truth they claimed: "${expandingBelief}"
-- Action they committed to: "${commitment}"
-- Post-session stress (1-10, lower is better): ${postStress}
-- Post-session energy (1-10, higher is better): ${postEnergy}
-
-ELI reference:
-Level 1: Victim — "I lose." No agency. Pure catabolic.
-Level 2: Fighter — "I win, you lose." Defensive. Catabolic.
-Level 3: Rationalizer — "I cope." Tolerating. Mildly anabolic.
-Level 4: Caregiver — "You win." Compassion-led, self-depleting. Anabolic.
-Level 5: Opportunist — "We both win." Possibility-oriented. Anabolic.
-Level 6: Visionary — "Everyone wins." Intuition-led. High anabolic.
-Level 7: Creator — "I create." Purpose-aligned. Pure anabolic.
-
-Assessment criteria — weight in this order:
-1. Quality and depth of their expanding belief — is it a genuine reframe or a surface-level positive statement?
-2. Specificity of their commitment — vague intentions stay at entry level, concrete actions suggest movement
-3. Post-session self-ratings — confirming context, not primary driver
-
-The exit level should be equal to or higher than entry. Only go lower if the belief and commitment show no real shift AND stress increased.
-
-Return ONLY raw JSON: { "level": number, "rationale": "one sentence" }`;
-    const raw = await callAI(prompt, true);
-    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
-    return Math.min(7, Math.max(1, parsed.level));
-  } catch {
-    return Math.min(7, Math.max(entryLevel,
-      entryLevel + (postStress <= 3 ? 2 : postStress <= 5 ? 1 : 0)
-    ));
-  }
-};
+// ─────────────────────────────────────────────
+// SHARED STYLES
+// ─────────────────────────────────────────────
 const FontStyles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Inter:wght@200;300;400;500&display=swap');
     .font-serif { font-family: 'Cormorant Garamond', serif; }
-    .font-sans { font-family: 'Inter', sans-serif; }
+    .font-sans  { font-family: 'Inter', sans-serif; }
     .glass-panel { background: rgba(15,23,42,0.85); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
     .glass-button { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); transition: all 0.4s cubic-bezier(0.4,0,0.2,1); }
     .glass-button:active { transform: scale(0.98); }
@@ -642,15 +487,14 @@ const FontStyles = () => (
     input[type=range].slider-indigo::-webkit-slider-thumb { background:#6366f1; box-shadow:0 0 10px rgba(99,102,241,0.5); }
     .slide-up-fade { animation: slideUpFade 0.5s cubic-bezier(0.16,1,0.3,1) forwards; }
     @keyframes slideUpFade { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-    /* NEW: toast notification */
     .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:rgba(20,184,166,0.9); color:#0f172a; padding:10px 20px; border-radius:100px; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; animation: toastIn 0.3s ease, toastOut 0.3s ease 2s forwards; z-index:9999; }
-    @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(10px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+    @keyframes toastIn  { from{opacity:0;transform:translateX(-50%) translateY(10px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
     @keyframes toastOut { from{opacity:1} to{opacity:0} }
   `}</style>
 );
 
 // ─────────────────────────────────────────────
-// TOAST (replaces alert() for copy confirmations)
+// TOAST
 // ─────────────────────────────────────────────
 const Toast: React.FC<{ message: string; onDone: () => void }> = ({ message, onDone }) => {
   useEffect(() => { const t = setTimeout(onDone, 2500); return () => clearTimeout(t); }, []);
@@ -706,11 +550,11 @@ const Nav: React.FC<NavProps> = ({ title, subtitle, onBack, isDashboard, soundEn
 // ─────────────────────────────────────────────
 const Atmosphere: React.FC<{ bgState: string }> = ({ bgState }) => {
   const themes: Record<string, string> = {
-    neutral: "from-[#0f172a] via-[#1e1b4b] to-[#0f172a]",
-    friction: "from-[#2a0a12] via-[#1a0505] to-[#2a0a12]",
-    flow: "from-[#042f2e] via-[#022c22] to-[#042f2e]",
+    neutral:      "from-[#0f172a] via-[#1e1b4b] to-[#0f172a]",
+    friction:     "from-[#2a0a12] via-[#1a0505] to-[#2a0a12]",
+    flow:         "from-[#042f2e] via-[#022c22] to-[#042f2e]",
     preservation: "from-[#1c1917] via-[#292524] to-[#0c0a09]",
-    laser: "from-[#1e1b4b] via-[#312e81] to-[#1e1b4b]",
+    laser:        "from-[#1e1b4b] via-[#312e81] to-[#1e1b4b]",
   };
   return (
     <div className={`absolute inset-0 bg-gradient-to-b transition-colors duration-[3000ms] ${themes[bgState] || themes.neutral}`}>
@@ -746,70 +590,6 @@ const Welcome: React.FC<{ onEnter: () => void }> = ({ onEnter }) => (
   </div>
 );
 
-// ─────────────────────────────────────────────
-// ACCOUNTABILITY GATE
-// ─────────────────────────────────────────────
-const AccountabilityCheck: React.FC<{
-  lastSession: SessionRecord;
-  onComplete: () => void;
-}> = ({ lastSession, onComplete }) => {
-  const [responded, setResponded] = useState(false);
-  const [didExecute, setDidExecute] = useState(false);
-
-  const handleComplete = () => {
-    // Mark as shown for this browser session only
-    try { sessionStorage.setItem(STORAGE_KEYS.ACCOUNTABILITY_SHOWN, 'true'); } catch {}
-    onComplete();
-  };
-
-  return (
-    <div className="h-full flex flex-col justify-center px-6 text-center animate-enter overflow-y-auto hide-scrollbar">
-      <Target size={48} className="text-teal-400 mx-auto mb-6" />
-      <h2 className="font-serif text-3xl text-white italic mb-4">Accountability Check</h2>
-      {!responded ? (
-        <>
-          <p className="text-white/70 text-sm mb-6 leading-relaxed">In your last session, you committed to:</p>
-          <div className="p-6 bg-white/5 border border-white/10 rounded-xl mb-8 text-teal-300 font-serif text-xl italic shadow-inner">
-            "{lastSession.commitment}"
-          </div>
-          <p className="text-[10px] uppercase tracking-widest text-white/40 mb-6 font-bold">Did you follow through?</p>
-          <div className="grid grid-cols-1 gap-4">
-            <button
-              onClick={() => { setDidExecute(true); setResponded(true); }}
-              className="py-4 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 hover:bg-teal-500/30 uppercase text-xs tracking-widest font-bold transition-all"
-            >
-              Yes — I took action
-            </button>
-            <button
-              onClick={() => { setDidExecute(false); setResponded(true); }}
-              className="py-4 rounded-full bg-white/5 text-white/50 border border-white/10 hover:bg-white/10 uppercase text-xs tracking-widest font-bold transition-all"
-            >
-              Not yet
-            </button>
-          </div>
-        </>
-      ) : (
-        <div className="animate-enter flex flex-col items-center">
-          <p className="font-serif text-2xl text-white italic mb-10 leading-relaxed max-w-xs mx-auto">
-            {didExecute
-              ? "Action metabolizes fear. Your baseline is shifting."
-              : "Integration takes time. Carry the awareness into today."}
-          </p>
-          <button
-            onClick={handleComplete}
-            className="px-8 py-4 rounded-full bg-white text-slate-900 font-bold uppercase text-xs tracking-widest hover:bg-teal-400 transition-all"
-          >
-            Enter Dashboard
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────
-// MANIFESTO
-// ─────────────────────────────────────────────
 const Manifesto: React.FC<{ onContinue: () => void; onBack: () => void }> = ({ onContinue, onBack }) => (
   <div className="h-full flex flex-col justify-center animate-enter px-6 overflow-y-auto hide-scrollbar text-center relative">
     <button onClick={onBack} className="absolute top-6 left-2 p-3 rounded-full text-white/50 hover:text-white transition-colors z-50"><ChevronLeft size={24} /></button>
@@ -855,71 +635,26 @@ const Identity: React.FC<{ userName: string; setUserName: (n: string) => void; o
   </div>
 );
 
-const ELI_DATA: Record<number, { name: string; type: string; core: string; color: string }> = {
-  1: { name: "The Victim", type: "Catabolic", core: "I lose.", color: "text-rose-400" },
-  2: { name: "The Fighter", type: "Catabolic", core: "I win, you lose.", color: "text-orange-400" },
-  3: { name: "The Rationalizer", type: "Anabolic", core: "I cope.", color: "text-yellow-400" },
-  4: { name: "The Caregiver", type: "Anabolic", core: "You win.", color: "text-sky-400" },
-  5: { name: "The Opportunist", type: "Anabolic", core: "We both win.", color: "text-teal-400" },
-  6: { name: "The Visionary", type: "Anabolic", core: "Everyone wins.", color: "text-indigo-400" },
-  7: { name: "The Creator", type: "Anabolic", core: "I create.", color: "text-violet-400" },
-};
-
-const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, setView, toggleSound, soundEnabled, onBack }) => {
-  const level = energyAnalysis?.level ?? null;
-  const eli = level ? ELI_DATA[level] : null;
-
-  return (
-    <div className="h-full flex flex-col justify-center px-4 animate-enter">
-      <Nav title="Current Resonance" subtitle="The Lens" isDashboard={false} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={5} onBack={onBack} />
-      <div className="flex-1 flex flex-col justify-center items-center text-center pb-8 overflow-y-auto hide-scrollbar">
-
-        <div className="mb-6 p-5 rounded-full bg-indigo-500/10 border border-indigo-500/20">
-          <Compass size={40} className="text-indigo-300" />
-        </div>
-
-        <h3 className="font-serif text-2xl text-white italic mb-5">"Here is what I sense..."</h3>
-
-        {/* AI Reflection */}
-        <div className="p-5 rounded-[20px] bg-white/5 border border-white/10 mb-5 max-w-sm w-full">
-          <p className="font-serif text-lg text-white/90 italic leading-relaxed">
-            "{energyAnalysis?.reflection || "Connecting to your field..."}"
-          </p>
-        </div>
-
-        {/* Entry Level — introduced here for the first time */}
-        {eli && level && (
-          <div className="w-full max-w-sm mb-6">
-            <div className="bg-white/5 border border-white/10 rounded-[20px] p-5 text-left">
-              <p className="text-[9px] font-bold uppercase tracking-widest text-white/30 mb-3">Your Entry Energy Level</p>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                  <span className={`font-serif text-xl font-bold ${eli.color}`}>{level}</span>
-                </div>
-                <div>
-                  <p className={`font-bold text-sm ${eli.color}`}>{eli.name}</p>
-                  <p className="text-[9px] uppercase tracking-widest text-white/30">{eli.type} Energy</p>
-                </div>
-              </div>
-              <p className="font-serif text-sm text-white/60 italic border-t border-white/5 pt-3">
-                Core thought at this level: <span className="text-white/80">"{eli.core}"</span>
-              </p>
-              <p className="text-[9px] text-white/30 mt-2 leading-relaxed">
-                Energy levels run from 1 (Catabolic — draining) to 7 (Anabolic — generative). This session will shift yours.
-              </p>
-            </div>
-          </div>
-        )}
-
-        <button onClick={() => setView('fork_entry')} className="w-full py-5 rounded-full bg-indigo-500 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-indigo-400 hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-all max-w-sm">
-          Shift This Energy
-        </button>
+const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, setView, toggleSound, soundEnabled, onBack }) => (
+  <div className="h-full flex flex-col justify-center px-4 animate-enter">
+    <Nav title="Current Resonance" subtitle="The Lens" isDashboard={false} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={5} onBack={onBack} />
+    <div className="flex-1 flex flex-col justify-center items-center text-center pb-12 overflow-y-auto hide-scrollbar">
+      <div className="mb-8 p-6 rounded-full bg-indigo-500/10 border border-indigo-500/20">
+        <Compass size={48} className="text-indigo-300" />
       </div>
+      <h3 className="font-serif text-2xl text-white italic mb-6">"Here is what I sense..."</h3>
+      <div className="p-6 rounded-[24px] bg-white/5 border border-white/10 mb-8 max-w-sm">
+        <p className="font-serif text-lg text-white/90 italic leading-relaxed">"{energyAnalysis?.reflection || "Connecting to your field..."}"</p>
+      </div>
+      <p className="font-sans text-xs text-white/40 max-w-xs leading-relaxed mb-10">This is your current energetic baseline. We will now shift this frequency.</p>
+      <button onClick={() => setView('fork_entry')} className="w-full py-5 rounded-full bg-indigo-500 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-indigo-400 hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-all">
+        Shift This Energy
+      </button>
     </div>
-  );
-};
+  </div>
+);
 
-const ForkEntry: React.FC<ForkEntryProps> = ({ setView, toggleSound, soundEnabled, onBack }) => (
+const ForkEntry: React.FC<ForkEntryProps> = ({ setView, toggleSound, soundEnabled, onBack, setFrictionSource }) => (
   <div className="h-full flex flex-col px-4">
     <Nav title="The Source" subtitle="Origin Point" onBack={onBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={10} />
     <div className="flex-1 flex flex-col justify-center gap-6 animate-enter overflow-y-auto hide-scrollbar pb-4">
@@ -927,14 +662,14 @@ const ForkEntry: React.FC<ForkEntryProps> = ({ setView, toggleSound, soundEnable
         <h2 className="font-serif text-2xl text-white italic mb-2">Where is the friction loudest?</h2>
         <p className="text-xs text-white/50">Stress has two addresses. Choose the one calling for attention.</p>
       </div>
-      <button onClick={() => setView('somatic')} className="p-6 rounded-[24px] glass-panel group text-left hover:bg-white/5 transition-all border border-transparent hover:border-teal-500/30">
+      <button onClick={() => { setFrictionSource('body'); setView('somatic'); }} className="p-6 rounded-[24px] glass-panel group text-left hover:bg-white/5 transition-all border border-transparent hover:border-teal-500/30">
         <div className="flex items-center gap-4 mb-3">
           <div className="p-3 rounded-full bg-teal-500/10 text-teal-300 group-hover:scale-110 transition-transform"><Activity size={24} /></div>
           <div><h3 className="font-serif text-xl text-white italic">The Body</h3><p className="text-[10px] uppercase tracking-widest text-white/40">Heaviness & Tension</p></div>
         </div>
         <p className="text-xs text-white/60 leading-relaxed pl-[60px]">Tightness in chest, knot in gut, heavy shoulders, exhaustion.</p>
       </button>
-      <button onClick={() => setView('diffuser')} className="p-6 rounded-[24px] glass-panel group text-left hover:bg-white/5 transition-all border border-transparent hover:border-indigo-500/30">
+      <button onClick={() => { setFrictionSource('mind'); setView('diffuser'); }} className="p-6 rounded-[24px] glass-panel group text-left hover:bg-white/5 transition-all border border-transparent hover:border-indigo-500/30">
         <div className="flex items-center gap-4 mb-3">
           <div className="p-3 rounded-full bg-indigo-500/10 text-indigo-300 group-hover:scale-110 transition-transform"><CloudFog size={24} /></div>
           <div><h3 className="font-serif text-xl text-white italic">The Mind</h3><p className="text-[10px] uppercase tracking-widest text-white/40">Racing Thoughts & Loops</p></div>
@@ -974,30 +709,29 @@ const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setView, toggleSound
 };
 
 // ─────────────────────────────────────────────
-// HORIZON (with session-memory panel)
+// HORIZON
 // ─────────────────────────────────────────────
 const Horizon: React.FC<HorizonProps> = ({
   userName, sessionCount, stressor, setStressor, perception, setPerception,
   setView, toggleSound, soundEnabled, resetApp, setEnergyAnalysis,
-  soundType, setSoundType, onBack, sessionHistory, rapidFire,
+  soundType, setSoundType, onBack, sessionHistory,
   stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout,
+  setFrictionSource
 }) => {
-  const [step, setStep] = useState<'intake'|'chat'>('intake');
-  const [chatInput, setChatInput] = useState('');
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [step, setStep]                   = useState<'intake'|'chat'|'routing'>('intake');
+  const [chatInput, setChatInput]         = useState('');
+  const [chatHistory, setChatHistory]     = useState<ChatMessage[]>([]);
   const [aiQuestionCount, setAiQuestionCount] = useState(0);
   const [showChatInput, setShowChatInput] = useState(true);
   const [showRouteButton, setShowRouteButton] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
+  const [isTyping, setIsTyping]           = useState(false);
   const [isBurnoutIntercept, setIsBurnoutIntercept] = useState(false);
-  const [patternInsight, setPatternInsight] = useState('');
-  const [loadingPattern, setLoadingPattern] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [patternInsight, setPatternInsight]   = useState('');
+  const [loadingPattern, setLoadingPattern]   = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatHistory, isTyping, isBurnoutIntercept]);
 
-  // Load pattern insight when there's history
   useEffect(() => {
     if (sessionHistory.length >= 2 && step === 'intake') {
       setLoadingPattern(true);
@@ -1009,16 +743,9 @@ const Horizon: React.FC<HorizonProps> = ({
   }, []);
 
   const handleInternalBack = () => {
-    if (step === 'chat') setStep('intake');
+    if (step === 'routing') setStep('chat');
+    else if (step === 'chat') setStep('intake');
     else if (onBack) onBack();
-  };
-
-  const handleProceed = async () => {
-    setIsAnalyzing(true);
-    const analysis = await analyzeCurrentEnergy(stressor, perception, stressLevel, energyLevel);
-    setEnergyAnalysis(analysis);
-    setIsAnalyzing(false);
-    setView('energy_reflection');
   };
 
   const checkDepletion = (text: string) => {
@@ -1027,10 +754,8 @@ const Horizon: React.FC<HorizonProps> = ({
   };
 
   const startAIConversation = async () => {
-    if (stressor.length < 5 || perception.length < 5) {
-      // inline validation instead of alert()
-      return;
-    }
+    if (stressor.length < 5 || perception.length < 5) return;
+    
     setStep('chat');
     setAiQuestionCount(0);
     setShowChatInput(false);
@@ -1108,7 +833,6 @@ const Horizon: React.FC<HorizonProps> = ({
 
         {step === 'intake' && (
           <>
-            {/* ── 7-DAY TRACKER ── */}
             <div className="glass-panel p-4 rounded-[24px] border-teal-500/20 relative group">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
@@ -1128,7 +852,6 @@ const Horizon: React.FC<HorizonProps> = ({
               </div>
             </div>
 
-            {/* ── PATTERN INSIGHT (new – shows if ≥2 sessions) ── */}
             {sessionHistory.length >= 2 && (
               <div className="glass-panel p-5 rounded-[20px] border border-indigo-500/20 bg-indigo-900/10">
                 <div className="flex items-center gap-2 mb-2">
@@ -1140,7 +863,6 @@ const Horizon: React.FC<HorizonProps> = ({
                 ) : (
                   <p className="font-serif text-sm text-white/80 italic leading-relaxed">{patternInsight || "Connecting patterns..."}</p>
                 )}
-                {/* Last session delta */}
                 {sessionHistory[0] && (
                   <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between">
                     <span className="text-[9px] text-white/30 uppercase tracking-widest">Last session</span>
@@ -1155,10 +877,10 @@ const Horizon: React.FC<HorizonProps> = ({
               </div>
             )}
 
-            {/* ── INTAKE FORM ── */}
             <div className="glass-panel p-8 rounded-[2rem] border border-white/10 shadow-sm animate-[slideUpFade_0.5s_ease-out_forwards]">
               <h2 className="text-3xl font-serif italic text-white mb-2">The Horizon</h2>
               <p className="text-xs text-white/50 mb-8 uppercase tracking-widest font-bold">Current State Diagnostic</p>
+              
               <div className="space-y-6">
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-teal-400 mb-3">What is weighing on you?</label>
@@ -1168,11 +890,32 @@ const Horizon: React.FC<HorizonProps> = ({
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-teal-400 mb-3">How are you experiencing this?</label>
                   <textarea value={perception} onChange={e => setPerception(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-sm h-24 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic placeholder:text-white/20" placeholder="I am exhausted and resentful..." />
                 </div>
-                {/* Inline validation */}
-                {(stressor.length > 0 && stressor.length < 5) || (perception.length > 0 && perception.length < 5) ? (
-                  <p className="text-[10px] text-rose-400 uppercase tracking-widest">Please add a bit more detail to both fields.</p>
-                ) : null}
               </div>
+
+              <div className="mt-8 pt-8 border-t border-white/10 space-y-6">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-2">Internal Weather Baseline</h3>
+                
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs text-white/70 uppercase tracking-widest">Stress / Friction</label>
+                    <span className="text-rose-400 font-serif text-xl">{stressLevel}</span>
+                  </div>
+                  <input type="range" min={1} max={10} value={stressLevel} onChange={e => setStressLevel(parseInt(e.target.value))} className="w-full slider-amber" />
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs text-white/70 uppercase tracking-widest">Available Energy</label>
+                    <span className="text-teal-400 font-serif text-xl">{energyLevel}</span>
+                  </div>
+                  <input type="range" min={1} max={10} value={energyLevel} onChange={e => setEnergyLevel(parseInt(e.target.value))} className="w-full slider-indigo" />
+                </div>
+              </div>
+
+              {(stressor.length > 0 && stressor.length < 5) || (perception.length > 0 && perception.length < 5) ? (
+                <p className="text-[10px] text-rose-400 uppercase tracking-widest mt-4">Please add a bit more detail to both fields.</p>
+              ) : null}
+
               <button onClick={startAIConversation} disabled={stressor.length < 5 || perception.length < 5} className="w-full mt-8 py-4 bg-white text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest text-center shadow-lg hover:bg-teal-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                 Begin Calibration
               </button>
@@ -1188,9 +931,15 @@ const Horizon: React.FC<HorizonProps> = ({
             <div className="flex-1 overflow-y-auto flex flex-col mb-4 pr-2 pb-4 space-y-2 hide-scrollbar">
               {chatHistory.map((msg, idx) => (
                 <div key={idx} className={`animate-[slideUpFade_0.3s_ease-out_forwards] ${msg.role === 'ai' ? 'bg-white/10 border border-white/10 text-white rounded-[1rem_1rem_1rem_0] p-4 max-w-[90%] self-start mb-3 font-serif text-[1.1rem] leading-relaxed shadow-sm' : 'bg-teal-500/20 text-teal-100 border border-teal-500/30 rounded-[1rem_1rem_0_1rem] p-3 px-4 max-w-[85%] self-end mb-3 text-sm'}`}>
-                  {msg.isHtml
-                    ? <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.text) }} />
-                    : msg.text}
+                  {msg.isHtml ? (
+                    typeof msg.text === 'string' ? <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.text) }} /> : (
+                      <>
+                        <span className="block mb-2 font-bold text-teal-300">{msg.text.acknowledgment}</span>
+                        <span className="block mb-4 text-white/80 italic">{msg.text.validation}</span>
+                        <span className="block font-bold text-white">{msg.text.pivot}</span>
+                      </>
+                    )
+                  ) : msg.text}
                 </div>
               ))}
               {isTyping && (
@@ -1219,17 +968,38 @@ const Horizon: React.FC<HorizonProps> = ({
               </div>
             )}
             {showRouteButton && (
-              <button onClick={handleProceed} disabled={isAnalyzing} className="w-full mt-4 py-4 bg-teal-500 text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest text-center shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:bg-teal-400 transition-all animate-[slideUpFade_0.5s_ease-out_forwards] disabled:opacity-60 disabled:cursor-not-allowed">
-                {isAnalyzing ? (
-                  <><Loader2 size={14} className="animate-spin inline mr-2" />Synthesizing Baseline...</>
-                ) : (
-                  "See Energetic Baseline →"
-                )}
+              <button onClick={() => setStep('routing')} className="w-full mt-4 py-4 bg-teal-500 text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest text-center shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:bg-teal-400 transition-all animate-[slideUpFade_0.5s_ease-out_forwards]">
+                Locate the Friction →
               </button>
             )}
           </div>
         )}
 
+        {step === 'routing' && (
+          <div className="glass-panel p-8 rounded-[2rem] border border-white/10 shadow-sm text-center animate-[slideUpFade_0.5s_ease-out_forwards]">
+            <Compass size={32} className="text-teal-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-serif italic text-white mb-2">Initiate Shift</h2>
+            <p className="text-sm text-white/50 mb-8">Where is this pressure residing right now?</p>
+            <div className="grid grid-cols-1 gap-4">
+              <button onClick={() => { setFrictionSource('body'); setView('somatic'); }} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-teal-500/50 transition-all group relative overflow-hidden text-left">
+                <div className="absolute inset-0 bg-teal-500 opacity-0 group-hover:opacity-10 transition-opacity" />
+                <div className="flex items-center gap-3 mb-2">
+                  <Activity size={20} className="text-white/40 group-hover:text-teal-400 transition-colors" />
+                  <h3 className="font-bold text-white text-sm tracking-wide uppercase group-hover:text-teal-400 transition-colors">My Body</h3>
+                </div>
+                <p className="text-xs text-white/50">Tension, shallow breathing, physical static.</p>
+              </button>
+              <button onClick={() => { setFrictionSource('mind'); setView('laser'); }} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-indigo-500/50 transition-all group relative overflow-hidden text-left">
+                <div className="absolute inset-0 bg-indigo-500 opacity-0 group-hover:opacity-10 transition-opacity" />
+                <div className="flex items-center gap-3 mb-2">
+                  <Brain size={20} className="text-white/40 group-hover:text-indigo-400 transition-colors" />
+                  <h3 className="font-bold text-white text-sm tracking-wide uppercase group-hover:text-indigo-400 transition-colors">My Mind</h3>
+                </div>
+                <p className="text-xs text-white/50">Racing thoughts, looping narratives, cognitive fog.</p>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1272,10 +1042,10 @@ const Vessel: React.FC<VesselProps> = ({ somaticZones, setSomaticZones, setView,
 const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensation, protection, setProtection, fear, setFear, expandingBelief, setExpandingBelief, partsStep, setPartsStep, setView, toggleSound, soundEnabled, onBack }) => {
   const handleBack = () => {
     if (partsStep === 'experience') onBack?.();
-    else if (partsStep === 'unblend') setPartsStep('experience');
-    else if (partsStep === 'connect') setPartsStep('unblend');
-    else if (partsStep === 'message') setPartsStep('connect');
-    else if (partsStep === 'channel') setPartsStep('message');
+    else if (partsStep === 'unblend')  setPartsStep('experience');
+    else if (partsStep === 'connect')  setPartsStep('unblend');
+    else if (partsStep === 'message')  setPartsStep('connect');
+    else if (partsStep === 'channel')  setPartsStep('message');
   };
   return (
     <div className="h-full flex flex-col">
@@ -1342,7 +1112,7 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
 // ─────────────────────────────────────────────
 // LASER COACHING
 // ─────────────────────────────────────────────
-const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, somatic, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setGoalStep, energyLevel, stressLevel, onBack }) => {
+const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, somatic, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, energyLevel, stressLevel, onBack }) => {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<any>({ topic: '', result: '', permission: '', action: '' });
   const [aiQuestions, setAiQuestions] = useState<string[]>([]);
@@ -1351,7 +1121,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
   useEffect(() => {
     if (aiQuestions.length === 0) {
       setLoading(true);
-      generateCoachingQuestions(stressor || "General Stress", perception || "Feeling Stuck", somatic || "Body", energyLevel, stressLevel)
+      generateCoachingQuestions(stressor || "General Stress", perception || "Feeling Stuck", somatic, energyLevel, stressLevel)
         .then(q => { setAiQuestions(q); setLoading(false); });
     }
   }, []);
@@ -1364,10 +1134,10 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
   };
 
   const currentQ = [
-    { id: 'topic', label: 'The Insight', q: aiQuestions[0] || "Connecting to the field...", ph: 'My insight is...' },
-    { id: 'result', label: 'The Vision', q: aiQuestions[1] || "If this shifted, what state or outcome would you experience?", ph: 'I want to...' },
-    { id: 'permission', label: 'Permission', q: aiQuestions[2] || "What permission do you need to give yourself to move forward?", ph: 'I give myself permission to...' },
-    { id: 'action', label: 'The Move', q: aiQuestions[3] || "What is the single boldest step that makes everything else easier?", ph: 'I will...' },
+    { id: 'topic',      label: 'The Insight',   q: aiQuestions[0] || "Connecting to the field...", ph: 'My insight is...' },
+    { id: 'result',     label: 'The Vision',     q: aiQuestions[1] || "If this shifted, what state or outcome would you experience?", ph: 'I want to...' },
+    { id: 'permission', label: 'Permission',     q: aiQuestions[2] || "What permission do you need to give yourself to move forward?", ph: 'I give myself permission to...' },
+    { id: 'action',     label: 'The Move',       q: aiQuestions[3] || "What is the single boldest step that makes everything else easier?", ph: 'I will...' },
   ][step];
 
   const handleNext = () => {
@@ -1414,7 +1184,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
 // ─────────────────────────────────────────────
 const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, ability, setAbility, setView, toggleSound, soundEnabled, onBack }) => {
   const flowState = ability >= pressure;
-  const deficit = pressure - ability;
+  const deficit   = pressure - ability;
   return (
     <div className="h-full flex flex-col">
       <Nav title="The Perspective" subtitle="Calibration" onBack={onBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={50} />
@@ -1483,10 +1253,9 @@ const Crossroads: React.FC<CrossroadsProps> = ({ setView, toggleSound, soundEnab
 };
 
 // ─────────────────────────────────────────────
-// BREATH (enhanced with sound engine integration)
+// BREATH
 // ─────────────────────────────────────────────
 const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, setBreathCount, setView, toggleSound, soundEnabled, onBack }) => {
-  // Box breathing: 4 in, 4 hold, 4 out, 4 hold
   const PHASE_LEN = 4;
   const CYCLE_LEN = PHASE_LEN * 4;
   const phaseIndex = breathCount % CYCLE_LEN;
@@ -1513,11 +1282,10 @@ const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, s
     const i = setInterval(() => {
       setBreathCount((c: number) => {
         const next = c + 1;
-        // Play breath tone on phase transitions
         const idx = next % CYCLE_LEN;
-        if (idx === 0) soundEngine.playBreathTone(523, 0.4); // C5 – inhale start
-        else if (idx === PHASE_LEN) soundEngine.playBreathTone(392, 0.3); // G4 – hold
-        else if (idx === PHASE_LEN * 2) soundEngine.playBreathTone(349, 0.5); // F4 – exhale
+        if (idx === 0)              soundEngine.playBreathTone(523, 0.4);  
+        else if (idx === PHASE_LEN) soundEngine.playBreathTone(392, 0.3);  
+        else if (idx === PHASE_LEN * 2) soundEngine.playBreathTone(349, 0.5); 
         return next;
       });
     }, 1000);
@@ -1540,7 +1308,6 @@ const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, s
       <Nav title="Regulation" subtitle="Box Breath" onBack={onBack} toggleSound={toggleSound} soundEnabled={soundEnabled} />
       <div className="flex-1 flex flex-col items-center justify-center relative overflow-y-auto hide-scrollbar pb-4">
 
-        {/* Cycle counter */}
         {breathing && (
           <div className="mb-6 flex gap-2">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -1562,7 +1329,6 @@ const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, s
           </div>
         </div>
 
-        {/* Phase label */}
         {breathing && (
           <p className="mt-6 text-[10px] uppercase tracking-[0.3em] text-white/30 font-bold">
             {phase === 'Inhale' ? 'Through the nose' : phase === 'Exhale' ? 'Through the mouth' : 'Still'}
@@ -1600,16 +1366,16 @@ const Insight: React.FC<InsightProps> = ({ expandingBelief, setExpandingBelief, 
 );
 
 // ─────────────────────────────────────────────
-// ALCHEMY (chemistry type now stored in state)
+// ALCHEMY
 // ─────────────────────────────────────────────
 const Alchemy: React.FC<AlchemyProps & { setAlchemyType: (t: string) => void }> = ({ setView, toggleSound, soundEnabled, onBack, setAlchemyType }) => (
   <div className="h-full flex flex-col">
     <Nav title="Vitality Alchemy" subtitle="Select Chemistry" onBack={onBack} toggleSound={toggleSound} soundEnabled={soundEnabled} />
     <div className="flex-1 space-y-4 px-4 pt-4 overflow-y-auto hide-scrollbar pb-4">
       {[
-        { id: 'perform', label: 'Performance', desc: 'Sharpen focus and executive capacity.', icon: Zap },
-        { id: 'connect', label: 'Connection', desc: 'Open the heart. Deepen relationships.', icon: Heart },
-        { id: 'learn', label: 'Expansion', desc: 'Build new neural pathways. Grow.', icon: BookOpen },
+        { id: 'perform',  label: 'Performance', desc: 'Sharpen focus and executive capacity.',    icon: Zap   },
+        { id: 'connect',  label: 'Connection',  desc: 'Open the heart. Deepen relationships.',    icon: Heart },
+        { id: 'learn',    label: 'Expansion',   desc: 'Build new neural pathways. Grow.',         icon: BookOpen },
       ].map(i => (
         <button key={i.id} onClick={() => { setAlchemyType(i.id); setView('integration'); }} className="w-full p-6 rounded-[24px] glass-panel text-left hover:bg-white/5 transition-all">
           <i.icon className="text-white/80 mb-2" size={24} />
@@ -1627,9 +1393,9 @@ const Alchemy: React.FC<AlchemyProps & { setAlchemyType: (t: string) => void }> 
 const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
   const [step, setStep] = useState(0);
   const steps = [
-    { icon: Mountain, title: "Physiology", instruction: "Change your state immediately. Stand up. Shoulders back. Deep breath. Look up.", action: "I am ready." },
-    { icon: Anchor, title: "Somatic Anchor", instruction: "Where do you feel this new power in your body? Put your hand there now.", action: "I feel it." },
-    { icon: Eye, title: "Visualization", instruction: "Close your eyes. See the goal achieved. Feel the emotion of the win in your body.", action: "Seal it." },
+    { icon: Mountain, title: "Physiology",      instruction: "Change your state immediately. Stand up. Shoulders back. Deep breath. Look up.", action: "I am ready." },
+    { icon: Anchor,   title: "Somatic Anchor",  instruction: "Where do you feel this new power in your body? Put your hand there now.", action: "I feel it." },
+    { icon: Eye,      title: "Visualization",   instruction: "Close your eyes. See the goal achieved. Feel the emotion of the win in your body.", action: "Seal it." },
   ];
   const current = steps[step];
   const next = () => { if (step < steps.length - 1) setStep(step + 1); else onComplete(); };
@@ -1647,7 +1413,7 @@ const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
 };
 
 // ─────────────────────────────────────────────
-// INTEGRATION (with AI-assessed exit level)
+// INTEGRATION
 // ─────────────────────────────────────────────
 const Integration: React.FC<IntegrationProps> = ({
   goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked,
@@ -1656,61 +1422,80 @@ const Integration: React.FC<IntegrationProps> = ({
   isBurnoutPath, userName, energyAnalysis, stressLevel, energyLevel,
   postStressLevel, setPostStressLevel, postEnergyLevel, setPostEnergyLevel,
   onBack, saveSession,
-}) => {
-  const [primingDone, setPrimingDone] = useState(false);
-  const [manifesto, setManifesto] = useState("");
-  const [generating, setGenerating] = useState(false);
-  const [isOffline, setIsOffline] = useState(false);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMsg, setToastMsg] = useState("");
+}: any) => {
+  const [primingDone,  setPrimingDone]  = useState(false);
+  const [manifesto,    setManifesto]    = useState("");
+  const [generating,   setGenerating]   = useState(false);
+  const [isOffline,    setIsOffline]    = useState(false);
+  const [showToast,    setShowToast]    = useState(false);
+  const [toastMsg,     setToastMsg]     = useState("");
   const [sessionSaved, setSessionSaved] = useState(false);
-  const [exitLevel, setExitLevel] = useState<number | null>(null);
-  const [assessingExit, setAssessingExit] = useState(false);
-  const assessTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Pre/post sliders
-  const [preStress, setPreStress] = useState(stressLevel);
   const [postStress, setPostStress] = useState(stressLevel);
   const [postEnergy, setPostEnergy] = useState(energyLevel);
 
-  const stressDelta = postStress - preStress;
-  const entryLevel = energyAnalysis?.level ?? 2;
+  const stressDelta = postStress - stressLevel;
+  const energyDelta = postEnergy - energyLevel;
+  const entryLevel   = energyAnalysis?.level ?? 2;
+  
+  // ── Dynamic Level Math ──
+  const exitLevel = Math.min(7, Math.max(entryLevel,
+    entryLevel + (stressDelta <= -4 ? 3 : stressDelta <= -2 ? 2 : stressDelta < 0 ? 1 : 0)
+  ));
 
-  // Run AI exit assessment whenever sliders change (debounced 800ms)
-  useEffect(() => {
-    if (!isLocked) return;
-    if (assessTimeout.current) clearTimeout(assessTimeout.current);
-    assessTimeout.current = setTimeout(async () => {
-      setAssessingExit(true);
-      const level = await assessExitEnergy(
-        stressor, expandingBelief, goal.action || '', postStress, postEnergy, entryLevel
-      );
-      setExitLevel(level);
-      setAssessingExit(false);
-    }, 800);
-    return () => { if (assessTimeout.current) clearTimeout(assessTimeout.current); };
-  }, [postStress, postEnergy, isLocked]);
+  const ELI_LABELS: Record<number, string> = {
+    1: "Victim", 2: "Conflict", 3: "Responsibility",
+    4: "Concern", 5: "Opportunity", 6: "Synthesis", 7: "Creation",
+  };
 
-  // Save session only after exitLevel is resolved by AI
+  const getAssessment = () => {
+    if (stressDelta === 0 && energyDelta === 0) {
+      return {
+        status: "Baseline Unchanged",
+        color: "text-white/60",
+        read: "Your internal weather has not shifted yet. This is normal. Sometimes the protocol merely stops the downward spiral. Focus on grounding and revisit this architecture when you have more bandwidth.",
+      };
+    } else if (stressDelta >= 0 && energyDelta <= 0) {
+      return {
+        status: "Persistent Friction",
+        color: "text-rose-400",
+        read: `Your system is heavily gripping the stress of "${stressor.substring(0, 30)}...". Do not force high-output action today. Lower your expectations, strip away non-essential tasks, and focus purely on biological regulation.`,
+      };
+    } else if (stressDelta < 0 && postStress <= 4) {
+      return {
+        status: "Deep Anabolic Shift",
+        color: "text-teal-400",
+        read: `Exceptional. You successfully metabolized ${Math.abs(stressDelta)} points of active friction and dropped your stress into the clear zone. You have reclaimed your cognitive bandwidth. Execute your commitment now.`,
+      };
+    } else {
+      return {
+        status: "Friction Metabolized",
+        color: "text-indigo-400",
+        read: `You successfully discharged ${Math.abs(stressDelta)} points of stress. You are stabilizing. The storm has passed, but guard your energy closely over the next 48 hours to lock in this new baseline.`,
+      };
+    }
+  };
+  const assessment = getAssessment();
+
   useEffect(() => {
-    if (isLocked && !sessionSaved && exitLevel !== null) {
+    if (isLocked && !sessionSaved) {
       const record: SessionRecord = {
-        date: new Date().toISOString(),
+        date:            new Date().toISOString(),
         stressor,
-        preStress: preStress,
-        postStress: postStress,
-        preEnergy: energyLevel,
-        postEnergy: postEnergy,
-        coreFear: fear,
+        preStress:       stressLevel,
+        postStress:      postStress,
+        preEnergy:       energyLevel,
+        postEnergy:      postEnergy,
+        coreFear:        fear,
         expandingBelief,
-        commitment: `${goal.action} (${goal.when})`,
-        energyLevel: exitLevel,
+        commitment:      `${goal.action} (${goal.when})`,
+        energyLevel:     exitLevel,
       };
       saveSession(record);
       setSessionSaved(true);
       completeSession();
     }
-  }, [isLocked, exitLevel, sessionSaved]);
+  }, [isLocked]);
 
   useEffect(() => {
     if (isLocked) {
@@ -1729,15 +1514,14 @@ const Integration: React.FC<IntegrationProps> = ({
 
   const quickTimes = ["Now", "Within 1 Hr", "Today", "Tomorrow"];
   const steps = [
-    { id: 'outcome', q: 'The Goal', ph: 'Desired outcome?' },
-    { id: 'action', q: 'The Action', ph: 'Single step?' },
-    { id: 'when', q: 'The Commitment', ph: 'When?' },
+    { id: 'outcome', q: 'The Goal',       ph: 'Desired outcome?' },
+    { id: 'action',  q: 'The Action',     ph: 'Single step?'     },
+    { id: 'when',    q: 'The Commitment', ph: 'When?'            },
   ];
   const current = steps[Math.min(goalStep, 2)];
-  const handleBack = () => { if (goalStep > 0) setGoalStep(goalStep - 1); else onBack?.(); };
+  const handleBack     = () => { if (goalStep > 0) setGoalStep(goalStep - 1); else onBack?.(); };
   const handleNextStep = () => { if (goalStep < 2) setGoalStep(goalStep + 1); else setIsLocked(true); };
 
-  // Copy decree — async, with toast
   const copyArtifact = async () => {
     const text = `ADAPTIV DECREE\n\n${manifesto}\n\nCommitment: ${goal.action} (${goal.when})`;
     try {
@@ -1751,12 +1535,12 @@ const Integration: React.FC<IntegrationProps> = ({
 
   const generateEmailLink = () => {
     const subject = `My Adaptiv Decree`;
-    const body = `${manifesto}\n\nMy Commitment: ${goal.action} (${goal.when})`;
+    const body    = `${manifesto}\n\nMy Commitment: ${goal.action} (${goal.when})`;
     return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   const generateCalendarLink = () => {
-    const text = `Adaptiv Commitment: ${goal.action}`;
+    const text    = `Adaptiv Commitment: ${goal.action}`;
     const details = `${manifesto}\n\nGenerated by Adaptiv`;
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(text)}&details=${encodeURIComponent(details)}`;
   };
@@ -1771,121 +1555,122 @@ const Integration: React.FC<IntegrationProps> = ({
   }
 
   if (isLocked) {
-    const displayExitLevel = exitLevel ?? entryLevel;
-    const entryELI = ELI_DATA[entryLevel];
-    const exitELI = ELI_DATA[displayExitLevel];
-    const levelMoved = displayExitLevel > entryLevel;
-    const levelSame = displayExitLevel === entryLevel;
-
     return (
       <div className="h-full flex flex-col px-4 text-center justify-center">
-        <Nav title="Integration" subtitle="Blueprint Complete" onBack={() => setView('dashboard')} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={100} aiActive={generating || assessingExit} />
+        <Nav title="Integration" subtitle="Blueprint Complete" onBack={() => setView('dashboard')} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={100} aiActive={generating} />
         {showToast && <Toast message={toastMsg} onDone={() => setShowToast(false)} />}
 
         <div className="flex-1 overflow-y-auto hide-scrollbar pb-20 pt-4">
 
-          {/* ── KINETIC SHIFT CARD ── */}
-          <div className="glass-panel p-6 rounded-[2rem] border-t-4 border-teal-500 shadow-2xl text-center mb-6 animate-enter">
-            <h2 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40 mb-5">Kinetic Shift Detected</h2>
-
-            {/* ELI level transition — AI assessed, with names and meanings */}
-            {assessingExit ? (
-              <div className="flex items-center justify-center gap-2 mb-6 text-white/40">
-                <Loader2 size={14} className="animate-spin text-teal-400" />
-                <span className="text-xs">Assessing your exit energy...</span>
-              </div>
-            ) : (
-              <div className="mb-5">
-                <div className="flex items-center justify-center gap-3 mb-4">
-                  {/* Entry level card */}
-                  <div className="flex-1 bg-white/5 rounded-2xl p-4 border border-white/5">
-                    <p className="text-[8px] uppercase tracking-widest text-white/30 mb-2">Entry</p>
-                    <div className={`text-2xl font-serif italic mb-1 ${entryELI?.color ?? 'text-rose-400'}`}>L{entryLevel}</div>
-                    <p className={`text-[10px] font-bold ${entryELI?.color ?? 'text-rose-400'}`}>{entryELI?.name ?? '—'}</p>
-                    <p className="text-[9px] text-white/30 italic mt-1">"{entryELI?.core ?? '—'}"</p>
-                    <p className="text-[8px] uppercase tracking-widest text-white/20 mt-1">{entryELI?.type}</p>
-                  </div>
-                  {/* Arrow */}
-                  <div className="flex flex-col items-center gap-1 shrink-0">
-                    <ArrowRight size={18} className={levelMoved ? 'text-teal-400' : 'text-white/20'} />
-                    {levelMoved && <span className="text-[8px] font-bold text-teal-400">+{displayExitLevel - entryLevel}</span>}
-                  </div>
-                  {/* Exit level card */}
-                  <div className={`flex-1 rounded-2xl p-4 border ${levelMoved ? 'bg-teal-500/10 border-teal-500/30' : 'bg-white/5 border-white/5'}`}>
-                    <p className="text-[8px] uppercase tracking-widest text-white/30 mb-2">Exit</p>
-                    <div className={`text-2xl font-serif italic mb-1 ${exitELI?.color ?? 'text-teal-400'}`}>L{displayExitLevel}</div>
-                    <p className={`text-[10px] font-bold ${exitELI?.color ?? 'text-teal-400'}`}>{exitELI?.name ?? '—'}</p>
-                    <p className="text-[9px] text-white/30 italic mt-1">"{exitELI?.core ?? '—'}"</p>
-                    <p className="text-[8px] uppercase tracking-widest text-white/20 mt-1">{exitELI?.type}</p>
-                  </div>
+          <div className="glass-panel p-8 rounded-[2rem] border-t-4 border-teal-500 shadow-2xl text-center mb-6 animate-enter">
+            
+            {/* ── 1. SLIDERS ON TOP ── */}
+            <div className="text-left mb-8 space-y-6">
+              <h3 className="text-[10px] uppercase tracking-widest text-white/50 font-bold mb-4">1. Re-Assess Internal Weather</h3>
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-xs uppercase tracking-widest text-white/70">Current Stress</label>
+                  <span className="text-rose-400 font-serif text-xl">{postStress}</span>
                 </div>
-                {/* Shift summary sentence */}
-                <div className={`text-xs leading-relaxed px-3 py-3 rounded-xl ${levelMoved ? 'bg-teal-500/10 text-teal-300' : levelSame ? 'bg-white/5 text-white/40' : 'bg-rose-500/10 text-rose-300'}`}>
-                  {levelMoved
-                    ? `You shifted from ${entryELI?.name} to ${exitELI?.name}. The core thought moved from "${entryELI?.core}" to "${exitELI?.core}." That is a real energetic shift.`
-                    : levelSame
-                    ? `Holding at ${entryELI?.name}. Adjust the sliders below if your state has changed — the AI will reassess.`
-                    : `More metabolizing needed. Rate where you actually are below and the assessment will update.`
-                  }
+                <input type="range" min={1} max={10} value={postStress} onChange={e => setPostStress(parseInt(e.target.value))} className="w-full slider-amber" />
+              </div>
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-xs uppercase tracking-widest text-white/70">Current Energy</label>
+                  <span className="text-teal-400 font-serif text-xl">{postEnergy}</span>
+                </div>
+                <input type="range" min={1} max={10} value={postEnergy} onChange={e => setPostEnergy(parseInt(e.target.value))} className="w-full slider-indigo" />
+              </div>
+            </div>
+
+            {/* ── 2. SHIFT READOUT ── */}
+            <div className="pt-6 border-t border-white/10 mb-8">
+              <h2 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40 mb-6">2. Kinetic Shift Detected</h2>
+              
+              <div className="flex items-center justify-center gap-4 mb-6">
+                <div className="text-center">
+                  <div className="text-3xl font-serif italic text-rose-400">Level {entryLevel}</div>
+                  <div className="text-[9px] uppercase tracking-widest text-white/30 mt-1">{ELI_LABELS[entryLevel]}</div>
+                </div>
+                <ArrowRight size={20} className={stressDelta < 0 || energyDelta > 0 ? "text-teal-400" : "text-white/20"} />
+                <div className="text-center">
+                  <div className="text-3xl font-serif italic text-teal-400">Level {exitLevel}</div>
+                  <div className="text-[9px] uppercase tracking-widest text-white/30 mt-1">{ELI_LABELS[exitLevel]}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                  <p className="text-[9px] uppercase tracking-widest text-white/30 mb-2">Stress</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="font-serif text-xl text-rose-400">{stressLevel}</span>
+                    <TrendingDown size={14} className={stressDelta < 0 ? "text-teal-400" : stressDelta === 0 ? "text-white/30" : "text-rose-400"} />
+                    <span className="font-serif text-xl text-teal-400">{postStress}</span>
+                  </div>
+                  <p className={`text-[10px] font-bold mt-1 ${stressDelta < 0 ? 'text-teal-400' : stressDelta === 0 ? 'text-white/40' : 'text-rose-400'}`}>
+                    {stressDelta < 0 ? `${Math.abs(stressDelta)} points metabolized` : stressDelta === 0 ? 'Baseline held' : `+${stressDelta} (review)` }
+                  </p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                  <p className="text-[9px] uppercase tracking-widest text-white/30 mb-2">Energy</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="font-serif text-xl text-white/50">{energyLevel}</span>
+                    <ArrowRight size={14} className={energyDelta > 0 ? "text-teal-400" : energyDelta === 0 ? "text-white/30" : "text-rose-400"} />
+                    <span className="font-serif text-xl text-teal-400">{postEnergy}</span>
+                  </div>
+                  <p className={`text-[10px] font-bold mt-1 ${energyDelta > 0 ? 'text-teal-400' : energyDelta === 0 ? 'text-white/40' : 'text-rose-400'}`}>
+                    {energyDelta > 0 ? `+${energyDelta} expanded` : energyDelta === 0 ? 'Exit baseline' : `${energyDelta} drained`}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ── 3. CLINICAL READ ── */}
+            <div className="bg-white/5 border border-white/10 p-6 rounded-2xl mb-8 text-left shadow-sm transition-all duration-500">
+              <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/40 mb-3">3. Clinical Read</p>
+              <h3 className={`font-serif text-2xl italic mb-3 transition-colors duration-500 ${assessment.color}`}>{assessment.status}</h3>
+              <p className="font-sans text-sm text-white/70 leading-relaxed">{assessment.read}</p>
+            </div>
+
+            {/* ── 4. EPIC DECREE ── */}
+            <div className="bg-white/5 border border-white/10 p-6 md:p-8 rounded-2xl mb-6 text-center shadow-inner">
+              {generating ? (
+                <div className="flex items-center justify-center gap-2 text-white/40 text-sm"><Loader2 size={16} className="animate-spin" /> Synthesizing your decree...</div>
+              ) : (
+                <p className="font-serif text-2xl md:text-3xl text-white leading-relaxed italic drop-shadow-md">"{manifesto}"</p>
+              )}
+            </div>
+
+            {/* ── 5. PERSONALIZED RECOMMENDATION ── */}
+            {!generating && manifesto && (
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-6 text-left shadow-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles size={14} className="text-indigo-400" />
+                  <span className="text-[9px] uppercase tracking-widest text-indigo-400 font-bold">
+                    Your Next Move at Level {exitLevel}
+                  </span>
+                </div>
+                <p className="font-serif text-lg text-white italic mb-3 leading-snug">
+                  {exitLevel <= 2 && `"You are beginning to reclaim your agency. The shift from survival to strategy starts with one sovereign decision. Make it now."`}
+                  {exitLevel === 3 && `"You have moved from reaction to responsibility. Now stop tolerating what you have been explaining away. Name it. Then eliminate it."`}
+                  {exitLevel === 4 && `"Your compassion is your strength and your drain. The next level requires you to direct that care inward first. Protect the Asset."`}
+                  {exitLevel === 5 && `"You are operating in opportunity. Most people never reach this frequency. Now build — don't just reframe. Execute from this state."`}
+                  {exitLevel >= 6 && `"You are creating, not reacting. This is your natural state. The work now is to architect systems that sustain this frequency without requiring a crisis to access it."`}
+                </p>
+                <div className="pt-3 border-t border-white/5">
+                  <span className="text-[9px] uppercase tracking-widest text-white/30 block mb-1">Recommended Protocol</span>
+                  <span className="text-xs text-teal-300 font-bold">
+                    {exitLevel <= 2 && "Vitality Scan → Preservation Mode → Return daily for 7 sessions"}
+                    {exitLevel === 3 && "Laser Coaching → Parts Work → Set one boundary today"}
+                    {exitLevel === 4 && "Parts Work → Identify one energy leak to eliminate this week"}
+                    {exitLevel === 5 && "Laser Coaching → Integration → Book ELI Assessment to lock in baseline"}
+                    {exitLevel >= 6 && "ELI Assessment → Kinetic Leader → Architect your next 90 days from this state"}
+                  </span>
                 </div>
               </div>
             )}
 
-            {/* Stress delta meters */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                <p className="text-[9px] uppercase tracking-widest text-white/30 mb-2">Stress</p>
-                <div className="flex items-center justify-center gap-2">
-                  <span className="font-serif text-xl text-rose-400">{preStress}</span>
-                  <TrendingDown size={14} className={stressDelta < 0 ? "text-teal-400" : "text-rose-400"} />
-                  <span className="font-serif text-xl text-teal-400">{postStress}</span>
-                </div>
-                <p className={`text-[10px] font-bold mt-1 ${stressDelta < 0 ? 'text-teal-400' : stressDelta === 0 ? 'text-white/30' : 'text-rose-400'}`}>
-                  {stressDelta < 0 ? `${Math.abs(stressDelta)} pts metabolized` : stressDelta === 0 ? 'Baseline held' : `+${stressDelta} (review)`}
-                </p>
-              </div>
-              <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                <p className="text-[9px] uppercase tracking-widest text-white/30 mb-2">Energy</p>
-                <div className="flex items-center justify-center gap-2">
-                  <span className="font-serif text-xl text-white/50">{energyLevel}</span>
-                  <ArrowRight size={14} className="text-teal-400" />
-                  <span className="font-serif text-xl text-teal-400">{postEnergy}</span>
-                </div>
-                <p className="text-[10px] font-bold mt-1 text-teal-400/60">Exit baseline</p>
-              </div>
-            </div>
-
-            {/* Post-session sliders */}
-            <p className="text-[9px] text-white/30 uppercase tracking-widest mb-3">Rate where you actually are right now</p>
-            <div className="text-left mb-5 space-y-4">
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-[9px] uppercase tracking-widest text-white/40 font-bold">Stress (1 low → 10 high)</label>
-                  <span className="text-teal-400 font-serif text-lg">{postStress}</span>
-                </div>
-                <input type="range" min={1} max={10} value={postStress} onChange={e => setPostStress(parseInt(e.target.value))} className="w-full" />
-              </div>
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-[9px] uppercase tracking-widest text-white/40 font-bold">Energy (1 depleted → 10 full)</label>
-                  <span className="text-teal-400 font-serif text-lg">{postEnergy}</span>
-                </div>
-                <input type="range" min={1} max={10} value={postEnergy} onChange={e => setPostEnergy(parseInt(e.target.value))} className="w-full" />
-              </div>
-            </div>
-
-            {/* Manifesto */}
-            <div className="text-left bg-white/5 border border-white/10 p-5 rounded-2xl mb-5">
-              {generating ? (
-                <div className="flex items-center gap-2 text-white/40 text-sm">
-                  <Loader2 size={14} className="animate-spin" /> Synthesizing your decree...
-                </div>
-              ) : (
-                <p className="font-serif text-sm text-white/80 leading-relaxed italic">"{manifesto}"</p>
-              )}
-            </div>
-
-            {/* Action row */}
+            {/* ── ACTION BUTTONS ── */}
             {!generating && manifesto && (
               <div className="flex gap-3 mb-6">
                 <button onClick={copyArtifact} className="flex-1 py-3 rounded-xl border border-white/10 text-white/50 hover:text-white hover:bg-white/5 transition-all text-[10px] uppercase tracking-widest flex items-center justify-center gap-2">
@@ -1900,16 +1685,21 @@ const Integration: React.FC<IntegrationProps> = ({
               </div>
             )}
 
-            {/* Upsells */}
-            <p className="text-xs font-bold uppercase tracking-widest text-white/90 mb-4">Secure Your Baseline</p>
-            <div className="space-y-3">
-              <a href="https://billing.liveadaptiv.com/checkout/buy/d29e3b81-78a4-4611-83f8-11fe76d9d82e" target="_blank" rel="noreferrer" className="block w-full py-4 bg-teal-500 text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest shadow-lg hover:bg-teal-400 transition-all">
-                Install Stress Transformation Protocol ($47)
-              </a>
-              <a href="https://calendly.com/alexioda" target="_blank" rel="noreferrer" className="block w-full py-4 bg-white/5 border border-white/20 text-white font-bold rounded-xl text-[10px] uppercase tracking-widest hover:border-teal-400 hover:text-teal-400 transition-all">
-                Book Clinical Strategy Session ($495)
-              </a>
-            </div>
+            {/* ── 6. UPSELLS (Hidden for Burnout Path) ── */}
+            {!isBurnoutPath && (
+              <>
+                <p className="text-xs font-bold uppercase tracking-widest text-white/90 mb-4">Secure Your Baseline</p>
+                <div className="space-y-3">
+                  <a href="https://billing.liveadaptiv.com/checkout/buy/d29e3b81-78a4-4611-83f8-11fe76d9d82e" target="_blank" rel="noreferrer" className="block w-full py-4 bg-teal-500 text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest shadow-lg hover:bg-teal-400 transition-all">
+                    Install Stress Transformation Protocol ($47)
+                  </a>
+                  <a href="https://calendly.com/alexioda" target="_blank" rel="noreferrer" className="block w-full py-4 bg-white/5 border border-white/20 text-white font-bold rounded-xl text-[10px] uppercase tracking-widest hover:border-teal-400 hover:text-teal-400 transition-all">
+                    Book Clinical Strategy Session ($495)
+                  </a>
+                </div>
+              </>
+            )}
+
           </div>
 
           <div className="flex gap-4 justify-center pb-8 pt-4 border-t border-white/5">
@@ -1964,9 +1754,9 @@ const Integration: React.FC<IntegrationProps> = ({
 const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, setViewToIntegration, onBack }) => {
   const [step, setStep] = useState(0);
   const recoverySteps = [
-    { title: "Emergency Brake", icon: Anchor, desc: "We cannot push through burnout. We must stop. Locate one part of your body that feels neutral — hands, feet. Focus there only.", action: "I am anchored." },
+    { title: "Emergency Brake", icon: Anchor,      desc: "We cannot push through burnout. We must stop. Locate one part of your body that feels neutral — hands, feet. Focus there only.", action: "I am anchored." },
     { title: "Boundary Alchemy", icon: MinusCircle, desc: "Burnout is cured by subtraction. What is one thing you will REFUSE to do today? Name it, then release it.", action: "I let it go." },
-    { title: "Identity Shift", icon: User, desc: "You are not the worker. You are the Asset. If the Asset breaks, the work stops. Protecting the Asset IS the work.", action: "I am the Asset." },
+    { title: "Identity Shift",   icon: User,        desc: "You are not the worker. You are the Asset. If the Asset breaks, the work stops. Protecting the Asset IS the work.", action: "I am the Asset." },
   ];
   const current = recoverySteps[step];
   const handleNext = () => {
@@ -1995,19 +1785,19 @@ const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, sound
 // VITALITY SCAN
 // ─────────────────────────────────────────────
 const VitalityScan: React.FC<VitalityScanProps> = ({ setView, setBurnoutPath, toggleSound, soundEnabled, onBack }) => {
-  const [step, setStep] = useState(0);
-  const [score, setScore] = useState(0);
+  const [step, setStep]           = useState(0);
+  const [score, setScore]         = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [aiInsight, setAiInsight] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]     = useState(false);
 
   const questions = [
-    { q: "Physical State", text: "Do you feel tired even after sleep, or have physical symptoms like headaches or stomach knots?" },
-    { q: "Emotional State", text: "Do you feel increasingly cynical, detached, or negative about your work or the people you work with?" },
-    { q: "Cognitive Fog", text: "Are you finding it hard to concentrate, or do you feel like you're working harder but accomplishing less?" },
-    { q: "Relational Snap", text: "Are you more irritable or impatient with colleagues, friends, or family than usual?" },
-    { q: "Anticipatory Dread", text: "Do you feel a sense of dread or heavy anxiety on Sunday nights or before starting your shift?" },
-    { q: "Recovery Lag", text: "Does it take you longer than a weekend to feel like yourself again?" },
+    { q: "Physical State",       text: "Do you feel tired even after sleep, or have physical symptoms like headaches or stomach knots?" },
+    { q: "Emotional State",      text: "Do you feel increasingly cynical, detached, or negative about your work or the people you work with?" },
+    { q: "Cognitive Fog",        text: "Are you finding it hard to concentrate, or do you feel like you're working harder but accomplishing less?" },
+    { q: "Relational Snap",      text: "Are you more irritable or impatient with colleagues, friends, or family than usual?" },
+    { q: "Anticipatory Dread",   text: "Do you feel a sense of dread or heavy anxiety on Sunday nights or before starting your shift?" },
+    { q: "Recovery Lag",         text: "Does it take you longer than a weekend to feel like yourself again?" },
   ];
 
   const handleBack = () => { if (step > 0) setStep(step - 1); else onBack?.(); };
@@ -2026,9 +1816,9 @@ const VitalityScan: React.FC<VitalityScanProps> = ({ setView, setBurnoutPath, to
   };
 
   const getResult = (s: number) => {
-    if (s <= 2) return { type: "Friction (Acute Stress)", desc: "You are under pressure, but the engine is still intact. You need to discharge the stress, not stop the car.", action: "Use Laser Coaching to reframe the immediate stressor.", isBurnout: false };
-    if (s <= 4) return { type: "Smoldering (Early Burnout)", desc: "The warning lights are on. Your cynicism is a defense mechanism. If you push harder now, you will break.", action: "You need boundaries. Use Preservation Mode to audit your energy leaks.", isBurnout: true };
-    return { type: "Inferno (Full Burnout)", desc: "Your battery isn't just empty — it's damaged. You cannot mindset your way out of this. You need physiological safety.", action: "Emergency Brake. Stop. Use Preservation Mode to find one safe harbor.", isBurnout: true };
+    if (s <= 2) return { type: "Friction (Acute Stress)",    desc: "You are under pressure, but the engine is still intact. You need to discharge the stress, not stop the car.", action: "Use Laser Coaching to reframe the immediate stressor.", isBurnout: false };
+    if (s <= 4) return { type: "Smoldering (Early Burnout)", desc: "The warning lights are on. Your cynicism is a defense mechanism. If you push harder now, you will break.",     action: "You need boundaries. Use Preservation Mode to audit your energy leaks.", isBurnout: true };
+    return            { type: "Inferno (Full Burnout)",       desc: "Your battery isn't just empty — it's damaged. You cannot mindset your way out of this. You need physiological safety.", action: "Emergency Brake. Stop. Use Preservation Mode to find one safe harbor.", isBurnout: true };
   };
 
   const resultData = getResult(score);
@@ -2074,18 +1864,18 @@ const VitalityScan: React.FC<VitalityScanProps> = ({ setView, setBurnoutPath, to
 // ENERGY ANALYZER
 // ─────────────────────────────────────────────
 const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView, onBack }) => {
-  const [step, setStep] = useState(0);
-  const [score, setScore] = useState(0);
-  const [result, setResult] = useState<number | null>(null);
+  const [step, setStep]       = useState(0);
+  const [score, setScore]     = useState(0);
+  const [result, setResult]   = useState<number | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
 
   const questions = [
     { q: "Reaction to Challenge", options: [{ text: "I feel like a victim. Why me?", val: 1 }, { text: "I have to fight to win.", val: 2 }, { text: "I look for the opportunity.", val: 5 }] },
-    { q: "Inner Monologue", options: [{ text: "I'm not good enough.", val: 1 }, { text: "I'm better than them.", val: 2 }, { text: "I'm curious about this.", val: 5 }] },
-    { q: "Motivation Source", options: [{ text: "I have to do this (Fear).", val: 1 }, { text: "I need to prove myself (Ego).", val: 2 }, { text: "I want to create this (Purpose).", val: 6 }] },
-    { q: "View of Others", options: [{ text: "They just don't get it.", val: 2 }, { text: "They are doing their best.", val: 4 }, { text: "We are partners in this.", val: 6 }] },
-    { q: "Energy at 3 PM", options: [{ text: "Completely drained / Foggy.", val: 1 }, { text: "Wired / Anxious / Tense.", val: 2 }, { text: "Steady / Calm.", val: 5 }] },
-    { q: "Goal Driver", options: [{ text: "Avoiding failure.", val: 1 }, { text: "Beating the competition.", val: 2 }, { text: "Expressing my potential.", val: 6 }] },
+    { q: "Inner Monologue",       options: [{ text: "I'm not good enough.", val: 1 }, { text: "I'm better than them.", val: 2 }, { text: "I'm curious about this.", val: 5 }] },
+    { q: "Motivation Source",     options: [{ text: "I have to do this (Fear).", val: 1 }, { text: "I need to prove myself (Ego).", val: 2 }, { text: "I want to create this (Purpose).", val: 6 }] },
+    { q: "View of Others",        options: [{ text: "They just don't get it.", val: 2 }, { text: "They are doing their best.", val: 4 }, { text: "We are partners in this.", val: 6 }] },
+    { q: "Energy at 3 PM",        options: [{ text: "Completely drained / Foggy.", val: 1 }, { text: "Wired / Anxious / Tense.", val: 2 }, { text: "Steady / Calm.", val: 5 }] },
+    { q: "Goal Driver",           options: [{ text: "Avoiding failure.", val: 1 }, { text: "Beating the competition.", val: 2 }, { text: "Expressing my potential.", val: 6 }] },
   ];
 
   const confirmAnswer = () => {
@@ -2099,12 +1889,12 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView, onBack }) => {
 
   const getResultText = (level: number) => {
     const levels: Record<number, any> = {
-      1: { title: "Level 1: The Victim", type: "Catabolic", desc: "Core Thought: 'I lose.' You feel at the effect of the situation.", shift: "Where do I actually have a choice right now?", recommendation: "Re-engage agency." },
-      2: { title: "Level 2: The Fighter", type: "Catabolic", desc: "Core Thought: 'I win, you lose.' High energy, but fueled by conflict.", shift: "How can I win without making anyone else wrong?", recommendation: "Shift from conflict to construction." },
-      3: { title: "Level 3: The Rationalizer", type: "Anabolic", desc: "Core Thought: 'I win.' You are coping well, but may be tolerating things.", shift: "What is the emotion I am explaining away?", recommendation: "Move from coping to feeling." },
-      4: { title: "Level 4: The Caregiver", type: "Anabolic", desc: "Core Thought: 'You win.' Driven by compassion and service.", shift: "If I said No to them, what would I be saying Yes to for myself?", recommendation: "Balance service with self-preservation." },
-      5: { title: "Level 5: The Opportunist", type: "Anabolic", desc: "Core Thought: 'We both win.' You see problems as opportunities.", shift: "What is the gift in this challenge?", recommendation: "Lock in this perspective." },
-      6: { title: "Level 6: The Visionary", type: "Anabolic", desc: "Core Thought: 'Everyone wins.' Connected to intuition and purpose.", shift: "What does my intuition know that my logic hasn't caught up to?", recommendation: "Create from this space." },
+      1: { title: "Level 1: The Victim",       type: "Catabolic",  desc: "Core Thought: 'I lose.' You feel at the effect of the situation.", shift: "Where do I actually have a choice right now?",              recommendation: "Re-engage agency." },
+      2: { title: "Level 2: The Fighter",      type: "Catabolic",  desc: "Core Thought: 'I win, you lose.' High energy, but fueled by conflict.", shift: "How can I win without making anyone else wrong?",       recommendation: "Shift from conflict to construction." },
+      3: { title: "Level 3: The Rationalizer", type: "Anabolic",   desc: "Core Thought: 'I win.' You are coping well, but may be tolerating things.", shift: "What is the emotion I am explaining away?",        recommendation: "Move from coping to feeling." },
+      4: { title: "Level 4: The Caregiver",    type: "Anabolic",   desc: "Core Thought: 'You win.' Driven by compassion and service.", shift: "If I said No to them, what would I be saying Yes to for myself?", recommendation: "Balance service with self-preservation." },
+      5: { title: "Level 5: The Opportunist",  type: "Anabolic",   desc: "Core Thought: 'We both win.' You see problems as opportunities.", shift: "What is the gift in this challenge?",                     recommendation: "Lock in this perspective." },
+      6: { title: "Level 6: The Visionary",    type: "Anabolic",   desc: "Core Thought: 'Everyone wins.' Connected to intuition and purpose.", shift: "What does my intuition know that my logic hasn't caught up to?", recommendation: "Create from this space." },
     };
     return levels[level] || levels[3];
   };
@@ -2150,10 +1940,10 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView, onBack }) => {
 };
 
 // ─────────────────────────────────────────────
-// VIEW MAP (replaces the 15-screen if/else chain)
+// VIEW MAP
 // ─────────────────────────────────────────────
 const VIEW_NAMES = [
-  'welcome','manifesto','profile','dashboard','accountability','energy_reflection','preservation',
+  'welcome','manifesto','profile','dashboard','energy_reflection','preservation',
   'burnout_check','fork_entry','diffuser','somatic','partswork','laser','lens',
   'fork','regulate','alchemy','integration','insight','energy',
 ] as const;
@@ -2162,70 +1952,55 @@ const VIEW_NAMES = [
 // APP ROOT
 // ─────────────────────────────────────────────
 const App = () => {
-  // ── Persisted state (localStorage) ──
-  const [userName, setUserNameState] = useState(() => storageGet<string>(STORAGE_KEYS.USER_NAME, ''));
-  const [sessionCount, setSessionCount] = useState(() => storageGet<number>(STORAGE_KEYS.SESSION_COUNT, 0));
+  const [userName,       setUserNameState]  = useState(() => storageGet<string>(STORAGE_KEYS.USER_NAME, ''));
+  const [sessionCount,   setSessionCount]   = useState(() => storageGet<number>(STORAGE_KEYS.SESSION_COUNT, 0));
   const [sessionHistory, setSessionHistory] = useState<SessionRecord[]>(() => storageGet<SessionRecord[]>(STORAGE_KEYS.SESSION_HISTORY, []));
-
-  const [rapidFire, setRapidFire] = useState(() => storageGet<boolean>(STORAGE_KEYS.RAPID_FIRE, false));
 
   const setUserName = (n: string) => { setUserNameState(n); storageSet(STORAGE_KEYS.USER_NAME, n); };
 
-  const toggleRapidFire = () => {
-    const next = !rapidFire;
-    setRapidFire(next);
-    storageSet(STORAGE_KEYS.RAPID_FIRE, next);
-  };
-
-  // ── View init — accountability gate fires once per browser session ──
-  const [view, setView] = useState(() => {
-    if (!storageGet<string>(STORAGE_KEYS.USER_NAME, '')) return 'welcome';
-    const history = storageGet<SessionRecord[]>(STORAGE_KEYS.SESSION_HISTORY, []);
-    const alreadyShown = (() => { try { return !!sessionStorage.getItem(STORAGE_KEYS.ACCOUNTABILITY_SHOWN); } catch { return false; } })();
-    if (history.length > 0 && !alreadyShown) {
-      const daysSince = (Date.now() - new Date(history[0].date).getTime()) / (1000 * 3600 * 24);
-      if (daysSince < 7) return 'accountability';
-    }
-    return 'dashboard';
-  });
-  const [bgState, setBgState] = useState('neutral');
-  const [stressor, setStressor] = useState('');
-  const [perception, setPerception] = useState('');
-  const [fear, setFear] = useState('');
-  const [stressLevel, setStressLevel] = useState(5);
-  const [energyLevel, setEnergyLevel] = useState(5);
-  const [postStressLevel, setPostStressLevel] = useState(5);
-  const [postEnergyLevel, setPostEnergyLevel] = useState(5);
-  const [isBurnoutPath, setIsBurnoutPath] = useState(false);
-  const [somaticZones, setSomaticZones] = useState<string[]>([]);
-  const [partsStep, setPartsStep] = useState('experience');
-  const [sensation, setSensation] = useState('');
-  const [protection, setProtection] = useState('');
-  const [expandingBelief, setExpandingBelief] = useState('');
-  const [pressure, setPressure] = useState(50);
-  const [ability, setAbility] = useState(50);
-  const [goal, setGoal] = useState<Goal>({ what: '', measure: '', when: '', outcome: '', action: '' });
-  const [goalStep, setGoalStep] = useState(0);
-  const [isLocked, setIsLocked] = useState(false);
-  const [breathing, setBreathing] = useState(false);
-  const [breathCount, setBreathCount] = useState(0);
-  const [soundEnabled, setSoundEnabled] = useState(false);
-  const [soundType, setSoundType] = useState<'drone' | 'brown'>('drone');
-  const [energyAnalysis, setEnergyAnalysis] = useState<EnergyAnalysis | null>(null);
-  const [alchemyType, setAlchemyType] = useState('perform');
+  const [view,             setView]           = useState(userName ? 'dashboard' : 'welcome');
+  const [bgState,          setBgState]        = useState('neutral');
+  const [stressor,         setStressor]       = useState('');
+  const [perception,       setPerception]     = useState('');
+  const [fear,             setFear]           = useState('');
+  const [stressLevel,      setStressLevel]    = useState(50);
+  const [energyLevel,      setEnergyLevel]    = useState(50);
+  const [postStressLevel,  setPostStressLevel] = useState(50);
+  const [postEnergyLevel,  setPostEnergyLevel] = useState(50);
+  const [isBurnoutPath,    setIsBurnoutPath]  = useState(false);
+  const [somaticZones,     setSomaticZones]   = useState<string[]>([]);
+  
+  // ── Global Friction Source State ──
+  const [frictionSource,   setFrictionSource] = useState('body');
+  
+  const [partsStep,        setPartsStep]      = useState('experience');
+  const [sensation,        setSensation]      = useState('');
+  const [protection,       setProtection]     = useState('');
+  const [expandingBelief,  setExpandingBelief] = useState('');
+  const [pressure,         setPressure]       = useState(50);
+  const [ability,          setAbility]        = useState(50);
+  const [goal,             setGoal]           = useState<Goal>({ what: '', measure: '', when: '', outcome: '', action: '' });
+  const [goalStep,         setGoalStep]       = useState(0);
+  const [isLocked,         setIsLocked]       = useState(false);
+  const [breathing,        setBreathing]      = useState(false);
+  const [breathCount,      setBreathCount]    = useState(0);
+  const [soundEnabled,     setSoundEnabled]   = useState(false);
+  const [soundType,        setSoundType]      = useState<'drone' | 'brown'>('drone');
+  const [energyAnalysis,   setEnergyAnalysis] = useState<EnergyAnalysis | null>(null);
+  const [alchemyType,      setAlchemyType]    = useState('perform');
 
   useEffect(() => {
     if (view === 'preservation') setBgState('preservation');
-    else if (view === 'laser') setBgState('laser');
+    else if (view === 'laser')   setBgState('laser');
     else if (view === 'regulate') setBgState('flow');
-    else setBgState('neutral');
+    else                          setBgState('neutral');
   }, [view]);
 
   useEffect(() => { if (soundEnabled) soundEngine.play(soundType); }, [soundType]);
 
   const toggleSound = () => {
     if (soundEnabled) { soundEngine.stop(); setSoundEnabled(false); }
-    else { soundEngine.play(soundType); setSoundEnabled(true); }
+    else              { soundEngine.play(soundType); setSoundEnabled(true); }
   };
 
   const saveSession = (record: SessionRecord) => {
@@ -2236,7 +2011,7 @@ const App = () => {
     storageSet(STORAGE_KEYS.SESSION_COUNT, newCount);
   };
 
-  const completeSession = () => {}; // session saving now handled by saveSession
+  const completeSession = () => {}; 
 
   const resetApp = () => {
     setView('welcome');
@@ -2248,7 +2023,6 @@ const App = () => {
     setGoalStep(0);
   };
 
-  // ── Shared props ──
   const common: CommonProps = { setView, toggleSound, soundEnabled };
 
   return (
@@ -2258,18 +2032,11 @@ const App = () => {
         <Atmosphere bgState={bgState} />
         <div className="w-full max-w-md h-full relative z-10 p-6">
 
-          {view === 'welcome' && <Welcome onEnter={() => setView('manifesto')} />}
-          {view === 'manifesto' && <Manifesto onContinue={() => setView('profile')} onBack={() => setView('welcome')} />}
-          {view === 'profile' && <Identity userName={userName} setUserName={setUserName} onComplete={() => setView('dashboard')} onBack={() => setView('manifesto')} />}
+          {view === 'welcome'           && <Welcome onEnter={() => setView('manifesto')} />}
+          {view === 'manifesto'         && <Manifesto onContinue={() => setView('profile')} onBack={() => setView('welcome')} />}
+          {view === 'profile'           && <Identity userName={userName} setUserName={setUserName} onComplete={() => setView('dashboard')} onBack={() => setView('manifesto')} />}
 
-          {view === 'accountability' && sessionHistory[0] && (
-            <AccountabilityCheck
-              lastSession={sessionHistory[0]}
-              onComplete={() => setView('dashboard')}
-            />
-          )}
-
-          {view === 'dashboard' && (
+          {view === 'dashboard'         && (
             <Horizon
               {...common}
               userName={userName} sessionCount={sessionCount}
@@ -2281,30 +2048,17 @@ const App = () => {
               setEnergyAnalysis={setEnergyAnalysis}
               soundType={soundType} setSoundType={setSoundType}
               sessionHistory={sessionHistory}
-              rapidFire={rapidFire}
+              setFrictionSource={setFrictionSource}
               onBack={() => setView('profile')}
             />
           )}
 
           {view === 'energy_reflection' && <EnergyReflection {...common} energyAnalysis={energyAnalysis} onBack={() => setView('dashboard')} />}
-          {view === 'lens' && <Perspective {...common} pressure={pressure} setPressure={setPressure} ability={ability} setAbility={setAbility} onBack={() => setView('energy_reflection')} />}
-          {view === 'fork_entry' && <ForkEntry {...common} onBack={() => setView('lens')} />}
+          {view === 'fork_entry'        && <ForkEntry {...common} setFrictionSource={setFrictionSource} onBack={() => setView('dashboard')} />}
+          {view === 'diffuser'          && <Diffuser {...common} fear={fear} setFear={setFear} onBack={() => setView('fork_entry')} />}
+          {view === 'somatic'           && <Vessel {...common} somaticZones={somaticZones} setSomaticZones={setSomaticZones} onBack={() => setView('dashboard')} />}
 
-          {/* MIND PATH */}
-          {view === 'diffuser' && <Diffuser {...common} fear={fear} setFear={setFear} expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief} onBack={() => setView('fork_entry')} />}
-          {view === 'laser' && (
-            <LaserCoaching {...common}
-              stressor={stressor} perception={perception} somatic={somaticZones[0] || 'Body'}
-              setGoal={setGoal} setExpandingBelief={setExpandingBelief}
-              setGoalStep={setGoalStep}
-              energyLevel={energyLevel} stressLevel={stressLevel}
-              onBack={() => setView('diffuser')}
-            />
-          )}
-
-          {/* BODY PATH */}
-          {view === 'somatic' && <Vessel {...common} somaticZones={somaticZones} setSomaticZones={setSomaticZones} onBack={() => setView('fork_entry')} />}
-          {view === 'partswork' && (
+          {view === 'partswork'         && (
             <PartsWork {...common}
               selectedPart={somaticZones[0] || 'Part'}
               sensation={sensation} setSensation={setSensation}
@@ -2315,18 +2069,32 @@ const App = () => {
               onBack={() => setView('somatic')}
             />
           )}
-          {view === 'regulate' && (
+
+          {view === 'laser'             && (
+            <LaserCoaching {...common}
+              stressor={stressor} perception={perception} 
+              somatic={somaticZones[0] || 'Mental Loops / Cognitive Fog'}
+              setGoal={setGoal} setExpandingBelief={setExpandingBelief}
+              energyLevel={energyLevel} stressLevel={stressLevel}
+              onBack={() => setView('dashboard')}
+            />
+          )}
+
+          {view === 'lens'              && <Perspective {...common} pressure={pressure} setPressure={setPressure} ability={ability} setAbility={setAbility} onBack={() => setView('dashboard')} />}
+          {view === 'fork'              && <Crossroads {...common} stressLevel={stressLevel} energyLevel={energyLevel} onBack={() => setView('lens')} />}
+
+          {view === 'regulate'          && (
             <Breath {...common}
               breathing={breathing} setBreathing={setBreathing}
               breathCount={breathCount} setBreathCount={setBreathCount}
-              onBack={() => setView('partswork')}
+              onBack={() => setView('fork')}
             />
           )}
-          {view === 'insight' && <Insight {...common} expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief} onBack={() => setView('regulate')} />}
-          {view === 'alchemy' && <Alchemy {...common} setAlchemyType={setAlchemyType} onBack={() => setView('insight')} />}
 
-          {/* CONVERGENCE */}
-          {view === 'integration' && (
+          {view === 'insight'           && <Insight {...common} expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief} onBack={() => setView('regulate')} />}
+          {view === 'alchemy'           && <Alchemy {...common} setAlchemyType={setAlchemyType} onBack={() => setView('fork')} />}
+
+          {view === 'integration'       && (
             <Integration {...common}
               goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep}
               isLocked={isLocked} setIsLocked={setIsLocked}
@@ -2339,11 +2107,11 @@ const App = () => {
               postStressLevel={postStressLevel} setPostStressLevel={setPostStressLevel}
               postEnergyLevel={postEnergyLevel} setPostEnergyLevel={setPostEnergyLevel}
               saveSession={saveSession}
-              onBack={() => setView('dashboard')}
+              onBack={() => setView('alchemy')}
             />
           )}
 
-          {view === 'preservation' && (
+          {view === 'preservation'      && (
             <Preservation {...common}
               setGoal={setGoal} setExpandingBelief={setExpandingBelief}
               setViewToIntegration={() => { setIsLocked(true); setView('integration'); }}
@@ -2351,8 +2119,8 @@ const App = () => {
             />
           )}
 
-          {view === 'burnout_check' && <VitalityScan {...common} setBurnoutPath={setIsBurnoutPath} onBack={() => setView('dashboard')} />}
-          {view === 'energy' && <EnergyAnalyzer setView={setView} onBack={() => setView('dashboard')} />}
+          {view === 'burnout_check'     && <VitalityScan {...common} setBurnoutPath={setIsBurnoutPath} onBack={() => setView('dashboard')} />}
+          {view === 'energy'            && <EnergyAnalyzer setView={setView} onBack={() => setView('dashboard')} />}
 
         </div>
       </div>
