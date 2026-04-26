@@ -1940,6 +1940,95 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView, onBack }) => {
 };
 
 // ─────────────────────────────────────────────
+// CIPHER GATE (Server-Side Verification)
+// ─────────────────────────────────────────────
+const CipherGate: React.FC<{ onUnlock: () => void }> = ({ onUnlock }) => {
+  const [code, setCode] = useState('');
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleUnlock = async () => {
+    if (!code) return;
+
+    setLoading(true);
+    setError(false);
+
+    try {
+      const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
+      const anonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/verify-cipher`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
+        },
+        body: JSON.stringify({ code: code.trim() })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.valid) {
+        onUnlock();
+      } else {
+        setError(true);
+        setCode('');
+      }
+    } catch (err) {
+      console.error("Cipher verification failed.", err);
+      setError(true);
+      setCode('');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col justify-center items-center px-6 text-center relative z-50">
+      <div className="w-full max-w-sm glass-panel p-10 rounded-[32px] border border-white/10 shadow-2xl animate-enter relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-teal-500 to-transparent opacity-50"></div>
+
+        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+          <Lock size={28} className="text-teal-400" />
+        </div>
+
+        <h2 className="font-serif text-3xl text-white italic mb-2">Encrypted Access</h2>
+        <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-8 leading-relaxed">
+          Enter your Lemon Squeezy access cipher to unlock the ecosystem.
+        </p>
+
+        <div className="space-y-4">
+          <input
+            type="text"
+            value={code}
+            onChange={e => { setCode(e.target.value.toUpperCase()); setError(false); }}
+            onKeyDown={e => e.key === 'Enter' && code && handleUnlock()}
+            placeholder="ENTER CIPHER"
+            className={`w-full bg-black/50 border py-4 text-center text-white font-mono tracking-[0.2em] focus:outline-none transition-all rounded-xl placeholder:text-white/20 ${error ? 'border-rose-500/50 text-rose-200' : 'border-white/10 focus:border-teal-500/50'}`}
+          />
+
+          {error && <p className="text-[10px] uppercase tracking-widest text-rose-400 animate-enter">Invalid Cipher. Access Denied.</p>}
+
+          <button
+            onClick={handleUnlock}
+            disabled={!code || loading}
+            className="w-full py-4 rounded-xl bg-white text-slate-900 font-sans text-xs font-bold tracking-widest uppercase hover:bg-teal-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {loading ? <Loader2 size={16} className="animate-spin" /> : 'Decrypt Protocol'}
+          </button>
+        </div>
+
+        <div className="mt-8 pt-6 border-t border-white/5">
+          <a href="https://liveadaptiv.com" target="_blank" rel="noreferrer" className="text-[9px] uppercase tracking-widest text-white/30 hover:text-white transition-colors">
+            Need a cipher? Get access here.
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────
 // VIEW MAP
 // ─────────────────────────────────────────────
 const VIEW_NAMES = [
@@ -1988,6 +2077,7 @@ const App = () => {
   const [soundType,        setSoundType]      = useState<'drone' | 'brown'>('drone');
   const [energyAnalysis,   setEnergyAnalysis] = useState<EnergyAnalysis | null>(null);
   const [alchemyType,      setAlchemyType]    = useState('perform');
+  const [cipherUnlocked,   setCipherUnlocked] = useState(false);
 
   useEffect(() => {
     if (view === 'preservation') setBgState('preservation');
@@ -2024,6 +2114,20 @@ const App = () => {
   };
 
   const common: CommonProps = { setView, toggleSound, soundEnabled };
+
+  if (!cipherUnlocked) {
+    return (
+      <>
+        <FontStyles />
+        <div className="fixed inset-0 bg-slate-950 text-white font-sans overflow-hidden flex justify-center">
+          <Atmosphere bgState={bgState} />
+          <div className="w-full max-w-md h-full relative z-10">
+            <CipherGate onUnlock={() => setCipherUnlocked(true)} />
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
