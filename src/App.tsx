@@ -363,13 +363,37 @@ const generateCoachingQuestions = async (
   stressor: string, perception: string, somatic: string, energyLevel: number, stressLevel: number
 ): Promise<string[]> => {
   try {
-    const prompt = `Act as a world-class transformational coach elevating the client's perspective.
-Context: Situation: ${stressor} | Experience: ${perception} | Body/Mind Focus: ${somatic}
-Return ONLY raw JSON: { "questions": ["Mirror question", "Pivot question", "Vision question", "Catalyst question"] }`;
+    const prompt = `You are a master transformational coach. Based on the client's state, generate exactly 4 coaching questions to guide them through a breakthrough.
+Inputs:
+Situation: ${stressor}
+Experience: ${perception}
+Friction Location: ${somatic}
+
+Return ONLY a valid JSON object with a single key "questions" containing an array of exactly 4 string questions. Do not include markdown formatting, backticks, or conversational text.
+Example: {"questions": ["Question 1?", "Question 2?", "Question 3?", "Question 4?"]}`;
+    
+    // Explicitly ask the API for JSON
     const raw = await callAI(prompt, true);
-    return JSON.parse(raw.replace(/```json|```/g, '').trim()).questions;
-  } catch {
-    return [getSmartQuestion(energyLevel, stressLevel)];
+    
+    // Aggressively clean the output before parsing to prevent crashes
+    const cleanJson = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleanJson);
+    
+    if (parsed.questions && Array.isArray(parsed.questions) && parsed.questions.length >= 4) {
+      return parsed.questions.slice(0, 4);
+    }
+    
+    throw new Error("AI returned invalid array structure");
+    
+  } catch (err) {
+    console.error("Laser Coaching AI parse failed, engaging dynamic fallbacks.", err);
+    // If it fails, provide exactly 4 strong dynamic questions so the UI never breaks
+    return [
+      getSmartQuestion(energyLevel, stressLevel),
+      "If you stopped managing this stress and started architecting it, what would change?",
+      "What permission do you need to give yourself to release this specific friction?",
+      "What is the single boldest action you can take right now that makes everything else irrelevant?"
+    ];
   }
 };
 
