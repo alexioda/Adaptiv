@@ -372,22 +372,16 @@ Friction Location: ${somatic}
 Return ONLY a valid JSON object with a single key "questions" containing an array of exactly 4 string questions. Do not include markdown formatting, backticks, or conversational text.
 Example: {"questions": ["Question 1?", "Question 2?", "Question 3?", "Question 4?"]}`;
     
-    // Explicitly ask the API for JSON
     const raw = await callAI(prompt, true);
-    
-    // Aggressively clean the output before parsing to prevent crashes
     const cleanJson = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
     const parsed = JSON.parse(cleanJson);
     
     if (parsed.questions && Array.isArray(parsed.questions) && parsed.questions.length >= 4) {
       return parsed.questions.slice(0, 4);
     }
-    
     throw new Error("AI returned invalid array structure");
-    
   } catch (err) {
     console.error("Laser Coaching AI parse failed, engaging dynamic fallbacks.", err);
-    // If it fails, provide exactly 4 strong dynamic questions so the UI never breaks
     return [
       getSmartQuestion(energyLevel, stressLevel),
       "If you stopped managing this stress and started architecting it, what would change?",
@@ -591,56 +585,33 @@ const Atmosphere: React.FC<{ bgState: string }> = ({ bgState }) => {
 // ─────────────────────────────────────────────
 // COMPONENTS
 // ─────────────────────────────────────────────
-const Welcome: React.FC<{ userName: string; setUserName: (n: string) => void; onEnter: () => void }> = ({ userName, setUserName, onEnter }) => (
-  <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
-    <div className="min-h-full flex flex-col justify-center items-center py-10 w-full">
-      <div className="flex-1" />
-      <div className="flex flex-col items-center w-full max-w-xs">
-        <div className="mb-6 relative">
-          <div className="absolute inset-0 bg-teal-500/10 blur-xl rounded-full" />
-          <Activity size={64} className="text-teal-200/80 relative z-10 animate-breathe" strokeWidth={0.8} />
-        </div>
-        <h1 className="font-serif text-5xl text-white italic tracking-wide leading-tight animate-enter">Adaptiv</h1>
-        <p className="font-sans text-xs text-white/50 uppercase tracking-[0.3em] animate-enter mt-4 mb-12">Alchemy for the Soul</p>
-        
-        <div className="w-full space-y-6 animate-enter delay-100">
-          <input
-            type="text" value={userName}
-            onChange={e => setUserName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && userName && onEnter()}
-            placeholder="Enter Name / Alias"
-            className="w-full bg-transparent border-b border-white/20 py-3 text-center text-white text-xl font-serif placeholder:text-white/20 focus:outline-none focus:border-white/60 transition-colors"
-          />
-          <button onClick={onEnter} disabled={!userName} className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-white/20 hover:scale-105 transition-all animate-enter border border-white/5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
-            Enter the Space
-          </button>
-        </div>
+const Entry: React.FC<{ userName: string; setUserName: (n: string) => void; onEnter: () => void }> = ({ userName, setUserName, onEnter }) => (
+  <div className="h-full flex flex-col justify-center animate-enter px-6 overflow-y-auto hide-scrollbar text-center relative z-50">
+    <div className="max-w-md mx-auto py-10 w-full flex flex-col items-center">
+      <div className="mb-8 relative">
+        <div className="absolute inset-0 bg-teal-500/20 blur-xl rounded-full" />
+        <Activity size={48} className="text-teal-200/80 relative z-10 animate-breathe" strokeWidth={0.8} />
       </div>
-      <div className="flex-1" />
-      <div className="mt-8 flex flex-col items-center opacity-60 shrink-0 animate-enter delay-200">
-        <p className="font-sans text-[8px] text-white/30 uppercase tracking-widest mb-2">Powered By</p>
-        <p className="font-serif italic text-white/80 text-xs">LiveAdaptiv</p>
-      </div>
-    </div>
-  </div>
-);
-
-const Manifesto: React.FC<{ onContinue: () => void; onBack: () => void }> = ({ onContinue, onBack }) => (
-  <div className="h-full flex flex-col justify-center animate-enter px-6 overflow-y-auto hide-scrollbar text-center relative">
-    <button onClick={onBack} className="absolute top-6 left-2 p-3 rounded-full text-white/50 hover:text-white transition-colors z-50"><ChevronLeft size={24} /></button>
-    <div className="max-w-md mx-auto py-10">
-      <div className="mb-10">
-        <Waves size={48} className="text-teal-400/80 mx-auto mb-6 animate-pulse" strokeWidth={0.8} />
-        <h1 className="font-serif text-3xl text-white italic mb-3">Alchemy.</h1>
-        <p className="font-sans text-xs text-white/40 uppercase tracking-[0.2em] leading-relaxed">A Kinetic Shift for the Modern Mind</p>
-      </div>
-      <div className="space-y-8 font-serif text-lg text-white/80 leading-relaxed">
+      <h1 className="font-serif text-5xl text-white italic tracking-wide leading-tight mb-2">Adaptiv</h1>
+      <p className="font-sans text-[10px] text-white/50 uppercase tracking-[0.3em] mb-10">Alchemy for the Soul</p>
+      
+      <div className="space-y-4 font-serif text-lg text-white/80 leading-relaxed mb-10 bg-white/5 p-6 rounded-3xl border border-white/10 shadow-lg">
         <p>Stress is not an error. It is simply energy trapped in a loop.</p>
-        <p>Most tools ask you to <em>think</em> your way out. Adaptiv asks you to <em>feel</em> your way through.</p>
-        <p className="text-white">In the next few minutes, we will locate the friction in the body, listen to its message, and shift it into fuel.</p>
+        <p className="text-white text-base">In the next four minutes, we will locate the friction, listen to its message, and shift it into fuel.</p>
       </div>
-      <div className="my-12 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-      <button onClick={onContinue} className="w-full py-5 rounded-full bg-white/5 border border-white/10 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-white/10 hover:border-white/30 transition-all">Begin</button>
+
+      <div className="w-full space-y-6 max-w-xs mx-auto">
+        <input
+          type="text" value={userName}
+          onChange={e => setUserName(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && userName && onEnter()}
+          placeholder="Enter Name / Alias"
+          className="w-full bg-transparent border-b border-white/20 py-3 text-center text-white text-xl font-serif placeholder:text-white/20 focus:outline-none focus:border-white/60 transition-colors"
+        />
+        <button onClick={onEnter} disabled={!userName} className="w-full py-4 rounded-full bg-teal-500 text-slate-900 font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-teal-400 hover:scale-105 transition-all shadow-[0_0_20px_rgba(20,184,166,0.2)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none">
+          Begin Protocol
+        </button>
+      </div>
     </div>
   </div>
 );
@@ -908,17 +879,17 @@ const Horizon: React.FC<HorizonProps> = ({
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <label className="text-xs text-white/70 uppercase tracking-widest">Stress / Friction</label>
-                    <span className="text-rose-400 font-serif text-xl">{stressLevel}</span>
+                    <span className="text-rose-400 font-serif text-xl">{stressLevel}%</span>
                   </div>
-                  <input type="range" min={1} max={10} value={stressLevel} onChange={e => setStressLevel(parseInt(e.target.value))} className="w-full slider-amber" />
+                  <input type="range" min={1} max={100} value={stressLevel} onChange={e => setStressLevel(parseInt(e.target.value))} className="w-full slider-amber" />
                 </div>
 
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <label className="text-xs text-white/70 uppercase tracking-widest">Available Energy</label>
-                    <span className="text-teal-400 font-serif text-xl">{energyLevel}</span>
+                    <span className="text-teal-400 font-serif text-xl">{energyLevel}%</span>
                   </div>
-                  <input type="range" min={1} max={10} value={energyLevel} onChange={e => setEnergyLevel(parseInt(e.target.value))} className="w-full slider-indigo" />
+                  <input type="range" min={1} max={100} value={energyLevel} onChange={e => setEnergyLevel(parseInt(e.target.value))} className="w-full slider-indigo" />
                 </div>
               </div>
 
@@ -1449,8 +1420,9 @@ const Integration: React.FC<IntegrationProps> = ({
   const entryLevel   = energyAnalysis?.level ?? 2;
   
   // ── Dynamic Level Math ──
+  // Adjusted for 100-point scale: drops of 40, 20, etc.
   const exitLevel = Math.min(7, Math.max(entryLevel,
-    entryLevel + (stressDelta <= -4 ? 3 : stressDelta <= -2 ? 2 : stressDelta < 0 ? 1 : 0)
+    entryLevel + (stressDelta <= -40 ? 3 : stressDelta <= -20 ? 2 : stressDelta < 0 ? 1 : 0)
   ));
 
   const ELI_LABELS: Record<number, string> = {
@@ -1471,7 +1443,7 @@ const Integration: React.FC<IntegrationProps> = ({
         color: "text-rose-400",
         read: `Your system is heavily gripping the stress of "${stressor.substring(0, 30)}...". Do not force high-output action today. Lower your expectations, strip away non-essential tasks, and focus purely on biological regulation.`,
       };
-    } else if (stressDelta < 0 && postStress <= 4) {
+    } else if (stressDelta < 0 && postStress <= 40) {
       return {
         status: "Deep Anabolic Shift",
         color: "text-teal-400",
@@ -1580,16 +1552,16 @@ const Integration: React.FC<IntegrationProps> = ({
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="text-xs uppercase tracking-widest text-white/70">Current Stress</label>
-                  <span className="text-rose-400 font-serif text-xl">{postStress}</span>
+                  <span className="text-rose-400 font-serif text-xl">{postStress}%</span>
                 </div>
-                <input type="range" min={1} max={10} value={postStress} onChange={e => setPostStress(parseInt(e.target.value))} className="w-full slider-amber" />
+                <input type="range" min={1} max={100} value={postStress} onChange={e => setPostStress(parseInt(e.target.value))} className="w-full slider-amber" />
               </div>
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="text-xs uppercase tracking-widest text-white/70">Current Energy</label>
-                  <span className="text-teal-400 font-serif text-xl">{postEnergy}</span>
+                  <span className="text-teal-400 font-serif text-xl">{postEnergy}%</span>
                 </div>
-                <input type="range" min={1} max={10} value={postEnergy} onChange={e => setPostEnergy(parseInt(e.target.value))} className="w-full slider-indigo" />
+                <input type="range" min={1} max={100} value={postEnergy} onChange={e => setPostEnergy(parseInt(e.target.value))} className="w-full slider-indigo" />
               </div>
             </div>
 
@@ -2033,7 +2005,7 @@ const ArchitecturePaywall: React.FC<{ onUnlock: () => void }> = ({ onUnlock }) =
 // VIEW MAP
 // ─────────────────────────────────────────────
 const VIEW_NAMES = [
-  'welcome','manifesto','dashboard','energy_reflection','preservation',
+  'welcome','dashboard','energy_reflection','preservation',
   'burnout_check','fork_entry','diffuser','somatic','partswork','laser','lens',
   'fork','regulate','alchemy','integration','insight','energy',
 ] as const;
@@ -2135,8 +2107,7 @@ const App = () => {
             <ArchitecturePaywall onUnlock={handleSuccessfulUnlock} />
           ) : (
             <>
-              {view === 'welcome'           && <Welcome userName={userName} setUserName={setUserName} onEnter={() => setView('manifesto')} />}
-              {view === 'manifesto'         && <Manifesto onContinue={() => setView('dashboard')} onBack={() => setView('welcome')} />}
+              {view === 'welcome'           && <Entry userName={userName} setUserName={setUserName} onEnter={() => setView('dashboard')} />}
               
               {view === 'dashboard'         && (
                 <Horizon
@@ -2151,7 +2122,7 @@ const App = () => {
                   soundType={soundType} setSoundType={setSoundType}
                   sessionHistory={sessionHistory}
                   setFrictionSource={setFrictionSource}
-                  onBack={() => setView('manifesto')}
+                  onBack={() => setView('welcome')}
                 />
               )}
 
