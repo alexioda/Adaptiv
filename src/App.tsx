@@ -35,7 +35,6 @@ interface NavProps {
 interface SomaticZone { id: string; label: string; icon: React.ElementType; }
 interface EnergyAnalysis { level: number; reflection: string; }
 
-// ── Session Record stored in localStorage ──
 interface SessionRecord {
   date: string;           
   stressor: string;
@@ -160,7 +159,7 @@ interface EnergyAnalyzerProps { setView: (view: string) => void; onBack?: () => 
 interface ChatMessage { role: 'user' | 'ai'; text: any; isHtml: boolean; }
 
 // ─────────────────────────────────────────────
-// STORAGE HELPERS  (localStorage)
+// STORAGE HELPERS
 // ─────────────────────────────────────────────
 const STORAGE_KEYS = {
   USER_NAME:       'adaptiv_userName',
@@ -287,19 +286,12 @@ const soundEngine = new SoundEngine();
 // ─────────────────────────────────────────────
 // 2. SECURE API CALLER
 // ─────────────────────────────────────────────
-const safetySettings = [
-  { category: "HARM_CATEGORY_HARASSMENT",        threshold: "BLOCK_NONE" },
-  { category: "HARM_CATEGORY_HATE_SPEECH",        threshold: "BLOCK_NONE" },
-  { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",  threshold: "BLOCK_NONE" },
-  { category: "HARM_CATEGORY_DANGEROUS_CONTENT",  threshold: "BLOCK_NONE" },
-];
-
 async function callAI(prompt: string, jsonMode = false): Promise<string> {
   const url = '/api/ai'; 
 
+  // Client no longer dictates safety limits. Handled by backend.
   const body: any = {
-    contents: [{ parts: [{ text: prompt }] }],
-    safetySettings,
+    contents: [{ parts: [{ text: prompt }] }]
   };
   if (jsonMode) body.generationConfig = { responseMimeType: "application/json" };
 
@@ -313,23 +305,12 @@ async function callAI(prompt: string, jsonMode = false): Promise<string> {
   return data.candidates[0].content.parts[0].text ?? "";
 }
 
-const formatGoalOutcome = (text: string) => {
-  if (!text) return "";
-  let clean = text.trim().replace(
-    /^(My goal is to|My goal is|I would like to|I would|I want to|I will|I am going to|I'd like to)\s+/i, ""
-  );
-  if (/^To\s/i.test(clean)) return clean;
-  clean = clean.charAt(0).toLowerCase() + clean.slice(1);
-  return "To " + clean;
-};
-
 const getSmartQuestion = (energy: number, stress: number) => {
   if (stress > 60 || energy < 40) return "What specifically is threatened by this situation?";
   if (energy > 70) return "If you were coaching your best self, what would you tell them to do?";
   return "What is one assumption you are making that might not be true?";
 };
 
-// ── Body/Mind path reflected in AI reflection ──
 const analyzeCurrentEnergy = async (
   stressor: string, perception: string, stressLevel: number, energyLevel: number, frictionSource: string
 ): Promise<EnergyAnalysis> => {
@@ -391,7 +372,6 @@ Example: {"questions": ["Question 1?", "Question 2?", "Question 3?", "Question 4
   }
 };
 
-// ── Decree font size and motivational strength ──
 const generateManifesto = async (
   stressor: string, truth: string, action: string, fear: string,
   currentLevel: number, onUpdate: (text: string) => void
@@ -482,9 +462,6 @@ Be direct, compassionate, and specific. No jargon. Start with "I notice..."`;
 // ─────────────────────────────────────────────
 const FontStyles = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Inter:wght@200;300;400;500&display=swap');
-    .font-serif { font-family: 'Cormorant Garamond', serif; }
-    .font-sans  { font-family: 'Inter', sans-serif; }
     .glass-panel { background: rgba(15,23,42,0.85); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
     .glass-button { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); transition: all 0.4s cubic-bezier(0.4,0,0.2,1); }
     .glass-button:active { transform: scale(0.98); }
@@ -583,7 +560,7 @@ const Atmosphere: React.FC<{ bgState: string }> = ({ bgState }) => {
 };
 
 // ─────────────────────────────────────────────
-// COMPONENTS
+// ENTRY
 // ─────────────────────────────────────────────
 const Entry: React.FC<{ userName: string; setUserName: (n: string) => void; onEnter: () => void }> = ({ userName, setUserName, onEnter }) => (
   <div className="h-full flex flex-col justify-center animate-enter px-6 overflow-y-auto hide-scrollbar text-center relative z-50">
@@ -616,6 +593,9 @@ const Entry: React.FC<{ userName: string; setUserName: (n: string) => void; onEn
   </div>
 );
 
+// ─────────────────────────────────────────────
+// ENERGY REFLECTION
+// ─────────────────────────────────────────────
 const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, setView, toggleSound, soundEnabled, onBack }) => (
   <div className="h-full flex flex-col justify-center px-4 animate-enter">
     <Nav title="Current Resonance" subtitle="The Lens" isDashboard={false} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={5} onBack={onBack} />
@@ -635,6 +615,9 @@ const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, set
   </div>
 );
 
+// ─────────────────────────────────────────────
+// FORK ENTRY
+// ─────────────────────────────────────────────
 const ForkEntry: React.FC<ForkEntryProps> = ({ setView, toggleSound, soundEnabled, onBack, setFrictionSource }) => (
   <div className="h-full flex flex-col px-4">
     <Nav title="The Source" subtitle="Origin Point" onBack={onBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={10} />
@@ -661,6 +644,9 @@ const ForkEntry: React.FC<ForkEntryProps> = ({ setView, toggleSound, soundEnable
   </div>
 );
 
+// ─────────────────────────────────────────────
+// DIFFUSER
+// ─────────────────────────────────────────────
 const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setView, toggleSound, soundEnabled, onBack }) => {
   const [step, setStep] = useState(0);
   return (
@@ -692,7 +678,7 @@ const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setView, toggleSound
 // ─────────────────────────────────────────────
 // HORIZON
 // ─────────────────────────────────────────────
-const Horizon: React.FC<HorizonProps> = ({
+const Horizon: React.FC<HorizonProps> = React.memo(({
   userName, sessionCount, stressor, setStressor, perception, setPerception,
   setView, toggleSound, soundEnabled, resetApp, setEnergyAnalysis,
   soundType, setSoundType, onBack, sessionHistory,
@@ -706,12 +692,15 @@ const Horizon: React.FC<HorizonProps> = ({
   const [showChatInput, setShowChatInput] = useState(true);
   const [showRouteButton, setShowRouteButton] = useState(false);
   const [isTyping, setIsTyping]           = useState(false);
-  const [isBurnoutIntercept, setIsBurnoutIntercept] = useState(false);
+  
+  const [keywordIntercept, setKeywordIntercept] = useState(false);
   const [patternInsight, setPatternInsight]   = useState('');
   const [loadingPattern, setLoadingPattern]   = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatHistory, isTyping, isBurnoutIntercept]);
+  const depletionWords = ['burnout','exhausted','drained','empty','depleted','overwhelm','overwhelmed','done','tired'];
+
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatHistory, isTyping, keywordIntercept]);
 
   useEffect(() => {
     if (sessionHistory.length >= 2 && step === 'intake') {
@@ -721,7 +710,19 @@ const Horizon: React.FC<HorizonProps> = ({
         setLoadingPattern(false);
       });
     }
-  }, []);
+  }, [sessionHistory, step]);
+
+  // Real-time Keystroke Scanner (Debounced)
+  useEffect(() => {
+    if (step === 'intake') {
+      const timer = setTimeout(() => {
+        const combinedText = (stressor + " " + perception).toLowerCase();
+        const detected = depletionWords.some(w => combinedText.includes(w));
+        setKeywordIntercept(detected && energyLevel >= 30); 
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [stressor, perception, energyLevel, step]);
 
   const handleInternalBack = () => {
     if (step === 'routing') setStep('chat');
@@ -729,29 +730,19 @@ const Horizon: React.FC<HorizonProps> = ({
     else if (onBack) onBack();
   };
 
-  const checkDepletion = (text: string) => {
-    const triggers = ['burnout','exhausted','drained','empty','depleted','overwhelm','overwhelmed','done','tired'];
-    return triggers.some(w => text.toLowerCase().includes(w));
+  const executeEmergencyBrake = () => {
+    setView('burnout_check'); // Route to Vitality Scan to assess severity before preservation
   };
 
   const startAIConversation = async () => {
     if (stressor.length < 5 || perception.length < 5) return;
-    
     setStep('chat');
     setAiQuestionCount(0);
     setShowChatInput(false);
     setShowRouteButton(false);
-    setIsBurnoutIntercept(false);
-
-    if (checkDepletion(stressor) || checkDepletion(perception)) {
-      setTimeout(() => {
-        setChatHistory([{ role: 'ai', text: sanitizeHtml(`<span class="block mb-2 font-bold text-orange-300">Pause: Deep Exhaustion Sensed</span><br/>I am hearing a lot of heavy exhaustion in what you just shared. When you are running on empty, trying to push through can drain you further. Would you like to take a quick Vitality Scan to check your reserves?`), isHtml: true }]);
-        setIsBurnoutIntercept(true);
-      }, 800);
-      return;
-    }
-
+    setKeywordIntercept(false);
     setIsTyping(true);
+    
     const firstQ = await generateHorizonQuestion(stressor, perception, "No history yet.");
     setChatHistory([{ role: 'ai', text: firstQ, isHtml: false }]);
     setIsTyping(false);
@@ -766,10 +757,11 @@ const Horizon: React.FC<HorizonProps> = ({
     setChatInput('');
     setShowChatInput(false);
 
-    if (checkDepletion(currentUserText)) {
+    if (depletionWords.some(w => currentUserText.toLowerCase().includes(w))) {
       setTimeout(() => {
         setChatHistory(prev => [...prev, { role: 'ai', text: sanitizeHtml(`<span class="block mb-2 font-bold text-orange-300">Pause: Deep Exhaustion Sensed</span><br/>It sounds like you are running on absolute empty. Before we try to solve this, we need to make sure you have the energy for it.`), isHtml: true }]);
-        setIsBurnoutIntercept(true);
+        setShowRouteButton(false);
+        setKeywordIntercept(true); 
       }, 800);
       return;
     }
@@ -792,7 +784,7 @@ const Horizon: React.FC<HorizonProps> = ({
   };
 
   const bypassBurnout = async () => {
-    setIsBurnoutIntercept(false);
+    setKeywordIntercept(false);
     setIsTyping(true);
     const historyText = chatHistory.map(m => `${m.role}: ${m.text}`).join(' | ');
     const nextQ = await generateHorizonQuestion(stressor, perception, historyText + " | User bypassed burnout scan, proceeding.");
@@ -800,6 +792,8 @@ const Horizon: React.FC<HorizonProps> = ({
     setIsTyping(false);
     setShowChatInput(true);
   };
+
+  const isCriticallyDepleted = energyLevel < 30;
 
   return (
     <div className="h-full flex flex-col">
@@ -814,7 +808,7 @@ const Horizon: React.FC<HorizonProps> = ({
 
         {step === 'intake' && (
           <>
-            <div className="glass-panel p-4 rounded-[24px] border-teal-500/20 relative group">
+            <div className="glass-panel p-4 rounded-[24px] border-teal-500/20 relative group mb-2">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
                   <h3 className="font-serif text-lg text-teal-100 italic">7-Day Neural Reset</h3>
@@ -834,7 +828,7 @@ const Horizon: React.FC<HorizonProps> = ({
             </div>
 
             {sessionHistory.length >= 2 && (
-              <div className="glass-panel p-5 rounded-[20px] border border-indigo-500/20 bg-indigo-900/10">
+              <div className="glass-panel p-5 rounded-[20px] border border-indigo-500/20 bg-indigo-900/10 mb-2">
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles size={12} className="text-indigo-400" />
                   <span className="font-sans text-[9px] uppercase tracking-widest text-indigo-400 font-bold">Pattern Recognition</span>
@@ -844,38 +838,14 @@ const Horizon: React.FC<HorizonProps> = ({
                 ) : (
                   <p className="font-serif text-sm text-white/80 italic leading-relaxed">{patternInsight || "Connecting patterns..."}</p>
                 )}
-                {sessionHistory[0] && (
-                  <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between">
-                    <span className="text-[9px] text-white/30 uppercase tracking-widest">Last session</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-white/50">{sessionHistory[0].stressor.slice(0, 28)}{sessionHistory[0].stressor.length > 28 ? '…' : ''}</span>
-                      <span className={`text-[10px] font-bold ${sessionHistory[0].postStress < sessionHistory[0].preStress ? 'text-teal-400' : 'text-rose-400'}`}>
-                        {sessionHistory[0].preStress}→{sessionHistory[0].postStress}
-                      </span>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
             <div className="glass-panel p-8 rounded-[2rem] border border-white/10 shadow-sm animate-[slideUpFade_0.5s_ease-out_forwards]">
               <h2 className="text-3xl font-serif italic text-white mb-2">The Horizon</h2>
-              <p className="text-xs text-white/50 mb-8 uppercase tracking-widest font-bold">Current State Diagnostic</p>
+              <p className="text-xs text-white/50 mb-8 uppercase tracking-widest font-bold">Internal Weather Baseline</p>
               
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-teal-400 mb-3">What is weighing on you?</label>
-                  <textarea value={stressor} onChange={e => setStressor(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-sm h-24 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic placeholder:text-white/20" placeholder="The team missed another deadline..." />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-teal-400 mb-3">How are you experiencing this?</label>
-                  <textarea value={perception} onChange={e => setPerception(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-sm h-24 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic placeholder:text-white/20" placeholder="I am exhausted and resentful..." />
-                </div>
-              </div>
-
-              <div className="mt-8 pt-8 border-t border-white/10 space-y-6">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-2">Internal Weather Baseline</h3>
-                
+              <div className="space-y-8 mb-8 pb-8 border-b border-white/10">
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <label className="text-xs text-white/70 uppercase tracking-widest">Stress / Friction</label>
@@ -893,13 +863,43 @@ const Horizon: React.FC<HorizonProps> = ({
                 </div>
               </div>
 
-              {(stressor.length > 0 && stressor.length < 5) || (perception.length > 0 && perception.length < 5) ? (
-                <p className="text-[10px] text-rose-400 uppercase tracking-widest mt-4">Please add a bit more detail to both fields.</p>
-              ) : null}
+              {isCriticallyDepleted ? (
+                <div className="animate-enter text-center space-y-4">
+                  <div className="mx-auto w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center mb-4">
+                    <BatteryWarning className="text-orange-400" size={24} />
+                  </div>
+                  <h3 className="font-serif text-xl text-orange-200 italic">System Depleted</h3>
+                  <p className="text-sm text-white/60 pb-4">Your bandwidth is tapped. We are bypassing analysis and moving straight to regulation.</p>
+                  <button onClick={executeEmergencyBrake} className="w-full py-4 bg-orange-500 text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest text-center shadow-lg hover:bg-orange-400 transition-all">
+                    Run Vitality Scan
+                  </button>
+                  <button onClick={() => setView('preservation')} className="w-full py-3 bg-transparent border border-white/10 text-white/50 font-bold rounded-xl text-[10px] uppercase tracking-widest hover:text-white hover:bg-white/5 transition-all">
+                    Skip to Regulation
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6 animate-enter">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-teal-400 mb-3">What is weighing on you?</label>
+                    <textarea value={stressor} onChange={e => setStressor(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-sm h-24 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic placeholder:text-white/20" placeholder="The team missed another deadline..." />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-teal-400 mb-3">How are you experiencing this?</label>
+                    <textarea value={perception} onChange={e => setPerception(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-sm h-24 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic placeholder:text-white/20" placeholder="I am exhausted and resentful..." />
+                  </div>
+                  
+                  {keywordIntercept && (
+                    <div className="bg-orange-900/20 border border-orange-500/30 p-4 rounded-xl flex flex-col items-center text-center animate-enter">
+                      <span className="text-xs text-orange-200 mb-3">That sounds heavy. Would you rather take a regulation break first?</span>
+                      <button onClick={executeEmergencyBrake} className="px-6 py-2 bg-orange-500/20 text-orange-300 rounded-full text-[10px] uppercase tracking-widest border border-orange-500/50 hover:bg-orange-500/30">Take a Break</button>
+                    </div>
+                  )}
 
-              <button onClick={startAIConversation} disabled={stressor.length < 5 || perception.length < 5} className="w-full mt-8 py-4 bg-white text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest text-center shadow-lg hover:bg-teal-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                Begin Calibration
-              </button>
+                  <button onClick={startAIConversation} disabled={stressor.length < 5 || perception.length < 5} className="w-full mt-4 py-4 bg-white text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest text-center shadow-lg hover:bg-teal-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    Begin Calibration
+                  </button>
+                </div>
+              )}
             </div>
           </>
         )}
@@ -929,26 +929,26 @@ const Horizon: React.FC<HorizonProps> = ({
                   <span className="text-sm opacity-50">Calibrating...</span>
                 </div>
               )}
-              {isBurnoutIntercept && (
+              {keywordIntercept && !isTyping && (
                 <div className="animate-enter flex flex-col gap-3 mt-4">
-                  <button onClick={() => setView('burnout_check')} className="w-full py-4 bg-orange-500/20 border border-orange-500/50 text-orange-200 font-bold rounded-xl text-[10px] uppercase tracking-widest shadow-lg hover:bg-orange-500/30 transition-all flex flex-col items-center">
+                  <button onClick={executeEmergencyBrake} className="w-full py-4 bg-orange-500/20 border border-orange-500/50 text-orange-200 font-bold rounded-xl text-[10px] uppercase tracking-widest shadow-lg hover:bg-orange-500/30 transition-all flex flex-col items-center">
                     <span>Run Vitality Scan</span>
                     <span className="text-[8px] opacity-70 mt-1">(Recommended)</span>
                   </button>
-                  <button onClick={bypassBurnout} className="w-full py-3 bg-transparent border border-white/10 text-white/50 font-bold rounded-xl text-[10px] uppercase tracking-widest hover:text-white hover:bg-white/5 transition-all">
+                  <button onClick={() => { setKeywordIntercept(false); setShowChatInput(true); }} className="w-full py-3 bg-transparent border border-white/10 text-white/50 font-bold rounded-xl text-[10px] uppercase tracking-widest hover:text-white hover:bg-white/5 transition-all">
                     I have the energy to continue
                   </button>
                 </div>
               )}
               <div ref={chatEndRef} />
             </div>
-            {showChatInput && !isBurnoutIntercept && (
+            {showChatInput && !keywordIntercept && (
               <div className="mt-auto bg-white/5 p-2 rounded-2xl border border-white/10 flex items-center shadow-sm">
                 <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendUserMessage()} className="flex-1 bg-transparent border-none outline-none px-4 text-sm text-white placeholder:text-white/40" placeholder="Type your response..." />
                 <button onClick={sendUserMessage} className="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center text-slate-900 hover:bg-teal-400 transition-colors"><ArrowUp size={20} /></button>
               </div>
             )}
-            {showRouteButton && (
+            {!keywordIntercept && showRouteButton && (
               <button onClick={() => setStep('routing')} className="w-full mt-4 py-4 bg-teal-500 text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest text-center shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:bg-teal-400 transition-all animate-[slideUpFade_0.5s_ease-out_forwards]">
                 Locate the Friction →
               </button>
@@ -963,7 +963,6 @@ const Horizon: React.FC<HorizonProps> = ({
             <p className="text-sm text-white/50 mb-8">Where is this pressure residing right now?</p>
             <div className="grid grid-cols-1 gap-4">
               <button onClick={() => { setFrictionSource('body'); setView('somatic'); }} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-teal-500/50 transition-all group relative overflow-hidden text-left">
-                <div className="absolute inset-0 bg-teal-500 opacity-0 group-hover:opacity-10 transition-opacity" />
                 <div className="flex items-center gap-3 mb-2">
                   <Activity size={20} className="text-white/40 group-hover:text-teal-400 transition-colors" />
                   <h3 className="font-bold text-white text-sm tracking-wide uppercase group-hover:text-teal-400 transition-colors">My Body</h3>
@@ -971,7 +970,6 @@ const Horizon: React.FC<HorizonProps> = ({
                 <p className="text-xs text-white/50">Tension, shallow breathing, physical static.</p>
               </button>
               <button onClick={() => { setFrictionSource('mind'); setView('laser'); }} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-indigo-500/50 transition-all group relative overflow-hidden text-left">
-                <div className="absolute inset-0 bg-indigo-500 opacity-0 group-hover:opacity-10 transition-opacity" />
                 <div className="flex items-center gap-3 mb-2">
                   <Brain size={20} className="text-white/40 group-hover:text-indigo-400 transition-colors" />
                   <h3 className="font-bold text-white text-sm tracking-wide uppercase group-hover:text-indigo-400 transition-colors">My Mind</h3>
@@ -984,7 +982,7 @@ const Horizon: React.FC<HorizonProps> = ({
       </div>
     </div>
   );
-};
+});
 
 // ─────────────────────────────────────────────
 // VESSEL / BODY SCAN
@@ -1419,8 +1417,6 @@ const Integration: React.FC<IntegrationProps> = ({
   const energyDelta = postEnergy - energyLevel;
   const entryLevel   = energyAnalysis?.level ?? 2;
   
-  // ── Dynamic Level Math ──
-  // Adjusted for 100-point scale: drops of 40, 20, etc.
   const exitLevel = Math.min(7, Math.max(entryLevel,
     entryLevel + (stressDelta <= -40 ? 3 : stressDelta <= -20 ? 2 : stressDelta < 0 ? 1 : 0)
   ));
@@ -1922,7 +1918,7 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView, onBack }) => {
 };
 
 // ─────────────────────────────────────────────
-// ARCHITECTURE PAYWALL (Proof of Shift Gate)
+// ARCHITECTURE PAYWALL
 // ─────────────────────────────────────────────
 const ArchitecturePaywall: React.FC<{ onUnlock: () => void }> = ({ onUnlock }) => {
   const [code, setCode] = useState('');
@@ -2002,15 +1998,6 @@ const ArchitecturePaywall: React.FC<{ onUnlock: () => void }> = ({ onUnlock }) =
 };
 
 // ─────────────────────────────────────────────
-// VIEW MAP
-// ─────────────────────────────────────────────
-const VIEW_NAMES = [
-  'welcome','dashboard','energy_reflection','preservation',
-  'burnout_check','fork_entry','diffuser','somatic','partswork','laser','lens',
-  'fork','regulate','alchemy','integration','insight','energy',
-] as const;
-
-// ─────────────────────────────────────────────
 // APP ROOT
 // ─────────────────────────────────────────────
 const App = () => {
@@ -2032,7 +2019,6 @@ const App = () => {
   const [isBurnoutPath,    setIsBurnoutPath]  = useState(false);
   const [somaticZones,     setSomaticZones]   = useState<string[]>([]);
   
-  // ── Global Friction Source State ──
   const [frictionSource,   setFrictionSource] = useState('body');
   
   const [partsStep,        setPartsStep]      = useState('experience');
@@ -2051,7 +2037,6 @@ const App = () => {
   const [energyAnalysis,   setEnergyAnalysis] = useState<EnergyAnalysis | null>(null);
   const [alchemyType,      setAlchemyType]    = useState('perform');
   
-  // SECURE MEMORY LOCK
   const [cipherUnlocked, setCipherUnlocked] = useState(() => storageGet<boolean>(STORAGE_KEYS.CIPHER_UNLOCKED, false));
 
   const handleSuccessfulUnlock = () => {
@@ -2102,7 +2087,6 @@ const App = () => {
         <Atmosphere bgState={bgState} />
         <div className="w-full max-w-md h-full relative z-10 p-6">
 
-          {/* ── THE PROOF OF SHIFT INTERCEPT ── */}
           {!cipherUnlocked && sessionCount >= 1 && view !== 'integration' ? (
             <ArchitecturePaywall onUnlock={handleSuccessfulUnlock} />
           ) : (
