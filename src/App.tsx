@@ -35,6 +35,7 @@ interface NavProps {
 interface SomaticZone { id: string; label: string; icon: React.ElementType; }
 interface EnergyAnalysis { level: number; reflection: string; }
 
+// ── Session Record stored in localStorage ──
 interface SessionRecord {
   date: string;           
   stressor: string;
@@ -159,13 +160,12 @@ interface EnergyAnalyzerProps { setView: (view: string) => void; onBack?: () => 
 interface ChatMessage { role: 'user' | 'ai'; text: any; isHtml: boolean; }
 
 // ─────────────────────────────────────────────
-// STORAGE HELPERS
+// STORAGE HELPERS  (localStorage)
 // ─────────────────────────────────────────────
 const STORAGE_KEYS = {
   USER_NAME:       'adaptiv_userName',
   SESSION_COUNT:   'adaptiv_sessionCount',
   SESSION_HISTORY: 'adaptiv_sessionHistory',
-  CIPHER_UNLOCKED: 'adaptiv_cipher_unlocked',
 };
 
 function storageGet<T>(key: string, fallback: T): T {
@@ -286,12 +286,19 @@ const soundEngine = new SoundEngine();
 // ─────────────────────────────────────────────
 // 2. SECURE API CALLER
 // ─────────────────────────────────────────────
-async function callAI(prompt: string, jsonMode = false): Promise<string> {
-  const url = '/api/ai'; 
+const safetySettings = [
+  { category: "HARM_CATEGORY_HARASSMENT",        threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_HATE_SPEECH",        threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",  threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_DANGEROUS_CONTENT",  threshold: "BLOCK_NONE" },
+];
 
-  // Client no longer dictates safety limits. Handled by backend.
+async function callAI(prompt: string, jsonMode = false): Promise<string> {
+  const url = '/api/ai'; // Secure backend
+
   const body: any = {
-    contents: [{ parts: [{ text: prompt }] }]
+    contents: [{ parts: [{ text: prompt }] }],
+    safetySettings,
   };
   if (jsonMode) body.generationConfig = { responseMimeType: "application/json" };
 
@@ -305,12 +312,23 @@ async function callAI(prompt: string, jsonMode = false): Promise<string> {
   return data.candidates[0].content.parts[0].text ?? "";
 }
 
+const formatGoalOutcome = (text: string) => {
+  if (!text) return "";
+  let clean = text.trim().replace(
+    /^(My goal is to|My goal is|I would like to|I would|I want to|I will|I am going to|I'd like to)\s+/i, ""
+  );
+  if (/^To\s/i.test(clean)) return clean;
+  clean = clean.charAt(0).toLowerCase() + clean.slice(1);
+  return "To " + clean;
+};
+
 const getSmartQuestion = (energy: number, stress: number) => {
   if (stress > 60 || energy < 40) return "What specifically is threatened by this situation?";
   if (energy > 70) return "If you were coaching your best self, what would you tell them to do?";
   return "What is one assumption you are making that might not be true?";
 };
 
+// ── FIX 1: Body/Mind path reflected in AI reflection ──
 const analyzeCurrentEnergy = async (
   stressor: string, perception: string, stressLevel: number, energyLevel: number, frictionSource: string
 ): Promise<EnergyAnalysis> => {
@@ -344,34 +362,17 @@ const generateCoachingQuestions = async (
   stressor: string, perception: string, somatic: string, energyLevel: number, stressLevel: number
 ): Promise<string[]> => {
   try {
-    const prompt = `You are a master transformational coach. Based on the client's state, generate exactly 4 coaching questions to guide them through a breakthrough.
-Inputs:
-Situation: ${stressor}
-Experience: ${perception}
-Friction Location: ${somatic}
-
-Return ONLY a valid JSON object with a single key "questions" containing an array of exactly 4 string questions. Do not include markdown formatting, backticks, or conversational text.
-Example: {"questions": ["Question 1?", "Question 2?", "Question 3?", "Question 4?"]}`;
-    
+    const prompt = `Act as a world-class transformational coach elevating the client's perspective.
+Context: Situation: ${stressor} | Experience: ${perception} | Body/Mind Focus: ${somatic}
+Return ONLY raw JSON: { "questions": ["Mirror question", "Pivot question", "Vision question", "Catalyst question"] }`;
     const raw = await callAI(prompt, true);
-    const cleanJson = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
-    const parsed = JSON.parse(cleanJson);
-    
-    if (parsed.questions && Array.isArray(parsed.questions) && parsed.questions.length >= 4) {
-      return parsed.questions.slice(0, 4);
-    }
-    throw new Error("AI returned invalid array structure");
-  } catch (err) {
-    console.error("Laser Coaching AI parse failed, engaging dynamic fallbacks.", err);
-    return [
-      getSmartQuestion(energyLevel, stressLevel),
-      "If you stopped managing this stress and started architecting it, what would change?",
-      "What permission do you need to give yourself to release this specific friction?",
-      "What is the single boldest action you can take right now that makes everything else irrelevant?"
-    ];
+    return JSON.parse(raw.replace(/```json|```/g, '').trim()).questions;
+  } catch {
+    return [getSmartQuestion(energyLevel, stressLevel)];
   }
 };
 
+// ── FIX 2: Decree font size and motivational strength ──
 const generateManifesto = async (
   stressor: string, truth: string, action: string, fear: string,
   currentLevel: number, onUpdate: (text: string) => void
@@ -462,6 +463,9 @@ Be direct, compassionate, and specific. No jargon. Start with "I notice..."`;
 // ─────────────────────────────────────────────
 const FontStyles = () => (
   <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Inter:wght@200;300;400;500&display=swap');
+    .font-serif { font-family: 'Cormorant Garamond', serif; }
+    .font-sans  { font-family: 'Inter', sans-serif; }
     .glass-panel { background: rgba(15,23,42,0.85); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
     .glass-button { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); transition: all 0.4s cubic-bezier(0.4,0,0.2,1); }
     .glass-button:active { transform: scale(0.98); }
@@ -560,42 +564,77 @@ const Atmosphere: React.FC<{ bgState: string }> = ({ bgState }) => {
 };
 
 // ─────────────────────────────────────────────
-// ENTRY
+// COMPONENTS
 // ─────────────────────────────────────────────
-const Entry: React.FC<{ userName: string; setUserName: (n: string) => void; onEnter: () => void }> = ({ userName, setUserName, onEnter }) => (
-  <div className="h-full flex flex-col justify-center animate-enter px-6 overflow-y-auto hide-scrollbar text-center relative z-50">
-    <div className="max-w-md mx-auto py-10 w-full flex flex-col items-center">
-      <div className="mb-8 relative">
-        <div className="absolute inset-0 bg-teal-500/20 blur-xl rounded-full" />
-        <Activity size={48} className="text-teal-200/80 relative z-10 animate-breathe" strokeWidth={0.8} />
-      </div>
-      <h1 className="font-serif text-5xl text-white italic tracking-wide leading-tight mb-2">Adaptiv</h1>
-      <p className="font-sans text-[10px] text-white/50 uppercase tracking-[0.3em] mb-10">Alchemy for the Soul</p>
-      
-      <div className="space-y-4 font-serif text-lg text-white/80 leading-relaxed mb-10 bg-white/5 p-6 rounded-3xl border border-white/10 shadow-lg">
-        <p>Stress is not an error. It is simply energy trapped in a loop.</p>
-        <p className="text-white text-base">In the next four minutes, we will locate the friction, listen to its message, and shift it into fuel.</p>
-      </div>
-
-      <div className="w-full space-y-6 max-w-xs mx-auto">
-        <input
-          type="text" value={userName}
-          onChange={e => setUserName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && userName && onEnter()}
-          placeholder="Enter Name / Alias"
-          className="w-full bg-transparent border-b border-white/20 py-3 text-center text-white text-xl font-serif placeholder:text-white/20 focus:outline-none focus:border-white/60 transition-colors"
-        />
-        <button onClick={onEnter} disabled={!userName} className="w-full py-4 rounded-full bg-teal-500 text-slate-900 font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-teal-400 hover:scale-105 transition-all shadow-[0_0_20px_rgba(20,184,166,0.2)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none">
-          Begin Protocol
+const Welcome: React.FC<{ onEnter: () => void }> = ({ onEnter }) => (
+  <div className="h-full flex flex-col justify-center items-center px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
+    <div className="min-h-full flex flex-col justify-center items-center py-10">
+      <div className="flex-1" />
+      <div className="flex flex-col items-center">
+        <div className="mb-6 relative">
+          <div className="absolute inset-0 bg-teal-500/10 blur-xl rounded-full" />
+          <Activity size={64} className="text-teal-200/80 relative z-10 animate-breathe" strokeWidth={0.8} />
+        </div>
+        <h1 className="font-serif text-5xl text-white italic tracking-wide leading-tight animate-enter">Adaptiv</h1>
+        <p className="font-sans text-xs text-white/50 uppercase tracking-[0.3em] animate-enter mt-4">Alchemy for the Soul</p>
+        <button onClick={onEnter} className="mt-12 px-8 py-4 rounded-full bg-white/10 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-white/20 hover:scale-105 transition-all animate-enter border border-white/5">
+          Enter the Space
         </button>
+      </div>
+      <div className="flex-1" />
+      <div className="mt-8 flex flex-col items-center opacity-60 shrink-0">
+        <p className="font-sans text-[8px] text-white/30 uppercase tracking-widest mb-2">Powered By</p>
+        <p className="font-serif italic text-white/80 text-xs">LiveAdaptiv</p>
       </div>
     </div>
   </div>
 );
 
-// ─────────────────────────────────────────────
-// ENERGY REFLECTION
-// ─────────────────────────────────────────────
+const Manifesto: React.FC<{ onContinue: () => void; onBack: () => void }> = ({ onContinue, onBack }) => (
+  <div className="h-full flex flex-col justify-center animate-enter px-6 overflow-y-auto hide-scrollbar text-center relative">
+    <button onClick={onBack} className="absolute top-6 left-2 p-3 rounded-full text-white/50 hover:text-white transition-colors z-50"><ChevronLeft size={24} /></button>
+    <div className="max-w-md mx-auto py-10">
+      <div className="mb-10">
+        <Waves size={48} className="text-teal-400/80 mx-auto mb-6 animate-pulse" strokeWidth={0.8} />
+        <h1 className="font-serif text-3xl text-white italic mb-3">Alchemy.</h1>
+        <p className="font-sans text-xs text-white/40 uppercase tracking-[0.2em] leading-relaxed">A Kinetic Shift for the Modern Mind</p>
+      </div>
+      <div className="space-y-8 font-serif text-lg text-white/80 leading-relaxed">
+        <p>Stress is not an error. It is simply energy trapped in a loop.</p>
+        <p>Most tools ask you to <em>think</em> your way out. Adaptiv asks you to <em>feel</em> your way through.</p>
+        <p className="text-white">In the next few minutes, we will locate the friction in the body, listen to its message, and shift it into fuel.</p>
+      </div>
+      <div className="my-12 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+      <button onClick={onContinue} className="w-full py-5 rounded-full bg-white/5 border border-white/10 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-white/10 hover:border-white/30 transition-all">Begin</button>
+    </div>
+  </div>
+);
+
+const Identity: React.FC<{ userName: string; setUserName: (n: string) => void; onComplete: () => void; onBack: () => void }> = ({ userName, setUserName, onComplete, onBack }) => (
+  <div className="h-full flex flex-col px-6 text-center animate-enter relative z-50 overflow-y-auto hide-scrollbar">
+    <button onClick={onBack} className="absolute top-6 left-2 p-3 rounded-full text-white/50 hover:text-white transition-colors z-50"><ChevronLeft size={24} /></button>
+    <div className="min-h-full flex flex-col items-center py-10 w-full">
+      <div className="flex-1" />
+      <div className="w-full max-w-xs flex flex-col items-center">
+        <h1 className="font-serif text-4xl text-white mb-2 italic tracking-wide">Adaptiv</h1>
+        <div className="w-full space-y-6 mt-12">
+          <input
+            type="text" value={userName}
+            onChange={e => setUserName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && userName && onComplete()}
+            placeholder="Enter Name / Alias"
+            className="w-full bg-transparent border-b border-white/20 py-3 text-center text-white text-xl font-serif placeholder:text-white/20 focus:outline-none focus:border-white/60 transition-colors"
+          />
+          <button onClick={onComplete} disabled={!userName} className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs font-medium tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+            Begin
+          </button>
+        </div>
+      </div>
+      <div className="flex-1" />
+    </div>
+  </div>
+);
+
 const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, setView, toggleSound, soundEnabled, onBack }) => (
   <div className="h-full flex flex-col justify-center px-4 animate-enter">
     <Nav title="Current Resonance" subtitle="The Lens" isDashboard={false} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={5} onBack={onBack} />
@@ -615,9 +654,6 @@ const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, set
   </div>
 );
 
-// ─────────────────────────────────────────────
-// FORK ENTRY
-// ─────────────────────────────────────────────
 const ForkEntry: React.FC<ForkEntryProps> = ({ setView, toggleSound, soundEnabled, onBack, setFrictionSource }) => (
   <div className="h-full flex flex-col px-4">
     <Nav title="The Source" subtitle="Origin Point" onBack={onBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={10} />
@@ -644,9 +680,6 @@ const ForkEntry: React.FC<ForkEntryProps> = ({ setView, toggleSound, soundEnable
   </div>
 );
 
-// ─────────────────────────────────────────────
-// DIFFUSER
-// ─────────────────────────────────────────────
 const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setView, toggleSound, soundEnabled, onBack }) => {
   const [step, setStep] = useState(0);
   return (
@@ -678,7 +711,7 @@ const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setView, toggleSound
 // ─────────────────────────────────────────────
 // HORIZON
 // ─────────────────────────────────────────────
-const Horizon: React.FC<HorizonProps> = React.memo(({
+const Horizon: React.FC<HorizonProps> = ({
   userName, sessionCount, stressor, setStressor, perception, setPerception,
   setView, toggleSound, soundEnabled, resetApp, setEnergyAnalysis,
   soundType, setSoundType, onBack, sessionHistory,
@@ -692,15 +725,12 @@ const Horizon: React.FC<HorizonProps> = React.memo(({
   const [showChatInput, setShowChatInput] = useState(true);
   const [showRouteButton, setShowRouteButton] = useState(false);
   const [isTyping, setIsTyping]           = useState(false);
-  
-  const [keywordIntercept, setKeywordIntercept] = useState(false);
+  const [isBurnoutIntercept, setIsBurnoutIntercept] = useState(false);
   const [patternInsight, setPatternInsight]   = useState('');
   const [loadingPattern, setLoadingPattern]   = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const depletionWords = ['burnout','exhausted','drained','empty','depleted','overwhelm','overwhelmed','done','tired'];
-
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatHistory, isTyping, keywordIntercept]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatHistory, isTyping, isBurnoutIntercept]);
 
   useEffect(() => {
     if (sessionHistory.length >= 2 && step === 'intake') {
@@ -710,19 +740,7 @@ const Horizon: React.FC<HorizonProps> = React.memo(({
         setLoadingPattern(false);
       });
     }
-  }, [sessionHistory, step]);
-
-  // Real-time Keystroke Scanner (Debounced)
-  useEffect(() => {
-    if (step === 'intake') {
-      const timer = setTimeout(() => {
-        const combinedText = (stressor + " " + perception).toLowerCase();
-        const detected = depletionWords.some(w => combinedText.includes(w));
-        setKeywordIntercept(detected && energyLevel >= 30); 
-      }, 800);
-      return () => clearTimeout(timer);
-    }
-  }, [stressor, perception, energyLevel, step]);
+  }, []);
 
   const handleInternalBack = () => {
     if (step === 'routing') setStep('chat');
@@ -730,19 +748,29 @@ const Horizon: React.FC<HorizonProps> = React.memo(({
     else if (onBack) onBack();
   };
 
-  const executeEmergencyBrake = () => {
-    setView('burnout_check'); // Route to Vitality Scan to assess severity before preservation
+  const checkDepletion = (text: string) => {
+    const triggers = ['burnout','exhausted','drained','empty','depleted','overwhelm','overwhelmed','done','tired'];
+    return triggers.some(w => text.toLowerCase().includes(w));
   };
 
   const startAIConversation = async () => {
     if (stressor.length < 5 || perception.length < 5) return;
+    
     setStep('chat');
     setAiQuestionCount(0);
     setShowChatInput(false);
     setShowRouteButton(false);
-    setKeywordIntercept(false);
+    setIsBurnoutIntercept(false);
+
+    if (checkDepletion(stressor) || checkDepletion(perception)) {
+      setTimeout(() => {
+        setChatHistory([{ role: 'ai', text: sanitizeHtml(`<span class="block mb-2 font-bold text-orange-300">Pause: Deep Exhaustion Sensed</span><br/>I am hearing a lot of heavy exhaustion in what you just shared. When you are running on empty, trying to push through can drain you further. Would you like to take a quick Vitality Scan to check your reserves?`), isHtml: true }]);
+        setIsBurnoutIntercept(true);
+      }, 800);
+      return;
+    }
+
     setIsTyping(true);
-    
     const firstQ = await generateHorizonQuestion(stressor, perception, "No history yet.");
     setChatHistory([{ role: 'ai', text: firstQ, isHtml: false }]);
     setIsTyping(false);
@@ -757,11 +785,10 @@ const Horizon: React.FC<HorizonProps> = React.memo(({
     setChatInput('');
     setShowChatInput(false);
 
-    if (depletionWords.some(w => currentUserText.toLowerCase().includes(w))) {
+    if (checkDepletion(currentUserText)) {
       setTimeout(() => {
         setChatHistory(prev => [...prev, { role: 'ai', text: sanitizeHtml(`<span class="block mb-2 font-bold text-orange-300">Pause: Deep Exhaustion Sensed</span><br/>It sounds like you are running on absolute empty. Before we try to solve this, we need to make sure you have the energy for it.`), isHtml: true }]);
-        setShowRouteButton(false);
-        setKeywordIntercept(true); 
+        setIsBurnoutIntercept(true);
       }, 800);
       return;
     }
@@ -784,7 +811,7 @@ const Horizon: React.FC<HorizonProps> = React.memo(({
   };
 
   const bypassBurnout = async () => {
-    setKeywordIntercept(false);
+    setIsBurnoutIntercept(false);
     setIsTyping(true);
     const historyText = chatHistory.map(m => `${m.role}: ${m.text}`).join(' | ');
     const nextQ = await generateHorizonQuestion(stressor, perception, historyText + " | User bypassed burnout scan, proceeding.");
@@ -792,8 +819,6 @@ const Horizon: React.FC<HorizonProps> = React.memo(({
     setIsTyping(false);
     setShowChatInput(true);
   };
-
-  const isCriticallyDepleted = energyLevel < 30;
 
   return (
     <div className="h-full flex flex-col">
@@ -808,7 +833,7 @@ const Horizon: React.FC<HorizonProps> = React.memo(({
 
         {step === 'intake' && (
           <>
-            <div className="glass-panel p-4 rounded-[24px] border-teal-500/20 relative group mb-2">
+            <div className="glass-panel p-4 rounded-[24px] border-teal-500/20 relative group">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
                   <h3 className="font-serif text-lg text-teal-100 italic">7-Day Neural Reset</h3>
@@ -828,7 +853,7 @@ const Horizon: React.FC<HorizonProps> = React.memo(({
             </div>
 
             {sessionHistory.length >= 2 && (
-              <div className="glass-panel p-5 rounded-[20px] border border-indigo-500/20 bg-indigo-900/10 mb-2">
+              <div className="glass-panel p-5 rounded-[20px] border border-indigo-500/20 bg-indigo-900/10">
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles size={12} className="text-indigo-400" />
                   <span className="font-sans text-[9px] uppercase tracking-widest text-indigo-400 font-bold">Pattern Recognition</span>
@@ -838,68 +863,62 @@ const Horizon: React.FC<HorizonProps> = React.memo(({
                 ) : (
                   <p className="font-serif text-sm text-white/80 italic leading-relaxed">{patternInsight || "Connecting patterns..."}</p>
                 )}
+                {sessionHistory[0] && (
+                  <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between">
+                    <span className="text-[9px] text-white/30 uppercase tracking-widest">Last session</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-white/50">{sessionHistory[0].stressor.slice(0, 28)}{sessionHistory[0].stressor.length > 28 ? '…' : ''}</span>
+                      <span className={`text-[10px] font-bold ${sessionHistory[0].postStress < sessionHistory[0].preStress ? 'text-teal-400' : 'text-rose-400'}`}>
+                        {sessionHistory[0].preStress}→{sessionHistory[0].postStress}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             <div className="glass-panel p-8 rounded-[2rem] border border-white/10 shadow-sm animate-[slideUpFade_0.5s_ease-out_forwards]">
               <h2 className="text-3xl font-serif italic text-white mb-2">The Horizon</h2>
-              <p className="text-xs text-white/50 mb-8 uppercase tracking-widest font-bold">Internal Weather Baseline</p>
+              <p className="text-xs text-white/50 mb-8 uppercase tracking-widest font-bold">Current State Diagnostic</p>
               
-              <div className="space-y-8 mb-8 pb-8 border-b border-white/10">
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-teal-400 mb-3">What is weighing on you?</label>
+                  <textarea value={stressor} onChange={e => setStressor(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-sm h-24 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic placeholder:text-white/20" placeholder="The team missed another deadline..." />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-teal-400 mb-3">How are you experiencing this?</label>
+                  <textarea value={perception} onChange={e => setPerception(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-sm h-24 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic placeholder:text-white/20" placeholder="I am exhausted and resentful..." />
+                </div>
+              </div>
+
+              <div className="mt-8 pt-8 border-t border-white/10 space-y-6">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-2">Internal Weather Baseline</h3>
+                
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <label className="text-xs text-white/70 uppercase tracking-widest">Stress / Friction</label>
-                    <span className="text-rose-400 font-serif text-xl">{stressLevel}%</span>
+                    <span className="text-rose-400 font-serif text-xl">{stressLevel}</span>
                   </div>
-                  <input type="range" min={1} max={100} value={stressLevel} onChange={e => setStressLevel(parseInt(e.target.value))} className="w-full slider-amber" />
+                  <input type="range" min={1} max={10} value={stressLevel} onChange={e => setStressLevel(parseInt(e.target.value))} className="w-full slider-amber" />
                 </div>
 
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <label className="text-xs text-white/70 uppercase tracking-widest">Available Energy</label>
-                    <span className="text-teal-400 font-serif text-xl">{energyLevel}%</span>
+                    <span className="text-teal-400 font-serif text-xl">{energyLevel}</span>
                   </div>
-                  <input type="range" min={1} max={100} value={energyLevel} onChange={e => setEnergyLevel(parseInt(e.target.value))} className="w-full slider-indigo" />
+                  <input type="range" min={1} max={10} value={energyLevel} onChange={e => setEnergyLevel(parseInt(e.target.value))} className="w-full slider-indigo" />
                 </div>
               </div>
 
-              {isCriticallyDepleted ? (
-                <div className="animate-enter text-center space-y-4">
-                  <div className="mx-auto w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center mb-4">
-                    <BatteryWarning className="text-orange-400" size={24} />
-                  </div>
-                  <h3 className="font-serif text-xl text-orange-200 italic">System Depleted</h3>
-                  <p className="text-sm text-white/60 pb-4">Your bandwidth is tapped. We are bypassing analysis and moving straight to regulation.</p>
-                  <button onClick={executeEmergencyBrake} className="w-full py-4 bg-orange-500 text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest text-center shadow-lg hover:bg-orange-400 transition-all">
-                    Run Vitality Scan
-                  </button>
-                  <button onClick={() => setView('preservation')} className="w-full py-3 bg-transparent border border-white/10 text-white/50 font-bold rounded-xl text-[10px] uppercase tracking-widest hover:text-white hover:bg-white/5 transition-all">
-                    Skip to Regulation
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-6 animate-enter">
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-teal-400 mb-3">What is weighing on you?</label>
-                    <textarea value={stressor} onChange={e => setStressor(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-sm h-24 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic placeholder:text-white/20" placeholder="The team missed another deadline..." />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-teal-400 mb-3">How are you experiencing this?</label>
-                    <textarea value={perception} onChange={e => setPerception(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-sm h-24 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic placeholder:text-white/20" placeholder="I am exhausted and resentful..." />
-                  </div>
-                  
-                  {keywordIntercept && (
-                    <div className="bg-orange-900/20 border border-orange-500/30 p-4 rounded-xl flex flex-col items-center text-center animate-enter">
-                      <span className="text-xs text-orange-200 mb-3">That sounds heavy. Would you rather take a regulation break first?</span>
-                      <button onClick={executeEmergencyBrake} className="px-6 py-2 bg-orange-500/20 text-orange-300 rounded-full text-[10px] uppercase tracking-widest border border-orange-500/50 hover:bg-orange-500/30">Take a Break</button>
-                    </div>
-                  )}
+              {(stressor.length > 0 && stressor.length < 5) || (perception.length > 0 && perception.length < 5) ? (
+                <p className="text-[10px] text-rose-400 uppercase tracking-widest mt-4">Please add a bit more detail to both fields.</p>
+              ) : null}
 
-                  <button onClick={startAIConversation} disabled={stressor.length < 5 || perception.length < 5} className="w-full mt-4 py-4 bg-white text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest text-center shadow-lg hover:bg-teal-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                    Begin Calibration
-                  </button>
-                </div>
-              )}
+              <button onClick={startAIConversation} disabled={stressor.length < 5 || perception.length < 5} className="w-full mt-8 py-4 bg-white text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest text-center shadow-lg hover:bg-teal-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                Begin Calibration
+              </button>
             </div>
           </>
         )}
@@ -929,26 +948,26 @@ const Horizon: React.FC<HorizonProps> = React.memo(({
                   <span className="text-sm opacity-50">Calibrating...</span>
                 </div>
               )}
-              {keywordIntercept && !isTyping && (
+              {isBurnoutIntercept && (
                 <div className="animate-enter flex flex-col gap-3 mt-4">
-                  <button onClick={executeEmergencyBrake} className="w-full py-4 bg-orange-500/20 border border-orange-500/50 text-orange-200 font-bold rounded-xl text-[10px] uppercase tracking-widest shadow-lg hover:bg-orange-500/30 transition-all flex flex-col items-center">
+                  <button onClick={() => setView('burnout_check')} className="w-full py-4 bg-orange-500/20 border border-orange-500/50 text-orange-200 font-bold rounded-xl text-[10px] uppercase tracking-widest shadow-lg hover:bg-orange-500/30 transition-all flex flex-col items-center">
                     <span>Run Vitality Scan</span>
                     <span className="text-[8px] opacity-70 mt-1">(Recommended)</span>
                   </button>
-                  <button onClick={() => { setKeywordIntercept(false); setShowChatInput(true); }} className="w-full py-3 bg-transparent border border-white/10 text-white/50 font-bold rounded-xl text-[10px] uppercase tracking-widest hover:text-white hover:bg-white/5 transition-all">
+                  <button onClick={bypassBurnout} className="w-full py-3 bg-transparent border border-white/10 text-white/50 font-bold rounded-xl text-[10px] uppercase tracking-widest hover:text-white hover:bg-white/5 transition-all">
                     I have the energy to continue
                   </button>
                 </div>
               )}
               <div ref={chatEndRef} />
             </div>
-            {showChatInput && !keywordIntercept && (
+            {showChatInput && !isBurnoutIntercept && (
               <div className="mt-auto bg-white/5 p-2 rounded-2xl border border-white/10 flex items-center shadow-sm">
                 <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendUserMessage()} className="flex-1 bg-transparent border-none outline-none px-4 text-sm text-white placeholder:text-white/40" placeholder="Type your response..." />
                 <button onClick={sendUserMessage} className="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center text-slate-900 hover:bg-teal-400 transition-colors"><ArrowUp size={20} /></button>
               </div>
             )}
-            {!keywordIntercept && showRouteButton && (
+            {showRouteButton && (
               <button onClick={() => setStep('routing')} className="w-full mt-4 py-4 bg-teal-500 text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest text-center shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:bg-teal-400 transition-all animate-[slideUpFade_0.5s_ease-out_forwards]">
                 Locate the Friction →
               </button>
@@ -963,6 +982,7 @@ const Horizon: React.FC<HorizonProps> = React.memo(({
             <p className="text-sm text-white/50 mb-8">Where is this pressure residing right now?</p>
             <div className="grid grid-cols-1 gap-4">
               <button onClick={() => { setFrictionSource('body'); setView('somatic'); }} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-teal-500/50 transition-all group relative overflow-hidden text-left">
+                <div className="absolute inset-0 bg-teal-500 opacity-0 group-hover:opacity-10 transition-opacity" />
                 <div className="flex items-center gap-3 mb-2">
                   <Activity size={20} className="text-white/40 group-hover:text-teal-400 transition-colors" />
                   <h3 className="font-bold text-white text-sm tracking-wide uppercase group-hover:text-teal-400 transition-colors">My Body</h3>
@@ -970,6 +990,7 @@ const Horizon: React.FC<HorizonProps> = React.memo(({
                 <p className="text-xs text-white/50">Tension, shallow breathing, physical static.</p>
               </button>
               <button onClick={() => { setFrictionSource('mind'); setView('laser'); }} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-indigo-500/50 transition-all group relative overflow-hidden text-left">
+                <div className="absolute inset-0 bg-indigo-500 opacity-0 group-hover:opacity-10 transition-opacity" />
                 <div className="flex items-center gap-3 mb-2">
                   <Brain size={20} className="text-white/40 group-hover:text-indigo-400 transition-colors" />
                   <h3 className="font-bold text-white text-sm tracking-wide uppercase group-hover:text-indigo-400 transition-colors">My Mind</h3>
@@ -982,7 +1003,7 @@ const Horizon: React.FC<HorizonProps> = React.memo(({
       </div>
     </div>
   );
-});
+};
 
 // ─────────────────────────────────────────────
 // VESSEL / BODY SCAN
@@ -1417,8 +1438,9 @@ const Integration: React.FC<IntegrationProps> = ({
   const energyDelta = postEnergy - energyLevel;
   const entryLevel   = energyAnalysis?.level ?? 2;
   
+  // ── Dynamic Level Math ──
   const exitLevel = Math.min(7, Math.max(entryLevel,
-    entryLevel + (stressDelta <= -40 ? 3 : stressDelta <= -20 ? 2 : stressDelta < 0 ? 1 : 0)
+    entryLevel + (stressDelta <= -4 ? 3 : stressDelta <= -2 ? 2 : stressDelta < 0 ? 1 : 0)
   ));
 
   const ELI_LABELS: Record<number, string> = {
@@ -1439,7 +1461,7 @@ const Integration: React.FC<IntegrationProps> = ({
         color: "text-rose-400",
         read: `Your system is heavily gripping the stress of "${stressor.substring(0, 30)}...". Do not force high-output action today. Lower your expectations, strip away non-essential tasks, and focus purely on biological regulation.`,
       };
-    } else if (stressDelta < 0 && postStress <= 40) {
+    } else if (stressDelta < 0 && postStress <= 4) {
       return {
         status: "Deep Anabolic Shift",
         color: "text-teal-400",
@@ -1548,16 +1570,16 @@ const Integration: React.FC<IntegrationProps> = ({
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="text-xs uppercase tracking-widest text-white/70">Current Stress</label>
-                  <span className="text-rose-400 font-serif text-xl">{postStress}%</span>
+                  <span className="text-rose-400 font-serif text-xl">{postStress}</span>
                 </div>
-                <input type="range" min={1} max={100} value={postStress} onChange={e => setPostStress(parseInt(e.target.value))} className="w-full slider-amber" />
+                <input type="range" min={1} max={10} value={postStress} onChange={e => setPostStress(parseInt(e.target.value))} className="w-full slider-amber" />
               </div>
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="text-xs uppercase tracking-widest text-white/70">Current Energy</label>
-                  <span className="text-teal-400 font-serif text-xl">{postEnergy}%</span>
+                  <span className="text-teal-400 font-serif text-xl">{postEnergy}</span>
                 </div>
-                <input type="range" min={1} max={100} value={postEnergy} onChange={e => setPostEnergy(parseInt(e.target.value))} className="w-full slider-indigo" />
+                <input type="range" min={1} max={10} value={postEnergy} onChange={e => setPostEnergy(parseInt(e.target.value))} className="w-full slider-indigo" />
               </div>
             </div>
 
@@ -1918,84 +1940,13 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView, onBack }) => {
 };
 
 // ─────────────────────────────────────────────
-// ARCHITECTURE PAYWALL
+// VIEW MAP
 // ─────────────────────────────────────────────
-const ArchitecturePaywall: React.FC<{ onUnlock: () => void }> = ({ onUnlock }) => {
-  const [code, setCode] = useState('');
-  const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const handleUnlock = async () => {
-    if (!code) return;
-    setLoading(true);
-    setError(false);
-
-    try {
-      const response = await fetch('/api/verify-cipher', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: code.trim() })
-      });
-      const data = await response.json();
-      if (response.ok && data.valid) onUnlock();
-      else { setError(true); setCode(''); }
-    } catch (err) {
-      console.error("Cipher verification failed.", err);
-      setError(true); setCode('');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="h-full flex flex-col justify-center items-center px-6 text-center relative z-50 overflow-y-auto hide-scrollbar">
-      <div className="w-full max-w-sm glass-panel p-8 md:p-10 rounded-[32px] border border-teal-500/30 shadow-2xl animate-enter relative overflow-hidden my-8">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-teal-500 to-transparent opacity-80"></div>
-        
-        <h2 className="font-serif text-4xl text-teal-400 italic mb-4">Baseline Shifted.</h2>
-        <p className="font-sans text-sm text-white/80 leading-relaxed mb-6">
-          You just moved the needle and reclaimed your bandwidth. But a single shift doesn't rewrite your operating system. Stress is a recurring loop.
-        </p>
-        <p className="font-sans text-[11px] uppercase tracking-widest text-white/50 font-bold mb-8">
-          To permanently rewire your response to friction, you need architecture.
-        </p>
-
-        <div className="text-left space-y-4 mb-8 bg-white/5 p-5 rounded-2xl border border-white/10">
-          <div className="flex items-start gap-3">
-            <Check size={16} className="text-teal-400 shrink-0 mt-0.5" />
-            <p className="text-xs text-white/90 leading-snug"><strong className="text-white">7-Day Neural Reset:</strong> Track your shifts and enforce behavioral accountability.</p>
-          </div>
-          <div className="flex items-start gap-3">
-            <Check size={16} className="text-teal-400 shrink-0 mt-0.5" />
-            <p className="text-xs text-white/90 leading-snug"><strong className="text-white">Deep Pattern Recognition:</strong> Let the AI map your blind spots over time.</p>
-          </div>
-          <div className="flex items-start gap-3">
-            <Check size={16} className="text-teal-400 shrink-0 mt-0.5" />
-            <p className="text-xs text-white/90 leading-snug"><strong className="text-white">Unlimited Interventions:</strong> 24/7 access to rapid autonomic regulation.</p>
-          </div>
-        </div>
-
-        <a href="https://billing.liveadaptiv.com/checkout/buy/68001ac0-e86f-4135-846e-7cf66779a923" target="_blank" rel="noreferrer" className="w-full block py-4 rounded-xl bg-teal-500 text-slate-900 font-sans text-xs font-bold tracking-widest uppercase hover:bg-teal-400 transition-all shadow-lg mb-6">
-          Unlock Architecture
-        </a>
-
-        <div className="pt-6 border-t border-white/10 space-y-4">
-          <p className="text-[9px] uppercase tracking-widest text-white/40">Already have a cipher?</p>
-          <input
-            type="text" value={code} onChange={e => { setCode(e.target.value.toUpperCase()); setError(false); }}
-            onKeyDown={e => e.key === 'Enter' && code && handleUnlock()}
-            placeholder="ENTER CIPHER"
-            className={`w-full bg-black/50 border py-3 text-center text-white font-mono tracking-[0.2em] focus:outline-none transition-all rounded-xl text-sm placeholder:text-white/20 ${error ? 'border-rose-500/50 text-rose-200' : 'border-white/10 focus:border-teal-500/50'}`}
-          />
-          {error && <p className="text-[10px] uppercase tracking-widest text-rose-400 animate-enter">Invalid Cipher.</p>}
-          <button onClick={handleUnlock} disabled={!code || loading} className="w-full py-3 rounded-xl bg-white/10 text-white font-sans text-[10px] font-bold tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-            {loading ? <Loader2 size={14} className="animate-spin" /> : 'Apply Cipher'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+const VIEW_NAMES = [
+  'welcome','manifesto','profile','dashboard','energy_reflection','preservation',
+  'burnout_check','fork_entry','diffuser','somatic','partswork','laser','lens',
+  'fork','regulate','alchemy','integration','insight','energy',
+] as const;
 
 // ─────────────────────────────────────────────
 // APP ROOT
@@ -2019,6 +1970,7 @@ const App = () => {
   const [isBurnoutPath,    setIsBurnoutPath]  = useState(false);
   const [somaticZones,     setSomaticZones]   = useState<string[]>([]);
   
+  // ── Global Friction Source State ──
   const [frictionSource,   setFrictionSource] = useState('body');
   
   const [partsStep,        setPartsStep]      = useState('experience');
@@ -2036,13 +1988,6 @@ const App = () => {
   const [soundType,        setSoundType]      = useState<'drone' | 'brown'>('drone');
   const [energyAnalysis,   setEnergyAnalysis] = useState<EnergyAnalysis | null>(null);
   const [alchemyType,      setAlchemyType]    = useState('perform');
-  
-  const [cipherUnlocked, setCipherUnlocked] = useState(() => storageGet<boolean>(STORAGE_KEYS.CIPHER_UNLOCKED, false));
-
-  const handleSuccessfulUnlock = () => {
-    setCipherUnlocked(true);
-    storageSet(STORAGE_KEYS.CIPHER_UNLOCKED, true);
-  };
 
   useEffect(() => {
     if (view === 'preservation') setBgState('preservation');
@@ -2087,99 +2032,95 @@ const App = () => {
         <Atmosphere bgState={bgState} />
         <div className="w-full max-w-md h-full relative z-10 p-6">
 
-          {!cipherUnlocked && sessionCount >= 1 && view !== 'integration' ? (
-            <ArchitecturePaywall onUnlock={handleSuccessfulUnlock} />
-          ) : (
-            <>
-              {view === 'welcome'           && <Entry userName={userName} setUserName={setUserName} onEnter={() => setView('dashboard')} />}
-              
-              {view === 'dashboard'         && (
-                <Horizon
-                  {...common}
-                  userName={userName} sessionCount={sessionCount}
-                  stressor={stressor} setStressor={setStressor}
-                  perception={perception} setPerception={setPerception}
-                  stressLevel={stressLevel} setStressLevel={setStressLevel}
-                  energyLevel={energyLevel} setEnergyLevel={setEnergyLevel}
-                  isBurnout={isBurnoutPath} resetApp={resetApp}
-                  setEnergyAnalysis={setEnergyAnalysis}
-                  soundType={soundType} setSoundType={setSoundType}
-                  sessionHistory={sessionHistory}
-                  setFrictionSource={setFrictionSource}
-                  onBack={() => setView('welcome')}
-                />
-              )}
+          {view === 'welcome'           && <Welcome onEnter={() => setView('manifesto')} />}
+          {view === 'manifesto'         && <Manifesto onContinue={() => setView('profile')} onBack={() => setView('welcome')} />}
+          {view === 'profile'           && <Identity userName={userName} setUserName={setUserName} onComplete={() => setView('dashboard')} onBack={() => setView('manifesto')} />}
 
-              {view === 'energy_reflection' && <EnergyReflection {...common} energyAnalysis={energyAnalysis} onBack={() => setView('dashboard')} />}
-              {view === 'fork_entry'        && <ForkEntry {...common} setFrictionSource={setFrictionSource} onBack={() => setView('dashboard')} />}
-              {view === 'diffuser'          && <Diffuser {...common} fear={fear} setFear={setFear} onBack={() => setView('fork_entry')} />}
-              {view === 'somatic'           && <Vessel {...common} somaticZones={somaticZones} setSomaticZones={setSomaticZones} onBack={() => setView('dashboard')} />}
-
-              {view === 'partswork'         && (
-                <PartsWork {...common}
-                  selectedPart={somaticZones[0] || 'Part'}
-                  sensation={sensation} setSensation={setSensation}
-                  protection={protection} setProtection={setProtection}
-                  fear={fear} setFear={setFear}
-                  expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief}
-                  partsStep={partsStep} setPartsStep={setPartsStep}
-                  onBack={() => setView('somatic')}
-                />
-              )}
-
-              {view === 'laser'             && (
-                <LaserCoaching {...common}
-                  stressor={stressor} perception={perception} 
-                  somatic={somaticZones[0] || 'Mental Loops / Cognitive Fog'}
-                  setGoal={setGoal} setExpandingBelief={setExpandingBelief}
-                  energyLevel={energyLevel} stressLevel={stressLevel}
-                  onBack={() => setView('dashboard')}
-                />
-              )}
-
-              {view === 'lens'              && <Perspective {...common} pressure={pressure} setPressure={setPressure} ability={ability} setAbility={setAbility} onBack={() => setView('dashboard')} />}
-              {view === 'fork'              && <Crossroads {...common} stressLevel={stressLevel} energyLevel={energyLevel} onBack={() => setView('lens')} />}
-
-              {view === 'regulate'          && (
-                <Breath {...common}
-                  breathing={breathing} setBreathing={setBreathing}
-                  breathCount={breathCount} setBreathCount={setBreathCount}
-                  onBack={() => setView('fork')}
-                />
-              )}
-
-              {view === 'insight'           && <Insight {...common} expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief} onBack={() => setView('regulate')} />}
-              {view === 'alchemy'           && <Alchemy {...common} setAlchemyType={setAlchemyType} onBack={() => setView('fork')} />}
-
-              {view === 'integration'       && (
-                <Integration {...common}
-                  goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep}
-                  isLocked={isLocked} setIsLocked={setIsLocked}
-                  expandingBelief={expandingBelief} stressor={stressor} fear={fear}
-                  sessionCount={sessionCount} completeSession={completeSession}
-                  resetApp={resetApp} somaticZones={somaticZones}
-                  isBurnoutPath={isBurnoutPath} userName={userName}
-                  energyAnalysis={energyAnalysis}
-                  stressLevel={stressLevel} energyLevel={energyLevel}
-                  postStressLevel={postStressLevel} setPostStressLevel={setPostStressLevel}
-                  postEnergyLevel={postEnergyLevel} setPostEnergyLevel={setPostEnergyLevel}
-                  saveSession={saveSession}
-                  onBack={() => setView('alchemy')}
-                />
-              )}
-
-              {view === 'preservation'      && (
-                <Preservation {...common}
-                  setGoal={setGoal} setExpandingBelief={setExpandingBelief}
-                  setViewToIntegration={() => { setIsLocked(true); setView('integration'); }}
-                  onBack={() => setView('dashboard')}
-                />
-              )}
-
-              {view === 'burnout_check'     && <VitalityScan {...common} setBurnoutPath={setIsBurnoutPath} onBack={() => setView('dashboard')} />}
-              {view === 'energy'            && <EnergyAnalyzer setView={setView} onBack={() => setView('dashboard')} />}
-            </>
+          {view === 'dashboard'         && (
+            <Horizon
+              {...common}
+              userName={userName} sessionCount={sessionCount}
+              stressor={stressor} setStressor={setStressor}
+              perception={perception} setPerception={setPerception}
+              stressLevel={stressLevel} setStressLevel={setStressLevel}
+              energyLevel={energyLevel} setEnergyLevel={setEnergyLevel}
+              isBurnout={isBurnoutPath} resetApp={resetApp}
+              setEnergyAnalysis={setEnergyAnalysis}
+              soundType={soundType} setSoundType={setSoundType}
+              sessionHistory={sessionHistory}
+              setFrictionSource={setFrictionSource}
+              onBack={() => setView('profile')}
+            />
           )}
+
+          {view === 'energy_reflection' && <EnergyReflection {...common} energyAnalysis={energyAnalysis} onBack={() => setView('dashboard')} />}
+          {view === 'fork_entry'        && <ForkEntry {...common} setFrictionSource={setFrictionSource} onBack={() => setView('dashboard')} />}
+          {view === 'diffuser'          && <Diffuser {...common} fear={fear} setFear={setFear} onBack={() => setView('fork_entry')} />}
+          {view === 'somatic'           && <Vessel {...common} somaticZones={somaticZones} setSomaticZones={setSomaticZones} onBack={() => setView('dashboard')} />}
+
+          {view === 'partswork'         && (
+            <PartsWork {...common}
+              selectedPart={somaticZones[0] || 'Part'}
+              sensation={sensation} setSensation={setSensation}
+              protection={protection} setProtection={setProtection}
+              fear={fear} setFear={setFear}
+              expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief}
+              partsStep={partsStep} setPartsStep={setPartsStep}
+              onBack={() => setView('somatic')}
+            />
+          )}
+
+          {view === 'laser'             && (
+            <LaserCoaching {...common}
+              stressor={stressor} perception={perception} 
+              somatic={somaticZones[0] || 'Mental Loops / Cognitive Fog'}
+              setGoal={setGoal} setExpandingBelief={setExpandingBelief}
+              energyLevel={energyLevel} stressLevel={stressLevel}
+              onBack={() => setView('dashboard')}
+            />
+          )}
+
+          {view === 'lens'              && <Perspective {...common} pressure={pressure} setPressure={setPressure} ability={ability} setAbility={setAbility} onBack={() => setView('dashboard')} />}
+          {view === 'fork'              && <Crossroads {...common} stressLevel={stressLevel} energyLevel={energyLevel} onBack={() => setView('lens')} />}
+
+          {view === 'regulate'          && (
+            <Breath {...common}
+              breathing={breathing} setBreathing={setBreathing}
+              breathCount={breathCount} setBreathCount={setBreathCount}
+              onBack={() => setView('fork')}
+            />
+          )}
+
+          {view === 'insight'           && <Insight {...common} expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief} onBack={() => setView('regulate')} />}
+          {view === 'alchemy'           && <Alchemy {...common} setAlchemyType={setAlchemyType} onBack={() => setView('fork')} />}
+
+          {view === 'integration'       && (
+            <Integration {...common}
+              goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep}
+              isLocked={isLocked} setIsLocked={setIsLocked}
+              expandingBelief={expandingBelief} stressor={stressor} fear={fear}
+              sessionCount={sessionCount} completeSession={completeSession}
+              resetApp={resetApp} somaticZones={somaticZones}
+              isBurnoutPath={isBurnoutPath} userName={userName}
+              energyAnalysis={energyAnalysis}
+              stressLevel={stressLevel} energyLevel={energyLevel}
+              postStressLevel={postStressLevel} setPostStressLevel={setPostStressLevel}
+              postEnergyLevel={postEnergyLevel} setPostEnergyLevel={setPostEnergyLevel}
+              saveSession={saveSession}
+              onBack={() => setView('alchemy')}
+            />
+          )}
+
+          {view === 'preservation'      && (
+            <Preservation {...common}
+              setGoal={setGoal} setExpandingBelief={setExpandingBelief}
+              setViewToIntegration={() => { setIsLocked(true); setView('integration'); }}
+              onBack={() => setView('dashboard')}
+            />
+          )}
+
+          {view === 'burnout_check'     && <VitalityScan {...common} setBurnoutPath={setIsBurnoutPath} onBack={() => setView('dashboard')} />}
+          {view === 'energy'            && <EnergyAnalyzer setView={setView} onBack={() => setView('dashboard')} />}
 
         </div>
       </div>
