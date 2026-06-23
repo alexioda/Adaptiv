@@ -1,19 +1,25 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateText } from 'ai';
 
-export const config = {
-  runtime: 'edge',
-};
+export const config = { runtime: 'edge' };
 
 const google = createGoogleGenerativeAI({
-  apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+  apiKey: (globalThis as any).GEMINI_API_KEY ?? (globalThis as any).GOOGLE_GENERATIVE_AI_API_KEY,
 });
 
 export async function POST(req: Request) {
-  try {
-    const { stressor, somatic, energyLevel, stressLevel } = await req.json();
+  let stressor = "";
+  let somatic = "";
+  let energyLevel = 50;
+  let stressLevel = 50;
 
-    // Contextual Logic
+  try {
+    const body = await req.json();
+    stressor = body.stressor ?? "";
+    somatic = body.somatic ?? "";
+    energyLevel = body.energyLevel ?? 50;
+    stressLevel = body.stressLevel ?? 50;
+
     const isHighStress = stressLevel > 70;
     const isLowEnergy = energyLevel < 40;
     let approach = "Direct and challenging.";
@@ -21,19 +27,21 @@ export async function POST(req: Request) {
     if (isLowEnergy) approach = "Gentle, focused on micro-steps.";
 
     const systemPrompt = `You are an expert NLP Coach.
-    Client Context:
-    - Situation: "${stressor}"
-    - Body Sensation: "${somatic}"
-    - Energy: ${energyLevel}/100 | Stress: ${stressLevel}/100
-    - Approach: ${approach}
+Client Context:
+- Situation: "${stressor}"
+- Body Sensation: "${somatic}"
+- Energy: ${energyLevel}/100 | Stress: ${stressLevel}/100
+- Approach: ${approach}
 
-    TASK: Generate exactly 3 surgical coaching questions.
-    RULES:
-    1. You MUST reference the specific situation ("${stressor}") or sensation ("${somatic}") in the questions.
-    2. Question 1: Validate the feeling.
-    3. Question 2: Challenge the assumption.
-    4. Question 3: Provoke a micro-action.
-    5. Return ONLY a JSON array of strings.`;
+TASK: Generate exactly 3 surgical coaching questions in this sequence:
+1. Name the body's signal without analyzing it.
+2. Collapse the assumption underneath the stressor.
+3. Find the smallest version of agency available right now.
+
+RULES:
+- Reference "${stressor}" or "${somatic}" specifically in the questions.
+- Do NOT label the steps. Questions should feel like a conversation, not a form.
+- Return ONLY a JSON array of 3 strings.`;
 
     const { text } = await generateText({
       model: google('gemini-1.5-flash'),
@@ -48,12 +56,12 @@ export async function POST(req: Request) {
 
   } catch (error) {
     console.error("Coaching API Error:", error);
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       questions: [
         `What is the "${somatic}" trying to tell you about ${stressor}?`,
         "If you had full permission to stop, what would you do?",
         "What is one small step that feels doable right now?"
-      ] 
+      ]
     }), { headers: { 'Content-Type': 'application/json' } });
   }
 }
