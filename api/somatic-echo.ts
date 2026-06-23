@@ -9,7 +9,7 @@
 // the coaching sequence.
 // ─────────────────────────────────────────────────
 
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+export const config = { runtime: 'edge' };
 
 const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
@@ -21,9 +21,6 @@ const ALLOWED_ORIGINS = [
   "http://localhost:5173",
 ];
 
-// ── Fallbacks keyed by somatic zone ──────────────────────────
-// Used when API is unavailable. Broad enough to land,
-// specific enough to feel intentional.
 const SOMATIC_FALLBACKS: Record<string, string> = {
   chest: "Your chest is holding something your words haven't named yet.",
   throat: "There is something in your throat that knows it needs to be said.",
@@ -42,94 +39,63 @@ function getSomaticFallback(somatic: string): string {
   return SOMATIC_FALLBACKS.default;
 }
 
-// ── Tone routing by stress + energy ──────────────────────────
 function getToneInstruction(stressLevel: number, energyLevel: number): string {
-  if (stressLevel >= 75) {
-    return "Tone: Slow. Grounding. Almost a whisper. No urgency. The sentence should feel like a hand on the shoulder.";
-  }
-  if (energyLevel <= 35) {
-    return "Tone: Gentle. Compassionate. No demand. The sentence should feel like permission to rest for a moment.";
-  }
-  if (stressLevel <= 40 && energyLevel >= 65) {
-    return "Tone: Clear and direct. Slightly challenging. The sentence should feel like a precise observation from someone who sees them clearly.";
-  }
-  return "Tone: Warm but honest. Neither soft nor sharp. The sentence should feel like a trusted colleague pausing to notice.";
+  if (stressLevel >= 75) return "Tone: Slow. Grounding. Almost a whisper. The sentence should feel like a hand on the shoulder.";
+  if (energyLevel <= 35) return "Tone: Gentle. Compassionate. The sentence should feel like permission to rest.";
+  if (stressLevel <= 40 && energyLevel >= 65) return "Tone: Clear and direct. The sentence should feel like a precise observation.";
+  return "Tone: Warm but honest. The sentence should feel like a trusted colleague pausing to notice.";
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-
-  // ── CORS ────────────────────────────────────────────────────
-  const origin = req.headers.origin ?? "";
+export default async function handler(req: Request): Promise<Response> {
+  const origin = req.headers.get("origin") ?? "";
+  const corsHeaders: Record<string, string> = {
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
   if (ALLOWED_ORIGINS.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
+    corsHeaders["Access-Control-Allow-Origin"] = origin;
   }
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  if (req.method === "OPTIONS") return res.status(204).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), {
+    status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" }
+  });
 
-  const apiKey = process.env.GOOGLE_API_KEY;
-  if (!apiKey) {
-    console.error("[/api/somatic-echo] GOOGLE_API_KEY not set.");
-    return res.status(500).json({ error: "API not configured." });
-  }
+  const apiKey = (globalThis as any).GOOGLE_API_KEY;
+  if (!apiKey) return new Response(JSON.stringify({ error: "API not configured." }), {
+    status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
+  });
 
   try {
-    const { somatic, stressLevel = 50, energyLevel = 50, stressor } = req.body;
+    const { somatic = "", stressor = "", stressLevel = 50, energyLevel = 50 } = await req.json();
 
-    if (!somatic || typeof somatic !== "string") {
-      return res.status(400).json({ error: "somatic field is required." });
-    }
+    if (!somatic) return new Response(JSON.stringify({ error: "somatic field required." }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
 
     const toneInstruction = getToneInstruction(Number(stressLevel), Number(energyLevel));
 
-    const systemPrompt = `You are a somatic awareness guide trained in ANS regulation and body-based coaching.
+    const systemPrompt = `You are a somatic awareness guide trained in ANS regulation.
 
-Client's reported body sensation: "${somatic}"
-Current stressor context: "${stressor || 'unspecified'}"
-Stress level: ${stressLevel}/100 | Energy level: ${energyLevel}/100
+Client body sensation: "${somatic}"
+Stressor context: "${stressor}"
+Stress: ${stressLevel}/100 | Energy: ${energyLevel}/100
 
-TASK:
-Generate exactly ONE sentence that mirrors the client's body experience back to them.
+Generate exactly ONE sentence mirroring the client's body experience back to them.
 
-STRICT RULES:
-1. Do NOT analyze, interpret, or explain the sensation.
-2. Do NOT offer advice, reframes, or questions.
-3. Do NOT use clinical language (no "nervous system", "cortisol", "dysregulation").
-4. The sentence must reference the specific body location or sensation: "${somatic}"
-5. The sentence should make the client feel witnessed — not diagnosed.
-6. Write in second person ("Your...").
-7. Maximum 20 words.
-8. ${toneInstruction}
+RULES:
+1. Do NOT analyze or interpret. Do NOT give advice.
+2. No clinical language.
+3. Reference the specific sensation: "${somatic}"
+4. Second person ("Your..."). Maximum 20 words.
+5. ${toneInstruction}
 
-GOOD EXAMPLES:
-- "Your shoulders have been carrying this longer than this moment."
-- "Something in your chest arrived here before you did."
-- "Your jaw knows what your calendar hasn't admitted yet."
-
-BAD EXAMPLES (never do these):
-- "It sounds like you're experiencing stress." (analyzing)
-- "Try to notice your breath." (advice)
-- "Your nervous system is activated." (clinical)
-
-Return ONLY the sentence. No quotes. No punctuation beyond the final period.`;
+Return ONLY the sentence. No quotes. No extra punctuation.`;
 
     const requestBody = {
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: "Generate the somatic echo sentence now." }]
-        }
-      ],
-      systemInstruction: {
-        parts: [{ text: systemPrompt }]
-      },
-      generationConfig: {
-        temperature: 0.85, // Slightly creative — each echo should feel fresh
-        maxOutputTokens: 60, // Hard cap — one sentence only
-        topP: 0.92,
-      }
+      contents: [{ role: "user", parts: [{ text: "Generate the somatic echo." }] }],
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: { temperature: 0.85, maxOutputTokens: 60, topP: 0.92 }
     };
 
     const geminiRes = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
@@ -139,36 +105,19 @@ Return ONLY the sentence. No quotes. No punctuation beyond the final period.`;
     });
 
     const data = await geminiRes.json();
-
-    if (!geminiRes.ok) {
-      console.error("[/api/somatic-echo] Gemini error:", geminiRes.status, data);
-      return res.status(200).json({ 
-        echo: getSomaticFallback(somatic),
-        source: "fallback"
-      });
-    }
-
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-    const echo = rawText
-      .trim()
-      .replace(/^["']|["']$/g, "") // Strip surrounding quotes if model adds them
-      .replace(/\n/g, " ") // Collapse any line breaks
-      .trim();
+    const echo = rawText.trim().replace(/^["']|["']$/g, "").replace(/\n/g, " ").trim();
 
-    if (!echo || echo.length < 5) {
-      return res.status(200).json({ 
-        echo: getSomaticFallback(somatic),
-        source: "fallback" 
-      });
-    }
-
-    return res.status(200).json({ echo, source: "ai" });
+    return new Response(
+      JSON.stringify({ echo: echo || getSomaticFallback(somatic), source: echo ? "ai" : "fallback" }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
 
   } catch (err) {
-    console.error("[/api/somatic-echo] Unexpected error:", err);
-    return res.status(200).json({ 
-      echo: getSomaticFallback(req.body?.somatic ?? ""),
-      source: "fallback"
-    });
+    const { somatic = "" } = await req.json().catch(() => ({}));
+    return new Response(
+      JSON.stringify({ echo: getSomaticFallback(somatic), source: "fallback" }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 }
