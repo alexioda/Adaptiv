@@ -16,11 +16,17 @@ export async function POST(req: Request) {
     const stressor = body.stressor ?? "";
     const perception = body.perception ?? "";
     const somatic = body.somatic ?? "";
+    const fear = body.fear ?? "";
+    const distortionType = body.distortionType ?? null;
     energyLevel = body.energyLevel ?? 50;
     stressLevel = body.stressLevel ?? 50;
 
+    const loopContext = fear
+      ? `\nRecurring Thought: "${fear}"${distortionType ? ` (the client just classified this as a${distortionType === 'assumption' ? 'n' : ''} ${distortionType})` : ''}`
+      : "";
+
     const systemPrompt = `Act as a world-class transformational coach elevating the client's perspective.
-Context: Situation: ${stressor} | Experience: ${perception} | Body/Mind Focus: ${somatic}
+Context: Situation: ${stressor} | Experience: ${perception} | Body/Mind Focus: ${somatic}${loopContext}
 Return ONLY raw JSON: { "questions": ["Mirror question", "Pivot question", "Vision question", "Catalyst question"] }`;
 
     const { text } = await generateText({

@@ -8,7 +8,7 @@ import {
   Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail,
   MinusCircle, AlertTriangle, Info, FileText, Thermometer, Sparkles, Loader2, WifiOff, Home,
   BatteryWarning, ExternalLink, HelpCircle,
-  Compass, Music, ArrowUp, TrendingDown, Share2
+  Split, Compass, Music, ArrowUp, TrendingDown, Share2
 } from 'lucide-react';
 
 
@@ -78,6 +78,11 @@ interface HorizonProps extends CommonProps {
   sessionHistory: SessionRecord[];
   setFrictionSource: (s: string) => void;
 }
+interface DiffuserProps extends CommonProps {
+  fear: string;
+  setFear: (s: string) => void;
+  setDistortionType: (t: 'fact' | 'assumption') => void;
+}
 interface VesselProps extends CommonProps {
   somaticZones: string[];
   setSomaticZones: (zones: string[]) => void;
@@ -99,6 +104,8 @@ interface LaserCoachingProps extends CommonProps {
   stressor: string;
   perception: string;
   somatic: string;
+  fear: string;
+  distortionType: 'fact' | 'assumption' | null;
   setGoal: (g: any) => void;
   setExpandingBelief: (s: string) => void;
   energyLevel: number;
@@ -377,13 +384,14 @@ Return ONLY raw JSON: { "level": number, "reflection": "string" }`;
 
 
 const generateCoachingQuestions = async (
-  stressor: string, perception: string, somatic: string, energyLevel: number, stressLevel: number
+  stressor: string, perception: string, somatic: string, energyLevel: number, stressLevel: number,
+  fear = '', distortionType: 'fact' | 'assumption' | null = null
 ): Promise<string[]> => {
   try {
     const res = await fetch('/api/coaching-questions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stressor, perception, somatic, energyLevel, stressLevel }),
+      body: JSON.stringify({ stressor, perception, somatic, energyLevel, stressLevel, fear, distortionType }),
     });
     const data = await res.json();
     if (!res.ok || !data?.questions) throw new Error('No questions returned');
@@ -712,12 +720,42 @@ const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, fri
         <p className="font-serif text-lg text-white/90 italic leading-relaxed">"{energyAnalysis?.reflection || "Connecting to your field..."}"</p>
       </div>
       <p className="font-sans text-xs text-white/40 max-w-xs leading-relaxed mb-10">This is your current energetic baseline. We will now shift this frequency.</p>
-      <button onClick={() => setView(frictionSource === 'mind' ? 'laser' : 'somatic')} className="w-full py-5 rounded-full bg-indigo-500 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-indigo-400 hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-all">
+      <button onClick={() => setView(frictionSource === 'mind' ? 'diffuser' : 'somatic')} className="w-full py-5 rounded-full bg-indigo-500 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-indigo-400 hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-all">
         Shift This Energy
       </button>
     </div>
   </div>
 );
+
+
+const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setDistortionType, setView, toggleSound, soundEnabled, onBack }) => {
+  const [step, setStep] = useState(0);
+  const chooseDistortion = (t: 'fact' | 'assumption') => { setDistortionType(t); setView('laser'); };
+  return (
+    <div className="h-full flex flex-col">
+      <Nav title="The Filter" subtitle="Fact vs. Fiction" onBack={() => step > 0 ? setStep(0) : onBack?.()} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={25} />
+      <div className="flex-1 flex flex-col justify-center px-4 animate-enter overflow-y-auto hide-scrollbar pb-4">
+        {step === 0 ? (
+          <>
+            <h3 className="font-serif text-2xl text-white italic mb-6 text-center">"What is the loudest loop?"</h3>
+            <input autoFocus className="w-full bg-transparent border-b border-indigo-500/50 py-4 text-center text-white font-light text-lg focus:outline-none mb-8" placeholder="I keep thinking about..." value={fear} onChange={e => setFear(e.target.value)} onKeyDown={e => e.key === 'Enter' && setStep(1)} />
+            <button onClick={() => setStep(1)} disabled={!fear} className="w-full py-4 rounded-full bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 font-sans text-xs tracking-widest uppercase hover:bg-indigo-500/30 transition-all">Capture Thought</button>
+          </>
+        ) : (
+          <div className="text-center">
+            <Split size={48} className="text-indigo-300 mx-auto mb-6" />
+            <h3 className="font-serif text-2xl text-white italic mb-4">The Filter</h3>
+            <p className="text-sm text-white/70 mb-8">Is this thought an absolute <strong>Fact</strong> (provable in court) or an <strong>Assumption</strong> (an interpretation)?</p>
+            <div className="grid grid-cols-2 gap-4">
+              <button onClick={() => chooseDistortion('fact')} className="py-4 rounded-xl border border-white/10 hover:bg-white/5 transition-all text-xs uppercase tracking-widest">It's a Fact</button>
+              <button onClick={() => chooseDistortion('assumption')} className="py-4 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-200 hover:bg-indigo-500/30 transition-all text-xs uppercase tracking-widest">It's an Assumption</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 
 // ─────────────────────────────────────────────
@@ -1156,7 +1194,7 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
 // ─────────────────────────────────────────────
 // LASER COACHING
 // ─────────────────────────────────────────────
-const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, somatic, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, energyLevel, stressLevel, onBack }) => {
+const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, somatic, fear, distortionType, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, energyLevel, stressLevel, onBack }) => {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<any>({ topic: '', result: '', permission: '', action: '' });
   const [aiQuestions, setAiQuestions] = useState<string[]>([]);
@@ -1168,7 +1206,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
     if (aiQuestions.length === 0) {
       setLoading(true);
       Promise.all([
-        generateCoachingQuestions(stressor || "General Stress", perception || "Feeling Stuck", somatic, energyLevel, stressLevel),
+        generateCoachingQuestions(stressor || "General Stress", perception || "Feeling Stuck", somatic, energyLevel, stressLevel, fear, distortionType),
         getSomaticEcho(somatic, stressor, stressLevel, energyLevel),
       ]).then(([q, echo]) => { setAiQuestions(q); setSomaticEcho(echo); setLoading(false); });
     }
@@ -2097,7 +2135,7 @@ const CheckoutGate: React.FC<{ onBack: () => void }> = ({ onBack }) => (
 // ─────────────────────────────────────────────
 const VIEW_NAMES = [
   'welcome','manifesto','profile','dashboard','energy_reflection','preservation',
-  'burnout_check','somatic','partswork','laser','lens',
+  'burnout_check','diffuser','somatic','partswork','laser','lens',
   'fork','regulate','alchemy','integration','insight','energy','checkout'
 ] as const;
 
@@ -2132,6 +2170,7 @@ const App = () => {
   const [stressor, setStressor] = useState('');
   const [perception, setPerception] = useState('');
   const [fear, setFear] = useState('');
+  const [distortionType, setDistortionType] = useState<'fact' | 'assumption' | null>(null);
   const [stressLevel, setStressLevel] = useState(50);
   const [energyLevel, setEnergyLevel] = useState(50);
   const [postStressLevel, setPostStressLevel] = useState(50);
@@ -2197,7 +2236,7 @@ const App = () => {
     setStressor(''); setPerception(''); setSomaticZones([]);
     setIsLocked(false); setIsBurnoutPath(false);
     setPartsStep('experience'); setSensation(''); setProtection('');
-    setExpandingBelief(''); setFear('');
+    setExpandingBelief(''); setFear(''); setDistortionType(null);
     setGoal({ what: '', measure: '', when: '', outcome: '', action: '' });
     setGoalStep(0);
   };
@@ -2238,6 +2277,7 @@ const App = () => {
 
 
           {viewState === 'energy_reflection' && <EnergyReflection {...common} energyAnalysis={energyAnalysis} frictionSource={frictionSource} onBack={() => setView('dashboard')} />}
+          {viewState === 'diffuser' && <Diffuser {...common} fear={fear} setFear={setFear} setDistortionType={setDistortionType} onBack={() => setView('dashboard')} />}
           {viewState === 'somatic' && <Vessel {...common} somaticZones={somaticZones} setSomaticZones={setSomaticZones} onBack={() => setView('dashboard')} />}
 
 
@@ -2256,8 +2296,9 @@ const App = () => {
 
           {viewState === 'laser' && (
             <LaserCoaching {...common}
-              stressor={stressor} perception={perception} 
+              stressor={stressor} perception={perception}
               somatic={somaticZones[0] || 'Mental Loops / Cognitive Fog'}
+              fear={fear} distortionType={distortionType}
               setGoal={setGoal} setExpandingBelief={setExpandingBelief}
               energyLevel={energyLevel} stressLevel={stressLevel}
               onBack={() => setView('dashboard')}
