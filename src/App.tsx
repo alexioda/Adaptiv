@@ -8,7 +8,7 @@ import {
   Brain, Eye, MessageCircle, Shield, Sun, Flame, Anchor, Hand, Disc, Mountain, Mail,
   MinusCircle, AlertTriangle, Info, FileText, Thermometer, Sparkles, Loader2, WifiOff, Home,
   BatteryWarning, ExternalLink, HelpCircle,
-  Split, CloudFog, Compass, Music, ArrowUp, TrendingDown, Share2
+  Compass, Music, ArrowUp, TrendingDown, Share2
 } from 'lucide-react';
 
 
@@ -78,10 +78,6 @@ interface HorizonProps extends CommonProps {
   sessionHistory: SessionRecord[];
   setFrictionSource: (s: string) => void;
 }
-interface ForkEntryProps extends CommonProps {
-  setFrictionSource: (s: string) => void;
-}
-interface DiffuserProps extends CommonProps { fear: string; setFear: (s: string) => void; }
 interface VesselProps extends CommonProps {
   somaticZones: string[];
   setSomaticZones: (zones: string[]) => void;
@@ -722,62 +718,6 @@ const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, fri
     </div>
   </div>
 );
-
-
-const ForkEntry: React.FC<ForkEntryProps> = ({ setView, toggleSound, soundEnabled, onBack, setFrictionSource }) => (
-  <div className="h-full flex flex-col px-4">
-    <Nav title="The Source" subtitle="Origin Point" onBack={onBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={10} />
-    <div className="flex-1 flex flex-col justify-center gap-6 animate-enter overflow-y-auto hide-scrollbar pb-4">
-      <div className="text-center mb-4">
-        <h2 className="font-serif text-2xl text-white italic mb-2">Where is the friction loudest?</h2>
-        <p className="text-xs text-white/50">Stress has two addresses. Choose the one calling for attention.</p>
-      </div>
-      <button onClick={() => { setFrictionSource('body'); setView('somatic'); }} className="p-6 rounded-[24px] glass-panel group text-left hover:bg-white/5 transition-all border border-transparent hover:border-teal-500/30">
-        <div className="flex items-center gap-4 mb-3">
-          <div className="p-3 rounded-full bg-teal-500/10 text-teal-300 group-hover:scale-110 transition-transform"><Activity size={24} /></div>
-          <div><h3 className="font-serif text-xl text-white italic">The Body</h3><p className="text-[10px] uppercase tracking-widest text-white/40">Heaviness & Tension</p></div>
-        </div>
-        <p className="text-xs text-white/60 leading-relaxed pl-[60px]">Tightness in chest, knot in gut, heavy shoulders, exhaustion.</p>
-      </button>
-      <button onClick={() => { setFrictionSource('mind'); setView('diffuser'); }} className="p-6 rounded-[24px] glass-panel group text-left hover:bg-white/5 transition-all border border-transparent hover:border-indigo-500/30">
-        <div className="flex items-center gap-4 mb-3">
-          <div className="p-3 rounded-full bg-indigo-500/10 text-indigo-300 group-hover:scale-110 transition-transform"><CloudFog size={24} /></div>
-          <div><h3 className="font-serif text-xl text-white italic">The Mind</h3><p className="text-[10px] uppercase tracking-widest text-white/40">Racing Thoughts & Loops</p></div>
-        </div>
-        <p className="text-xs text-white/60 leading-relaxed pl-[60px]">Mental fog, analyzing, planning, replaying scenarios.</p>
-      </button>
-    </div>
-  </div>
-);
-
-
-const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setView, toggleSound, soundEnabled, onBack }) => {
-  const [step, setStep] = useState(0);
-  return (
-    <div className="h-full flex flex-col">
-      <Nav title="The Filter" subtitle="Fact vs. Fiction" onBack={() => step > 0 ? setStep(0) : onBack?.()} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={25} />
-      <div className="flex-1 flex flex-col justify-center px-4 animate-enter overflow-y-auto hide-scrollbar pb-4">
-        {step === 0 ? (
-          <>
-            <h3 className="font-serif text-2xl text-white italic mb-6 text-center">"What is the loudest loop?"</h3>
-            <input autoFocus className="w-full bg-transparent border-b border-indigo-500/50 py-4 text-center text-white font-light text-lg focus:outline-none mb-8" placeholder="I keep thinking about..." value={fear} onChange={e => setFear(e.target.value)} onKeyDown={e => e.key === 'Enter' && setStep(1)} />
-            <button onClick={() => setStep(1)} disabled={!fear} className="w-full py-4 rounded-full bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 font-sans text-xs tracking-widest uppercase hover:bg-indigo-500/30 transition-all">Capture Thought</button>
-          </>
-        ) : (
-          <div className="text-center">
-            <Split size={48} className="text-indigo-300 mx-auto mb-6" />
-            <h3 className="font-serif text-2xl text-white italic mb-4">The Filter</h3>
-            <p className="text-sm text-white/70 mb-8">Is this thought an absolute <strong>Fact</strong> (provable in court) or an <strong>Assumption</strong> (an interpretation)?</p>
-            <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => setView('lens')} className="py-4 rounded-xl border border-white/10 hover:bg-white/5 transition-all text-xs uppercase tracking-widest">It's a Fact</button>
-              <button onClick={() => setView('lens')} className="py-4 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-200 hover:bg-indigo-500/30 transition-all text-xs uppercase tracking-widest">It's an Assumption</button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
 
 
 // ─────────────────────────────────────────────
@@ -2157,7 +2097,7 @@ const CheckoutGate: React.FC<{ onBack: () => void }> = ({ onBack }) => (
 // ─────────────────────────────────────────────
 const VIEW_NAMES = [
   'welcome','manifesto','profile','dashboard','energy_reflection','preservation',
-  'burnout_check','fork_entry','diffuser','somatic','partswork','laser','lens',
+  'burnout_check','somatic','partswork','laser','lens',
   'fork','regulate','alchemy','integration','insight','energy','checkout'
 ] as const;
 
@@ -2298,8 +2238,6 @@ const App = () => {
 
 
           {viewState === 'energy_reflection' && <EnergyReflection {...common} energyAnalysis={energyAnalysis} frictionSource={frictionSource} onBack={() => setView('dashboard')} />}
-          {viewState === 'fork_entry' && <ForkEntry {...common} setFrictionSource={setFrictionSource} onBack={() => setView('dashboard')} />}
-          {viewState === 'diffuser' && <Diffuser {...common} fear={fear} setFear={setFear} onBack={() => setView('fork_entry')} />}
           {viewState === 'somatic' && <Vessel {...common} somaticZones={somaticZones} setSomaticZones={setSomaticZones} onBack={() => setView('dashboard')} />}
 
 
