@@ -6,16 +6,16 @@ export const config = {
 };
 
 const google = createGoogleGenerativeAI({
-  apiKey: (globalThis as any).GEMINI_API_KEY ?? (globalThis as any).GOOGLE_GENERATIVE_AI_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 });
 
 export async function POST(req: Request) {
   try {
     const { level, type } = await req.json();
 
-    const systemPrompt = `You are a Master Coach analyzing an Energy Leadership assessment.
-    Input: Level ${level} (${type}).
-    
+    const systemPrompt = `You are a Master Clinical Coach using the LiveAdaptiv thermodynamic framework.
+    Input: Kinetic State Level ${level} (${type}).
+
     Task: Generate a ONE-sentence "Power Shift" insight.
     Tone: Mystical but grounded. Direct.`;
 
