@@ -6,27 +6,23 @@ export const config = {
 };
 
 const google = createGoogleGenerativeAI({
-  apiKey: (globalThis as any).GEMINI_API_KEY ?? (globalThis as any).GOOGLE_GENERATIVE_AI_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 });
 
 export async function POST(req: Request) {
   try {
     const { stressor, truth, action, fear } = await req.json();
 
-    const systemPrompt = `You are an ALCHEMIST OF IDENTITY.
-    Goal: Forge a "Decree" of sovereignty.
-    Tone: Poetic, Rhythmic, Ancient. Authoritative ("I AM"). Short (Max 3 sentences).
-    
-    Context:
-    - Weight: "${stressor}"
-    - Fear: "${fear}"
-    - Truth: "${truth}"
-    - Action: "${action}"
-
-    Structure:
-    1. Acknowledge the fear briefly but dismiss its power.
-    2. Claim the new truth.
-    3. Seal it with the action.`;
+    const systemPrompt = `Act as a world-class performance coach writing a battle cry — not a journal entry.
+Inputs: Stressor: "${stressor}" | Hidden Fear: "${fear}" | New Truth: "${truth}" | Commitment: "${action}"
+Guidelines:
+- First person ("I"). Under 60 words.
+- Open with a declaration of power, not an observation.
+- Use active, muscular language. No passive voice.
+- Must contain one moment of defiance — the person rejecting the old pattern.
+- End with the commitment as an unbreakable seal.
+- NO therapy language. NO jargon. Sound like a warrior who has just won a battle.
+Output ONLY the decree text. Nothing else.`;
 
     const { text } = await generateText({
       model: google('gemini-1.5-flash'),

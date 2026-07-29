@@ -4,44 +4,24 @@ import { generateText } from 'ai';
 export const config = { runtime: 'edge' };
 
 const google = createGoogleGenerativeAI({
-  apiKey: (globalThis as any).GEMINI_API_KEY ?? (globalThis as any).GOOGLE_GENERATIVE_AI_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 });
 
 export async function POST(req: Request) {
-  let stressor = "";
-  let somatic = "";
   let energyLevel = 50;
   let stressLevel = 50;
 
   try {
     const body = await req.json();
-    stressor = body.stressor ?? "";
-    somatic = body.somatic ?? "";
+    const stressor = body.stressor ?? "";
+    const perception = body.perception ?? "";
+    const somatic = body.somatic ?? "";
     energyLevel = body.energyLevel ?? 50;
     stressLevel = body.stressLevel ?? 50;
 
-    const isHighStress = stressLevel > 70;
-    const isLowEnergy = energyLevel < 40;
-    let approach = "Direct and challenging.";
-    if (isHighStress) approach = "Calm, grounding, and focused on safety.";
-    if (isLowEnergy) approach = "Gentle, focused on micro-steps.";
-
-    const systemPrompt = `You are an expert NLP Coach.
-Client Context:
-- Situation: "${stressor}"
-- Body Sensation: "${somatic}"
-- Energy: ${energyLevel}/100 | Stress: ${stressLevel}/100
-- Approach: ${approach}
-
-TASK: Generate exactly 3 surgical coaching questions in this sequence:
-1. Name the body's signal without analyzing it.
-2. Collapse the assumption underneath the stressor.
-3. Find the smallest version of agency available right now.
-
-RULES:
-- Reference "${stressor}" or "${somatic}" specifically in the questions.
-- Do NOT label the steps. Questions should feel like a conversation, not a form.
-- Return ONLY a JSON array of 3 strings.`;
+    const systemPrompt = `Act as a world-class transformational coach elevating the client's perspective.
+Context: Situation: ${stressor} | Experience: ${perception} | Body/Mind Focus: ${somatic}
+Return ONLY raw JSON: { "questions": ["Mirror question", "Pivot question", "Vision question", "Catalyst question"] }`;
 
     const { text } = await generateText({
       model: google('gemini-1.5-flash'),
@@ -50,18 +30,21 @@ RULES:
     });
 
     const cleanText = text.replace(/```json|```/g, '').trim();
-    return new Response(JSON.stringify({ questions: JSON.parse(cleanText) }), {
+    const { questions } = JSON.parse(cleanText);
+    return new Response(JSON.stringify({ questions }), {
       headers: { 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
     console.error("Coaching API Error:", error);
-    return new Response(JSON.stringify({
-      questions: [
-        `What is the "${somatic}" trying to tell you about ${stressor}?`,
-        "If you had full permission to stop, what would you do?",
-        "What is one small step that feels doable right now?"
-      ]
-    }), { headers: { 'Content-Type': 'application/json' } });
+    const fallback = stressLevel > 60 || energyLevel < 40
+      ? "What specifically is threatened by this situation?"
+      : energyLevel > 70
+        ? "If you were coaching your best self, what would you tell them to do?"
+        : "What is one assumption you are making that might not be true?";
+    return new Response(JSON.stringify({ questions: [fallback] }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }

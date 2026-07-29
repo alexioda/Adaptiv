@@ -58,7 +58,7 @@ interface CommonProps {
   soundEnabled: boolean;
   onBack?: () => void;
 }
-interface EnergyReflectionProps extends CommonProps { energyAnalysis: EnergyAnalysis | null; }
+interface EnergyReflectionProps extends CommonProps { energyAnalysis: EnergyAnalysis | null; frictionSource: string; }
 interface HorizonProps extends CommonProps {
   userName: string;
   sessionCount: number;
@@ -384,35 +384,33 @@ const generateCoachingQuestions = async (
   stressor: string, perception: string, somatic: string, energyLevel: number, stressLevel: number
 ): Promise<string[]> => {
   try {
-    const prompt = `Act as a world-class transformational coach elevating the client's perspective.
-Context: Situation: ${stressor} | Experience: ${perception} | Body/Mind Focus: ${somatic}
-Return ONLY raw JSON: { "questions": ["Mirror question", "Pivot question", "Vision question", "Catalyst question"] }`;
-    const raw = await callAI(prompt, true);
-    return JSON.parse(raw.replace(/```json|```/g, '').trim()).questions;
+    const res = await fetch('/api/coaching-questions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stressor, perception, somatic, energyLevel, stressLevel }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data?.questions) throw new Error('No questions returned');
+    return data.questions;
   } catch {
     return [getSmartQuestion(energyLevel, stressLevel)];
   }
 };
 
 
-// ── FIX 2: Decree font size and motivational strength ──
 const generateManifesto = async (
   stressor: string, truth: string, action: string, fear: string,
   currentLevel: number, onUpdate: (text: string) => void
 ): Promise<{ isOffline: boolean }> => {
   try {
-    const prompt = `Act as a world-class performance coach writing a battle cry — not a journal entry.
-Inputs: Stressor: "${stressor}" | Hidden Fear: "${fear}" | New Truth: "${truth}" | Commitment: "${action}"
-Guidelines:
-- First person ("I"). Under 60 words.
-- Open with a declaration of power, not an observation.
-- Use active, muscular language. No passive voice.
-- Must contain one moment of defiance — the person rejecting the old pattern.
-- End with the commitment as an unbreakable seal.
-- NO therapy language. NO jargon. Sound like a warrior who has just won a battle.
-Output ONLY the decree text. Nothing else.`;
-    const text = (await callAI(prompt)).trim();
-    onUpdate(text);
+    const res = await fetch('/api/manifesto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stressor, truth, action, fear }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data?.manifesto) throw new Error('No manifesto returned');
+    onUpdate(data.manifesto);
     return { isOffline: false };
   } catch {
     const fallback = `I hear the noise of "${stressor}" and the fear that ${fear || 'I am not enough'}. I honor the friction, but I refuse to reside in it. Standing in the undeniable truth that ${truth}, I am reclaiming my sovereignty. My action is my seal: ${action}.`;
@@ -424,10 +422,46 @@ Output ONLY the decree text. Nothing else.`;
 
 const generateEnergyInsight = async (level: number, type: string): Promise<string> => {
   try {
-    const prompt = `Provide ONE profound, 1-sentence insight about personal energy for someone experiencing '${type}'. Tone: Mystical, grounded, empowering. No technical terms.`;
-    return (await callAI(prompt)).trim();
+    const res = await fetch('/api/energy-analysis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ level, type }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data?.insight) throw new Error('No insight returned');
+    return data.insight;
   } catch {
     return "Your energy is your currency. How you spend it determines your reality.";
+  }
+};
+
+
+const SOMATIC_ECHO_FALLBACKS: Record<string, string> = {
+  chest: "Your chest is holding something your words haven't named yet.",
+  throat: "There is something in your throat that knows it needs to be said.",
+  stomach: "Your gut already has an answer your mind is still debating.",
+  jaw: "Your jaw has been bracing against something longer than today.",
+  shoulders: "The weight on your shoulders has been accumulating quietly.",
+  head: "Your mind is moving faster than your body can follow right now.",
+  default: "Your body arrived here carrying something worth listening to.",
+};
+
+const getSomaticEcho = async (
+  somatic: string, stressor: string, stressLevel: number, energyLevel: number
+): Promise<string> => {
+  try {
+    const res = await fetch('/api/somatic-echo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ somatic, stressor, stressLevel, energyLevel }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data?.echo) throw new Error('No echo returned');
+    return data.echo;
+  } catch {
+    const lower = somatic.toLowerCase();
+    const key = Object.keys(SOMATIC_ECHO_FALLBACKS).find(k => lower.includes(k));
+    return SOMATIC_ECHO_FALLBACKS[key ?? 'default'];
   }
 };
 
@@ -670,7 +704,7 @@ const Identity: React.FC<{ userName: string; setUserName: (n: string) => void; o
 );
 
 
-const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, setView, toggleSound, soundEnabled, onBack }) => (
+const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, frictionSource, setView, toggleSound, soundEnabled, onBack }) => (
   <div className="h-full flex flex-col justify-center px-4 animate-enter">
     <Nav title="Current Resonance" subtitle="The Lens" isDashboard={false} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={5} onBack={onBack} />
     <div className="flex-1 flex flex-col justify-center items-center text-center pb-12 overflow-y-auto hide-scrollbar">
@@ -682,7 +716,7 @@ const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, set
         <p className="font-serif text-lg text-white/90 italic leading-relaxed">"{energyAnalysis?.reflection || "Connecting to your field..."}"</p>
       </div>
       <p className="font-sans text-xs text-white/40 max-w-xs leading-relaxed mb-10">This is your current energetic baseline. We will now shift this frequency.</p>
-      <button onClick={() => setView('fork_entry')} className="w-full py-5 rounded-full bg-indigo-500 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-indigo-400 hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-all">
+      <button onClick={() => setView(frictionSource === 'mind' ? 'laser' : 'somatic')} className="w-full py-5 rounded-full bg-indigo-500 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-indigo-400 hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-all">
         Shift This Energy
       </button>
     </div>
@@ -781,6 +815,13 @@ const Horizon: React.FC<HorizonProps> = ({
       });
     }
   }, []);
+
+
+  const handleFrictionSelect = (source: string) => {
+    setFrictionSource(source);
+    setView('energy_reflection');
+    analyzeCurrentEnergy(stressor, perception, stressLevel, energyLevel, source).then(setEnergyAnalysis);
+  };
 
 
   const handleInternalBack = () => {
@@ -1041,7 +1082,7 @@ const Horizon: React.FC<HorizonProps> = ({
             <h2 className="text-2xl font-serif italic text-white mb-2">Initiate Shift</h2>
             <p className="text-sm text-white/50 mb-8">Where is this pressure residing right now?</p>
             <div className="grid grid-cols-1 gap-4">
-              <button onClick={() => { setFrictionSource('body'); setView('somatic'); }} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-teal-500/50 transition-all group relative overflow-hidden text-left">
+              <button onClick={() => handleFrictionSelect('body')} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-teal-500/50 transition-all group relative overflow-hidden text-left">
                 <div className="absolute inset-0 bg-teal-500 opacity-0 group-hover:opacity-10 transition-opacity" />
                 <div className="flex items-center gap-3 mb-2">
                   <Activity size={20} className="text-white/40 group-hover:text-teal-400 transition-colors" />
@@ -1049,7 +1090,7 @@ const Horizon: React.FC<HorizonProps> = ({
                 </div>
                 <p className="text-xs text-white/50">Tension, shallow breathing, physical static.</p>
               </button>
-              <button onClick={() => { setFrictionSource('mind'); setView('laser'); }} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-indigo-500/50 transition-all group relative overflow-hidden text-left">
+              <button onClick={() => handleFrictionSelect('mind')} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-indigo-500/50 transition-all group relative overflow-hidden text-left">
                 <div className="absolute inset-0 bg-indigo-500 opacity-0 group-hover:opacity-10 transition-opacity" />
                 <div className="flex items-center gap-3 mb-2">
                   <Brain size={20} className="text-white/40 group-hover:text-indigo-400 transition-colors" />
@@ -1179,14 +1220,17 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<any>({ topic: '', result: '', permission: '', action: '' });
   const [aiQuestions, setAiQuestions] = useState<string[]>([]);
+  const [somaticEcho, setSomaticEcho] = useState('');
   const [loading, setLoading] = useState(true);
 
 
   useEffect(() => {
     if (aiQuestions.length === 0) {
       setLoading(true);
-      generateCoachingQuestions(stressor || "General Stress", perception || "Feeling Stuck", somatic, energyLevel, stressLevel)
-        .then(q => { setAiQuestions(q); setLoading(false); });
+      Promise.all([
+        generateCoachingQuestions(stressor || "General Stress", perception || "Feeling Stuck", somatic, energyLevel, stressLevel),
+        getSomaticEcho(somatic, stressor, stressLevel, energyLevel),
+      ]).then(([q, echo]) => { setAiQuestions(q); setSomaticEcho(echo); setLoading(false); });
     }
   }, []);
 
@@ -1226,6 +1270,9 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
             <div className="text-center py-10"><Loader2 className="animate-spin mx-auto text-teal-400" /></div>
           ) : (
             <div className="animate-enter">
+              {step === 0 && somaticEcho && (
+                <p className="font-serif text-sm text-white/50 italic mb-6 leading-relaxed border-l-2 border-teal-500/30 pl-3">{somaticEcho}</p>
+              )}
               <span className="font-sans text-[10px] text-white/40 uppercase tracking-widest mb-4 block">{currentQ.label}</span>
               <h3 className="font-serif text-2xl text-white italic mb-8 leading-snug">{currentQ.q}</h3>
               <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6 text-lg placeholder:text-white/20" placeholder={currentQ.ph} value={answers[currentQ.id]} onChange={e => setAnswers({ ...answers, [currentQ.id]: e.target.value })} onKeyDown={e => e.key === 'Enter' && handleNext()} />
@@ -2250,7 +2297,7 @@ const App = () => {
           )}
 
 
-          {viewState === 'energy_reflection' && <EnergyReflection {...common} energyAnalysis={energyAnalysis} onBack={() => setView('dashboard')} />}
+          {viewState === 'energy_reflection' && <EnergyReflection {...common} energyAnalysis={energyAnalysis} frictionSource={frictionSource} onBack={() => setView('dashboard')} />}
           {viewState === 'fork_entry' && <ForkEntry {...common} setFrictionSource={setFrictionSource} onBack={() => setView('dashboard')} />}
           {viewState === 'diffuser' && <Diffuser {...common} fear={fear} setFear={setFear} onBack={() => setView('fork_entry')} />}
           {viewState === 'somatic' && <Vessel {...common} somaticZones={somaticZones} setSomaticZones={setSomaticZones} onBack={() => setView('dashboard')} />}
