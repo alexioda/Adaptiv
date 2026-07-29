@@ -61,7 +61,7 @@ export default async function handler(req: Request): Promise<Response> {
     status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" }
   });
 
-  const apiKey = (globalThis as any).GOOGLE_API_KEY;
+  const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) return new Response(JSON.stringify({ error: "API not configured." }), {
     status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
   });

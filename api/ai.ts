@@ -10,6 +10,13 @@ const ALLOWED_ORIGINS = [
   "http://localhost:5173",
 ];
 
+const SAFETY_SETTINGS = [
+  { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+];
+
 export default async function handler(req: Request): Promise<Response> {
   const origin = req.headers.get("origin") ?? "";
   const corsHeaders: Record<string, string> = {
@@ -29,7 +36,7 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  const apiKey = (globalThis as any).GOOGLE_API_KEY;
+  const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) {
     return new Response(JSON.stringify({ error: "API not configured." }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -44,10 +51,18 @@ export default async function handler(req: Request): Promise<Response> {
       });
     }
 
+    const forwardBody: Record<string, unknown> = {
+      contents: body.contents,
+      safetySettings: SAFETY_SETTINGS,
+    };
+    if (body.generationConfig?.responseMimeType === "application/json") {
+      forwardBody.generationConfig = { responseMimeType: "application/json" };
+    }
+
     const geminiRes = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify(forwardBody),
     });
 
     const data = await geminiRes.json();
