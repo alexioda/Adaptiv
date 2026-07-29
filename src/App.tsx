@@ -1828,7 +1828,7 @@ const Integration: React.FC<IntegrationProps> = ({
                     Continue in the App — Monthly Access
                   </a>
                   <a href="https://billing.liveadaptiv.com/checkout/buy/d29e3b81-78a4-4611-83f8-11fe76d9d82e" target="_blank" rel="noreferrer" className="block w-full py-4 bg-white/5 border border-white/20 text-white font-bold rounded-xl text-[10px] uppercase tracking-widest hover:border-teal-400 hover:text-teal-400 transition-all">
-                    Install Stress Transformation Protocol — $47
+                    Stress Transformation Guide — $47
                   </a>
                   <a href="https://calendly.com/alexioda" target="_blank" rel="noreferrer" className="block w-full py-4 bg-white/5 border border-white/20 text-white font-bold rounded-xl text-[10px] uppercase tracking-widest hover:border-teal-400 hover:text-teal-400 transition-all">
                     Book Clinical Strategy Session ($495)
