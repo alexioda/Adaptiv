@@ -61,19 +61,24 @@ export default async function handler(req: Request): Promise<Response> {
     status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" }
   });
 
-  const apiKey = process.env.GOOGLE_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   if (!apiKey) return new Response(JSON.stringify({ error: "API not configured." }), {
     status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
   });
 
+  let somatic = "";
   try {
-    const { somatic = "", stressor = "", stressLevel = 50, energyLevel = 50 } = await req.json();
+    const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+    somatic = typeof body.somatic === "string" ? body.somatic : "";
+    const stressor = typeof body.stressor === "string" ? body.stressor : "";
+    const stressLevel = Number(body.stressLevel ?? 50);
+    const energyLevel = Number(body.energyLevel ?? 50);
 
     if (!somatic) return new Response(JSON.stringify({ error: "somatic field required." }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
 
-    const toneInstruction = getToneInstruction(Number(stressLevel), Number(energyLevel));
+    const toneInstruction = getToneInstruction(stressLevel, energyLevel);
 
     const systemPrompt = `You are a somatic awareness guide trained in ANS regulation.
 
@@ -114,7 +119,6 @@ Return ONLY the sentence. No quotes. No extra punctuation.`;
     );
 
   } catch (err) {
-    const { somatic = "" } = await req.json().catch(() => ({}));
     return new Response(
       JSON.stringify({ echo: getSomaticFallback(somatic), source: "fallback" }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
