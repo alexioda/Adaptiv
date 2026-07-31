@@ -6,7 +6,7 @@ export const config = {
 };
 
 const google = createGoogleGenerativeAI({
-  apiKey: process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 });
 
 export async function POST(req: Request) {
@@ -25,7 +25,7 @@ Guidelines:
 Output ONLY the decree text. Nothing else.`;
 
     const { text } = await generateText({
-      model: google('gemini-1.5-flash'),
+      model: google('gemini-2.5-flash'),
       system: systemPrompt,
       prompt: "Generate the decree.",
     });
