@@ -156,6 +156,7 @@ interface IntegrationProps extends CommonProps {
   setPostEnergyLevel: (n: number) => void;
   saveSession: (record: SessionRecord) => void;
   setHasCompletedFreeCycle: (b: boolean) => void;
+  goHome: () => void;
 }
 interface PreservationProps extends CommonProps {
   setGoal: (g: any) => void;
@@ -574,15 +575,15 @@ const Toast: React.FC<{ message: string; onDone: () => void }> = ({ message, onD
 // ─────────────────────────────────────────────
 const Nav: React.FC<NavProps> = ({ title, subtitle, onBack, isDashboard, soundEnabled, toggleSound, resetApp, progress, aiActive }) => (
   <div className="flex flex-col mb-4 pt-4 animate-enter shrink-0 relative z-50">
-    <div className="flex justify-between items-start">
-      <div>
-        <h2 className="font-sans text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mb-1">{subtitle}</h2>
-        <div className="flex items-center gap-2">
-          {!isDashboard && <Activity size={20} className="text-white/80" />}
-          <h1 className="font-serif text-3xl text-white/90 italic">{title}</h1>
+    <div className="flex justify-between items-start gap-2">
+      <div className="min-w-0 flex-1">
+        <h2 className="font-sans text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mb-1 truncate">{subtitle}</h2>
+        <div className="flex items-center gap-2 min-w-0">
+          {!isDashboard && <Activity size={20} className="text-white/80 shrink-0" />}
+          <h1 className="font-serif text-2xl sm:text-3xl text-white/90 italic leading-tight break-words">{title}</h1>
         </div>
       </div>
-      <div className="flex gap-2 items-center">
+      <div className="flex gap-2 items-center shrink-0">
         {aiActive && (
           <div className="flex items-center gap-1 px-2 py-1 rounded-full border mr-1 bg-teal-500/10 border-teal-500/20 text-teal-400 animate-pulse">
             <Sparkles size={10} /><span className="text-[8px] font-bold uppercase tracking-wider">AI Active</span>
@@ -738,7 +739,7 @@ const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setDistortionType, s
         {step === 0 ? (
           <>
             <h3 className="font-serif text-2xl text-white italic mb-6 text-center">"What is the loudest loop?"</h3>
-            <input autoFocus className="w-full bg-transparent border-b border-indigo-500/50 py-4 text-center text-white font-light text-lg focus:outline-none mb-8" placeholder="I keep thinking about..." value={fear} onChange={e => setFear(e.target.value)} onKeyDown={e => e.key === 'Enter' && setStep(1)} />
+            <textarea autoFocus rows={2} className="w-full bg-transparent border-b border-indigo-500/50 py-4 text-center text-white font-light text-lg focus:outline-none mb-8 resize-none leading-snug" placeholder="I keep thinking about..." value={fear} onChange={e => setFear(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setStep(1); } }} />
             <button onClick={() => setStep(1)} disabled={!fear} className="w-full py-4 rounded-full bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 font-sans text-xs tracking-widest uppercase hover:bg-indigo-500/30 transition-all">Capture Thought</button>
           </>
         ) : (
@@ -1136,9 +1137,9 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
           <div className="text-center">
             <Activity size={24} className="text-white/80 mx-auto mb-4" />
             <p className="font-serif text-2xl text-white/90 italic mb-4">"How does the {selectedPart} feel?"</p>
-            <input autoFocus className="w-full bg-transparent border-b border-white/20 py-4 text-center text-white font-light text-lg focus:outline-none mb-6" placeholder="It feels like..." value={sensation} onChange={e => setSensation(e.target.value)} onKeyDown={e => e.key === 'Enter' && setPartsStep('unblend')} />
+            <textarea autoFocus rows={2} className="w-full bg-transparent border-b border-white/20 py-4 text-center text-white font-light text-lg focus:outline-none mb-6 resize-none leading-snug" placeholder="It feels like..." value={sensation} onChange={e => setSensation(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setPartsStep('unblend'); } }} />
             <div className="flex flex-wrap justify-center gap-2 mb-8">
-              {["Tightness","Heat","Heaviness","Buzzing"].map(s => <button key={s} onClick={() => setSensation(s)} className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-[10px] text-white/90 hover:bg-white/20 transition-all">{s}</button>)}
+              {["Tightness","Heat","Heaviness","Buzzing"].map(s => <button key={s} onClick={() => setSensation(s)} className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-xs text-white/90 hover:bg-white/20 transition-all">{s}</button>)}
             </div>
             <button onClick={() => setPartsStep('unblend')} disabled={!sensation} className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all">Next</button>
           </div>
@@ -1156,7 +1157,7 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
             <Waves size={64} className="text-indigo-200 mx-auto mb-8" />
             <h3 className="font-serif text-2xl text-white italic mb-4">The Inquiry</h3>
             <p className="font-sans text-sm text-white/70 leading-relaxed mb-6">Ask internally: <em>"What are you afraid would happen if you didn't do this job?"</em></p>
-            <input autoFocus className="w-full bg-transparent border-b border-indigo-500/30 py-4 text-center text-white font-light text-lg focus:outline-none mb-8" placeholder="It is afraid that..." value={fear} onChange={e => setFear(e.target.value)} onKeyDown={e => e.key === 'Enter' && setPartsStep('message')} />
+            <textarea autoFocus rows={2} className="w-full bg-transparent border-b border-indigo-500/30 py-4 text-center text-white font-light text-lg focus:outline-none mb-8 resize-none leading-snug" placeholder="It is afraid that..." value={fear} onChange={e => setFear(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setPartsStep('message'); } }} />
             <button onClick={() => setPartsStep('message')} disabled={!fear} className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all border border-white/5">Acknowledge Fear</button>
           </div>
         )}
@@ -1164,9 +1165,9 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
           <div className="text-center">
             <Shield size={24} className="text-white/80 mx-auto mb-4" />
             <p className="font-serif text-2xl text-white/90 italic mb-4">"What is it trying to do?"</p>
-            <input autoFocus className="w-full bg-transparent border-b border-white/20 py-4 text-center text-white font-light text-lg focus:outline-none mb-6" placeholder="It is trying to..." value={protection} onChange={e => setProtection(e.target.value)} onKeyDown={e => e.key === 'Enter' && setPartsStep('channel')} />
+            <textarea autoFocus rows={2} className="w-full bg-transparent border-b border-white/20 py-4 text-center text-white font-light text-lg focus:outline-none mb-6 resize-none leading-snug" placeholder="It is trying to..." value={protection} onChange={e => setProtection(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setPartsStep('channel'); } }} />
             <div className="flex flex-wrap justify-center gap-2 mb-8">
-              {["Prevent Failure","Keep me Safe","Control Outcomes"].map(p => <button key={p} onClick={() => setProtection(p)} className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-[10px] text-white/90 hover:bg-white/20 transition-all">{p}</button>)}
+              {["Prevent Failure","Keep me Safe","Control Outcomes"].map(p => <button key={p} onClick={() => setProtection(p)} className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-xs text-white/90 hover:bg-white/20 transition-all">{p}</button>)}
             </div>
             <button onClick={() => setPartsStep('channel')} disabled={!protection} className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all">Acknowledge</button>
           </div>
@@ -1176,10 +1177,10 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
             <Zap size={24} className="text-teal-200 mx-auto mb-4" />
             <p className="font-serif text-2xl text-teal-100 italic mb-4">"Shift the Energy"</p>
             <p className="font-sans text-xs text-white/60 mb-6">You don't need to destroy the energy. Use it.</p>
-            <input autoFocus className="w-full bg-transparent border-b border-teal-500/30 py-4 text-center text-teal-50 font-light text-lg focus:outline-none mb-8" placeholder="I will use this energy to..." value={expandingBelief} onChange={e => setExpandingBelief(e.target.value)} onKeyDown={e => e.key === 'Enter' && setView('lens')} />
+            <textarea autoFocus rows={2} className="w-full bg-transparent border-b border-teal-500/30 py-4 text-center text-teal-50 font-light text-lg focus:outline-none mb-8 resize-none leading-snug" placeholder="I will use this energy to..." value={expandingBelief} onChange={e => setExpandingBelief(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setView('lens'); } }} />
             <div className="flex flex-wrap justify-center gap-2 mb-8">
               {["Fuel my boundaries","Deepen my focus","Drive my commitment"].map(ex => (
-                <button key={ex} onClick={() => setExpandingBelief(ex)} className="px-3 py-1 rounded-full border border-teal-500/20 bg-teal-500/10 text-[10px] text-teal-200 hover:bg-teal-500/20 transition-all">{ex}</button>
+                <button key={ex} onClick={() => setExpandingBelief(ex)} className="px-3 py-1 rounded-full border border-teal-500/20 bg-teal-500/10 text-xs text-teal-200 hover:bg-teal-500/20 transition-all">{ex}</button>
               ))}
             </div>
             <button onClick={() => setView('lens')} disabled={!expandingBelief} className="w-full py-4 rounded-full bg-teal-500/10 text-teal-200 border border-teal-500/20 font-sans text-xs tracking-widest uppercase hover:bg-teal-500/20 transition-all">Integrate</button>
@@ -1531,7 +1532,7 @@ const Integration: React.FC<IntegrationProps> = ({
   resetApp, setView, toggleSound, soundEnabled, somaticZones,
   isBurnoutPath, userName, energyAnalysis, stressLevel, energyLevel,
   postStressLevel, setPostStressLevel, postEnergyLevel, setPostEnergyLevel,
-  onBack, saveSession, setHasCompletedFreeCycle
+  onBack, saveSession, setHasCompletedFreeCycle, goHome
 }: any) => {
   const [primingDone, setPrimingDone] = useState(false);
   const [manifesto, setManifesto] = useState("");
@@ -1624,12 +1625,12 @@ const Integration: React.FC<IntegrationProps> = ({
 
 
   useEffect(() => {
-    if (isLocked && !isBurnoutPath && !manifesto) {
+    if (isLocked && !manifesto) {
       setGenerating(true);
       generateManifesto(stressor, expandingBelief, goal.action || "action", fear, entryLevel, (text) => setManifesto(text))
         .then(res => { setIsOffline(res.isOffline); setGenerating(false); });
     }
-  }, [isLocked, isBurnoutPath, manifesto]);
+  }, [isLocked, manifesto]);
 
 
   const quickTimes = ["Now", "Within 1 Hr", "Today", "Tomorrow"];
@@ -1682,7 +1683,7 @@ const Integration: React.FC<IntegrationProps> = ({
   if (isLocked) {
     return (
       <div className="h-full flex flex-col px-4 text-center">
-        <Nav title="Integration" subtitle="Blueprint Complete" onBack={() => setView('dashboard')} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={100} aiActive={generating} />
+        <Nav title="Integration" subtitle="Blueprint Complete" onBack={goHome} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={100} aiActive={generating} />
         {showToast && <Toast message={toastMsg} onDone={() => setShowToast(false)} />}
 
 
@@ -1843,7 +1844,7 @@ const Integration: React.FC<IntegrationProps> = ({
 
           <div className="flex gap-4 justify-center pb-8 pt-4 border-t border-white/5">
             <button onClick={resetApp} className="flex items-center justify-center gap-2 text-white/40 hover:text-white uppercase text-[10px] tracking-widest"><RefreshCw size={12} /> Reset System</button>
-            <button onClick={() => setView('dashboard')} className="flex items-center justify-center gap-2 uppercase text-[10px] tracking-widest border px-4 py-2 rounded-full text-teal-400 border-teal-500/30 hover:bg-teal-900/20"><Home size={12} /> Return to Orbit</button>
+            <button onClick={goHome} className="flex items-center justify-center gap-2 uppercase text-[10px] tracking-widest border px-4 py-2 rounded-full text-teal-400 border-teal-500/30 hover:bg-teal-900/20"><Home size={12} /> Return to Orbit</button>
           </div>
         </div>
       </div>
@@ -2248,7 +2249,7 @@ const App = () => {
   return (
     <>
       <FontStyles />
-      <div className="fixed inset-0 bg-slate-950 text-white font-sans overflow-hidden flex justify-center">
+      <div className="fixed inset-0 bg-slate-950 text-white font-sans overflow-hidden flex justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
         <Atmosphere bgState={bgState} />
         <div className="w-full max-w-md h-full relative z-10 p-6">
 
@@ -2338,6 +2339,7 @@ const App = () => {
               saveSession={saveSession}
               setHasCompletedFreeCycle={setHasCompletedFreeCycle}
               onBack={() => setView('alchemy')}
+              goHome={() => setViewState('dashboard')}
             />
           )}
 
