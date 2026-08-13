@@ -77,6 +77,7 @@ interface HorizonProps extends CommonProps {
   setSoundType: (t: 'drone' | 'brown') => void;
   sessionHistory: SessionRecord[];
   setFrictionSource: (s: string) => void;
+  setSomaticZones: (zones: string[]) => void;
 }
 interface DiffuserProps extends CommonProps {
   fear: string;
@@ -156,7 +157,6 @@ interface IntegrationProps extends CommonProps {
   setPostEnergyLevel: (n: number) => void;
   saveSession: (record: SessionRecord) => void;
   setHasCompletedFreeCycle: (b: boolean) => void;
-  goHome: () => void;
 }
 interface PreservationProps extends CommonProps {
   setGoal: (g: any) => void;
@@ -721,7 +721,7 @@ const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, fri
         <p className="font-serif text-lg text-white/90 italic leading-relaxed">"{energyAnalysis?.reflection || "Connecting to your field..."}"</p>
       </div>
       <p className="font-sans text-xs text-white/40 max-w-xs leading-relaxed mb-10">This is your current energetic baseline. We will now shift this frequency.</p>
-      <button onClick={() => setView(frictionSource === 'mind' ? 'diffuser' : 'somatic')} className="w-full py-5 rounded-full bg-indigo-500 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-indigo-400 hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-all">
+      <button onClick={() => setView(frictionSource === 'mind' ? 'diffuser' : 'partswork')} className="w-full py-5 rounded-full bg-indigo-500 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-indigo-400 hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-all">
         Shift This Energy
       </button>
     </div>
@@ -767,7 +767,7 @@ const Horizon: React.FC<HorizonProps> = ({
   setView, toggleSound, soundEnabled, resetApp, setEnergyAnalysis,
   soundType, setSoundType, onBack, sessionHistory,
   stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout,
-  setFrictionSource
+  setFrictionSource, setSomaticZones
 }) => {
   const [step, setStep] = useState<'intake'|'chat'|'routing'>('intake');
   const [chatInput, setChatInput] = useState('');
@@ -779,7 +779,14 @@ const Horizon: React.FC<HorizonProps> = ({
   const [isBurnoutIntercept, setIsBurnoutIntercept] = useState(false);
   const [patternInsight, setPatternInsight] = useState('');
   const [loadingPattern, setLoadingPattern] = useState(false);
+  const [pickingZone, setPickingZone] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const bodyZones: SomaticZone[] = [
+    { id: 'Head', label: 'Head', icon: Brain }, { id: 'Eyes', label: 'Eyes', icon: Eye },
+    { id: 'Throat', label: 'Throat', icon: MessageCircle }, { id: 'Chest', label: 'Chest', icon: Shield },
+    { id: 'Solar', label: 'Solar Plexus', icon: Sun }, { id: 'Gut', label: 'Gut', icon: Disc },
+    { id: 'Back', label: 'Back', icon: Anchor }, { id: 'Hands', label: 'Hands', icon: Hand },
+  ];
 
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatHistory, isTyping, isBurnoutIntercept]);
@@ -804,7 +811,8 @@ const Horizon: React.FC<HorizonProps> = ({
 
 
   const handleInternalBack = () => {
-    if (step === 'routing') setStep('chat');
+    if (step === 'routing' && pickingZone) setPickingZone(false);
+    else if (step === 'routing') setStep('chat');
     else if (step === 'chat') setStep('intake');
     else if (onBack) onBack();
   };
@@ -1055,13 +1063,13 @@ const Horizon: React.FC<HorizonProps> = ({
         )}
 
 
-        {step === 'routing' && (
+        {step === 'routing' && !pickingZone && (
           <div className="glass-panel p-8 rounded-[2rem] border border-white/10 shadow-sm text-center animate-[slideUpFade_0.5s_ease-out_forwards]">
             <Compass size={32} className="text-teal-400 mx-auto mb-4" />
             <h2 className="text-2xl font-serif italic text-white mb-2">Initiate Shift</h2>
             <p className="text-sm text-white/50 mb-8">Where is this pressure residing right now?</p>
             <div className="grid grid-cols-1 gap-4">
-              <button onClick={() => handleFrictionSelect('body')} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-teal-500/50 transition-all group relative overflow-hidden text-left">
+              <button onClick={() => setPickingZone(true)} className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-teal-500/50 transition-all group relative overflow-hidden text-left">
                 <div className="absolute inset-0 bg-teal-500 opacity-0 group-hover:opacity-10 transition-opacity" />
                 <div className="flex items-center gap-3 mb-2">
                   <Activity size={20} className="text-white/40 group-hover:text-teal-400 transition-colors" />
@@ -1077,6 +1085,25 @@ const Horizon: React.FC<HorizonProps> = ({
                 </div>
                 <p className="text-xs text-white/50">Racing thoughts, looping narratives, cognitive fog.</p>
               </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'routing' && pickingZone && (
+          <div className="glass-panel p-8 rounded-[2rem] border border-white/10 shadow-sm text-center animate-[slideUpFade_0.5s_ease-out_forwards]">
+            <Activity size={32} className="text-teal-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-serif italic text-white mb-2">Locate It</h2>
+            <p className="text-sm text-white/50 mb-8">Which part of the body is holding it?</p>
+            <div className="grid grid-cols-2 gap-3">
+              {bodyZones.map(z => {
+                const Icon = z.icon;
+                return (
+                  <button key={z.id} onClick={() => { setSomaticZones([z.id]); handleFrictionSelect('body'); }} className="p-4 rounded-2xl border border-white/10 bg-white/5 flex flex-col items-center justify-center gap-2 hover:border-teal-500/50 hover:bg-white/10 transition-all">
+                    <Icon size={24} className="text-white/50" />
+                    <span className="font-serif italic text-white/90 text-sm">{z.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -1532,7 +1559,7 @@ const Integration: React.FC<IntegrationProps> = ({
   resetApp, setView, toggleSound, soundEnabled, somaticZones,
   isBurnoutPath, userName, energyAnalysis, stressLevel, energyLevel,
   postStressLevel, setPostStressLevel, postEnergyLevel, setPostEnergyLevel,
-  onBack, saveSession, setHasCompletedFreeCycle, goHome
+  onBack, saveSession, setHasCompletedFreeCycle
 }: any) => {
   const [primingDone, setPrimingDone] = useState(false);
   const [manifesto, setManifesto] = useState("");
@@ -1683,7 +1710,7 @@ const Integration: React.FC<IntegrationProps> = ({
   if (isLocked) {
     return (
       <div className="h-full flex flex-col px-4 text-center">
-        <Nav title="Integration" subtitle="Blueprint Complete" onBack={goHome} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={100} aiActive={generating} />
+        <Nav title="Integration" subtitle="Blueprint Complete" onBack={() => setView('dashboard')} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={100} aiActive={generating} />
         {showToast && <Toast message={toastMsg} onDone={() => setShowToast(false)} />}
 
 
@@ -1844,7 +1871,7 @@ const Integration: React.FC<IntegrationProps> = ({
 
           <div className="flex gap-4 justify-center pb-8 pt-4 border-t border-white/5">
             <button onClick={resetApp} className="flex items-center justify-center gap-2 text-white/40 hover:text-white uppercase text-[10px] tracking-widest"><RefreshCw size={12} /> Reset System</button>
-            <button onClick={goHome} className="flex items-center justify-center gap-2 uppercase text-[10px] tracking-widest border px-4 py-2 rounded-full text-teal-400 border-teal-500/30 hover:bg-teal-900/20"><Home size={12} /> Return to Orbit</button>
+            <button onClick={() => setView('dashboard')} className="flex items-center justify-center gap-2 uppercase text-[10px] tracking-widest border px-4 py-2 rounded-full text-teal-400 border-teal-500/30 hover:bg-teal-900/20"><Home size={12} /> Return to Orbit</button>
           </div>
         </div>
       </div>
@@ -1855,35 +1882,37 @@ const Integration: React.FC<IntegrationProps> = ({
   return (
     <div className="h-full flex flex-col">
       <Nav title="Integration" subtitle="Blueprint" onBack={onBack} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={90} />
-      <div className="glass-panel p-8 rounded-[32px] m-4">
-        <h3 className="font-serif text-xl text-white italic mb-6">{current.q}</h3>
-        {current.id === 'when' ? (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-3">
-              {quickTimes.map(time => (
-                <button key={time} onClick={() => { setGoal({ ...goal, when: time }); setIsLocked(true); }} className="py-3 rounded-xl border border-white/20 bg-white/5 text-sm font-sans text-white/90 hover:bg-white/20 hover:border-white/40 hover:text-white transition-all shadow-sm">
-                  {time}
-                </button>
-              ))}
-            </div>
-            <p className="text-center text-[10px] text-white/30 uppercase tracking-widest mt-4">Select to Seal</p>
-          </div>
-        ) : (
-          <>
-            {current.id === 'outcome' ? (
-              <div className="flex items-start bg-white/5 border border-white/10 focus-within:border-teal-500/50 rounded-2xl overflow-hidden transition-all relative z-10 mb-6">
-                <div className="pl-4 pt-4 text-white/40 font-serif italic text-lg select-none">To</div>
-                <textarea value={goal.outcome} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setGoal({ ...goal, outcome: e.target.value })} className="w-full bg-transparent p-4 pl-2 pt-4 text-white text-sm outline-none resize-none font-serif italic leading-relaxed h-28" placeholder="execute the strategy without absorbing the team's anxiety..." />
+      <div className="flex-1 overflow-y-auto hide-scrollbar">
+        <div className="glass-panel p-8 rounded-[32px] m-4">
+          <h3 className="font-serif text-xl text-white italic mb-6">{current.q}</h3>
+          {current.id === 'when' ? (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-3">
+                {quickTimes.map(time => (
+                  <button key={time} onClick={() => { setGoal({ ...goal, when: time }); setIsLocked(true); }} className="py-3 rounded-xl border border-white/20 bg-white/5 text-sm font-sans text-white/90 hover:bg-white/20 hover:border-white/40 hover:text-white transition-all shadow-sm">
+                    {time}
+                  </button>
+                ))}
               </div>
-            ) : (
-              <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6" placeholder={current.ph} value={goal[current.id as keyof Goal]} onChange={e => setGoal({ ...goal, [current.id]: e.target.value })} onKeyDown={e => e.key === 'Enter' && handleNextStep()} />
-            )}
-            <div className="flex gap-3">
-              <button onClick={handleBack} className="px-4 py-3 rounded-xl border border-white/10 text-white/40 hover:text-white transition-colors">Back</button>
-              <button onClick={handleNextStep} disabled={!goal[current.id as keyof Goal]} className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase disabled:opacity-50">Next</button>
+              <p className="text-center text-[10px] text-white/30 uppercase tracking-widest mt-4">Select to Seal</p>
             </div>
-          </>
-        )}
+          ) : (
+            <>
+              {current.id === 'outcome' ? (
+                <div className="flex items-start bg-white/5 border border-white/10 focus-within:border-teal-500/50 rounded-2xl overflow-hidden transition-all relative z-10 mb-6">
+                  <div className="pl-4 pt-4 text-white/40 font-serif italic text-lg select-none">To</div>
+                  <textarea value={goal.outcome} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setGoal({ ...goal, outcome: e.target.value })} className="w-full bg-transparent p-4 pl-2 pt-4 text-white text-sm outline-none resize-none font-serif italic leading-relaxed h-28" placeholder="execute the strategy without absorbing the team's anxiety..." />
+                </div>
+              ) : (
+                <input autoFocus className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none mb-6" placeholder={current.ph} value={goal[current.id as keyof Goal]} onChange={e => setGoal({ ...goal, [current.id]: e.target.value })} onKeyDown={e => e.key === 'Enter' && handleNextStep()} />
+              )}
+              <div className="flex gap-3">
+                <button onClick={handleBack} className="px-4 py-3 rounded-xl border border-white/10 text-white/40 hover:text-white transition-colors">Back</button>
+                <button onClick={handleNextStep} disabled={!goal[current.id as keyof Goal]} className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase disabled:opacity-50">Next</button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -2272,6 +2301,7 @@ const App = () => {
               soundType={soundType} setSoundType={setSoundType}
               sessionHistory={sessionHistory}
               setFrictionSource={setFrictionSource}
+              setSomaticZones={setSomaticZones}
               onBack={() => setView('profile')}
             />
           )}
@@ -2290,7 +2320,7 @@ const App = () => {
               fear={fear} setFear={setFear}
               expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief}
               partsStep={partsStep} setPartsStep={setPartsStep}
-              onBack={() => setView('somatic')}
+              onBack={() => setView('energy_reflection')}
             />
           )}
 
@@ -2339,7 +2369,6 @@ const App = () => {
               saveSession={saveSession}
               setHasCompletedFreeCycle={setHasCompletedFreeCycle}
               onBack={() => setView('alchemy')}
-              goHome={() => setViewState('dashboard')}
             />
           )}
 
