@@ -1860,7 +1860,7 @@ const Integration: React.FC<IntegrationProps> = ({
               <>
                 <p className="text-xs font-bold uppercase tracking-widest text-white/90 mb-4">Sustain This Shift</p>
                 <div className="space-y-3">
-                  <a href="https://billing.liveadaptiv.com/checkout/buy/68001ac0-e86f-4135-846e-7cf66779a923" target="_blank" rel="noreferrer" className="block w-full py-4 bg-teal-500 text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest shadow-lg hover:bg-teal-400 transition-all">
+                  <a href="https://billing.liveadaptiv.com/checkout/buy/db8aa0f8-12f1-4024-950f-d016d0e35373" target="_blank" rel="noreferrer" className="block w-full py-4 bg-teal-500 text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest shadow-lg hover:bg-teal-400 transition-all">
                     Continue in the App — Monthly Access
                   </a>
                   <a href="https://billing.liveadaptiv.com/checkout/buy/d29e3b81-78a4-4611-83f8-11fe76d9d82e" target="_blank" rel="noreferrer" className="block w-full py-4 bg-white/5 border border-white/20 text-white font-bold rounded-xl text-[10px] uppercase tracking-widest hover:border-teal-400 hover:text-teal-400 transition-all">
@@ -2153,7 +2153,7 @@ const CheckoutGate: React.FC<{ onBack: () => void }> = ({ onBack }) => (
 
 
       <div className="space-y-4">
-        <a href="https://billing.liveadaptiv.com/checkout/buy/68001ac0-e86f-4135-846e-7cf66779a923" target="_blank" rel="noopener noreferrer" className="block w-full py-4 rounded-xl border border-teal-500/50 bg-teal-500/20 text-teal-200 font-sans text-xs tracking-widest uppercase transition-all hover:bg-teal-500/30 shadow-[0_0_20px_rgba(20,184,166,0.15)]">
+        <a href="https://billing.liveadaptiv.com/checkout/buy/db8aa0f8-12f1-4024-950f-d016d0e35373" target="_blank" rel="noopener noreferrer" className="block w-full py-4 rounded-xl border border-teal-500/50 bg-teal-500/20 text-teal-200 font-sans text-xs tracking-widest uppercase transition-all hover:bg-teal-500/30 shadow-[0_0_20px_rgba(20,184,166,0.15)]">
           Continue in the App — Monthly Access
         </a>
         <a href="https://billing.liveadaptiv.com/checkout/buy/670a3228-4463-41a4-8520-54bddffcf5d1" target="_blank" rel="noopener noreferrer" className="block w-full py-4 rounded-xl border border-white/20 bg-white/5 text-white/80 font-sans text-xs tracking-widest uppercase transition-all hover:bg-white/10 hover:text-white">
