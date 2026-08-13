@@ -78,6 +78,7 @@ interface HorizonProps extends CommonProps {
   sessionHistory: SessionRecord[];
   setFrictionSource: (s: string) => void;
   setSomaticZones: (zones: string[]) => void;
+  hasCompletedFreeCycle: boolean;
 }
 interface DiffuserProps extends CommonProps {
   fear: string;
@@ -156,6 +157,7 @@ interface IntegrationProps extends CommonProps {
   postEnergyLevel: number;
   setPostEnergyLevel: (n: number) => void;
   saveSession: (record: SessionRecord) => void;
+  updateLatestSession: (patch: Partial<SessionRecord>) => void;
   setHasCompletedFreeCycle: (b: boolean) => void;
 }
 interface PreservationProps extends CommonProps {
@@ -347,8 +349,8 @@ const formatGoalOutcome = (text: string) => {
 
 
 const getSmartQuestion = (energy: number, stress: number) => {
-  if (stress > 60 || energy < 40) return "What specifically is threatened by this situation?";
-  if (energy > 70) return "If you were coaching your best self, what would you tell them to do?";
+  if (stress > 6 || energy < 4) return "What specifically is threatened by this situation?";
+  if (energy > 7) return "If you were coaching your best self, what would you tell them to do?";
   return "What is one assumption you are making that might not be true?";
 };
 
@@ -362,8 +364,8 @@ const analyzeCurrentEnergy = async (
 Inputs:
 - Situation/Stressor: "${stressor}"
 - Perception/Thoughts: "${perception}"
-- Self-Rated Stress: ${stressLevel}%
-- Self-Rated Energy: ${energyLevel}%
+- Self-Rated Stress: ${stressLevel}/10
+- Self-Rated Energy: ${energyLevel}/10
 - Primary Friction Location: ${frictionSource === 'mind' ? 'The Mind (racing thoughts, mental loops, cognitive fog)' : 'The Body (physical tension, heaviness, somatic weight)'}
 Task:
 1. Identify the likely Energy Level (1-7).
@@ -373,7 +375,7 @@ Return ONLY raw JSON: { "level": number, "reflection": "string" }`;
     const raw = await callAI(prompt, true);
     return JSON.parse(raw.replace(/```json|```/g, '').trim());
   } catch {
-    const isDepleted = stressLevel > 60 || energyLevel < 40;
+    const isDepleted = stressLevel > 6 || energyLevel < 4;
     return {
       level: isDepleted ? 2 : 3,
       reflection: isDepleted
@@ -712,7 +714,7 @@ const Identity: React.FC<{ userName: string; setUserName: (n: string) => void; o
 const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, frictionSource, setView, toggleSound, soundEnabled, onBack }) => (
   <div className="h-full flex flex-col justify-center px-4 animate-enter">
     <Nav title="Current Resonance" subtitle="The Lens" isDashboard={false} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={5} onBack={onBack} />
-    <div className="flex-1 flex flex-col justify-center items-center text-center pb-12 overflow-y-auto hide-scrollbar">
+    <div className="flex-1 min-h-0 flex flex-col justify-center items-center text-center pb-12 overflow-y-auto hide-scrollbar">
       <div className="mb-8 p-6 rounded-full bg-indigo-500/10 border border-indigo-500/20">
         <Compass size={48} className="text-indigo-300" />
       </div>
@@ -735,7 +737,7 @@ const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setDistortionType, s
   return (
     <div className="h-full flex flex-col">
       <Nav title="The Filter" subtitle="Fact vs. Fiction" onBack={() => step > 0 ? setStep(0) : onBack?.()} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={25} />
-      <div className="flex-1 flex flex-col justify-center px-4 animate-enter overflow-y-auto hide-scrollbar pb-4">
+      <div className="flex-1 min-h-0 flex flex-col justify-center px-4 animate-enter overflow-y-auto hide-scrollbar pb-4">
         {step === 0 ? (
           <>
             <h3 className="font-serif text-2xl text-white italic mb-6 text-center">"What is the loudest loop?"</h3>
@@ -767,7 +769,7 @@ const Horizon: React.FC<HorizonProps> = ({
   setView, toggleSound, soundEnabled, resetApp, setEnergyAnalysis,
   soundType, setSoundType, onBack, sessionHistory,
   stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout,
-  setFrictionSource, setSomaticZones
+  setFrictionSource, setSomaticZones, hasCompletedFreeCycle
 }) => {
   const [step, setStep] = useState<'intake'|'chat'|'routing'>('intake');
   const [chatInput, setChatInput] = useState('');
@@ -826,7 +828,8 @@ const Horizon: React.FC<HorizonProps> = ({
 
   const startAIConversation = async () => {
     if (stressor.length < 5 || perception.length < 5) return;
-    
+    if (hasCompletedFreeCycle) { setView('checkout'); return; }
+
     setStep('chat');
     setAiQuestionCount(0);
     setShowChatInput(false);
@@ -908,7 +911,7 @@ const Horizon: React.FC<HorizonProps> = ({
         resetApp={resetApp} toggleSound={toggleSound} soundEnabled={soundEnabled}
         progress={step === 'intake' ? 10 : step === 'chat' ? 20 : 30}
       />
-      <div className="flex-1 flex flex-col gap-6 overflow-y-auto hide-scrollbar animate-enter pb-8 px-4">
+      <div className="flex-1 min-h-0 flex flex-col gap-6 overflow-y-auto hide-scrollbar animate-enter pb-8 px-4">
 
 
         {step === 'intake' && (
@@ -1001,6 +1004,11 @@ const Horizon: React.FC<HorizonProps> = ({
                 <p className="text-[10px] text-rose-400 uppercase tracking-widest mt-4">Please add a bit more detail to both fields.</p>
               ) : null}
 
+              {hasCompletedFreeCycle && (
+                <p className="text-[11px] text-teal-300/70 mt-5 leading-relaxed">
+                  Your first cycle is complete. Starting a new one opens the access options.
+                </p>
+              )}
 
               <button onClick={startAIConversation} disabled={stressor.length < 5 || perception.length < 5} className="w-full mt-8 py-4 bg-white text-slate-900 font-bold rounded-xl text-[10px] uppercase tracking-widest text-center shadow-lg hover:bg-teal-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                 Begin Calibration
@@ -1015,7 +1023,7 @@ const Horizon: React.FC<HorizonProps> = ({
             <div className="text-center mb-4">
               <h2 className="text-xl font-serif italic text-white">Kinetic Calibration</h2>
             </div>
-            <div className="flex-1 overflow-y-auto flex flex-col mb-4 pr-2 pb-4 space-y-2 hide-scrollbar">
+            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col mb-4 pr-2 pb-4 space-y-2 hide-scrollbar">
               {chatHistory.map((msg, idx) => (
                 <div key={idx} className={`animate-[slideUpFade_0.3s_ease-out_forwards] ${msg.role === 'ai' ? 'bg-white/10 border border-white/10 text-white rounded-[1rem_1rem_1rem_0] p-4 max-w-[90%] self-start mb-3 font-serif text-[1.1rem] leading-relaxed shadow-sm' : 'bg-teal-500/20 text-teal-100 border border-teal-500/30 rounded-[1rem_1rem_0_1rem] p-3 px-4 max-w-[85%] self-end mb-3 text-sm'}`}>
                   {msg.isHtml ? (
@@ -1159,7 +1167,7 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
   return (
     <div className="h-full flex flex-col">
       <Nav title="Parts Dialogue" subtitle={selectedPart} onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={30} />
-      <div className="flex-1 flex flex-col justify-start pt-8 space-y-6 animate-enter overflow-y-auto hide-scrollbar pb-20 px-4">
+      <div className="flex-1 min-h-0 flex flex-col justify-start pt-8 space-y-6 animate-enter overflow-y-auto hide-scrollbar pb-20 px-4">
         {partsStep === 'experience' && (
           <div className="text-center">
             <Activity size={24} className="text-white/80 mx-auto mb-4" />
@@ -1270,7 +1278,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
   return (
     <div className="h-full flex flex-col">
       <Nav title="Breakthrough Laser" subtitle="Rapid Shift" onBack={() => step > 0 ? setStep(step - 1) : onBack?.()} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={80} aiActive={!loading} />
-      <div className="flex-1 px-4 pt-4 overflow-y-auto hide-scrollbar">
+      <div className="flex-1 min-h-0 px-4 pt-4 overflow-y-auto hide-scrollbar">
         <div className="glass-panel p-6 rounded-[32px] mb-4">
           {loading ? (
             <div className="text-center py-10"><Loader2 className="animate-spin mx-auto text-teal-400" /></div>
@@ -1310,7 +1318,7 @@ const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, abilit
   return (
     <div className="h-full flex flex-col">
       <Nav title="The Perspective" subtitle="Calibration" onBack={onBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={50} />
-      <div className="flex-1 flex flex-col items-center justify-start pt-4 px-4 overflow-y-auto hide-scrollbar pb-8">
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-start pt-4 px-4 overflow-y-auto hide-scrollbar pb-8">
         <div className="text-center mb-8 max-w-sm animate-enter">
           <p className="font-serif text-lg text-white/70 italic leading-relaxed">Friction is a mathematical equation. It occurs when external demand exceeds internal bandwidth. Quantify the gap.</p>
         </div>
@@ -1352,11 +1360,11 @@ const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, abilit
 // CROSSROADS
 // ─────────────────────────────────────────────
 const Crossroads: React.FC<CrossroadsProps> = ({ setView, toggleSound, soundEnabled, stressLevel, energyLevel, onBack }) => {
-  const recommendStillness = stressLevel > 70 && energyLevel < 40;
+  const recommendStillness = stressLevel > 7 || energyLevel < 4;
   return (
     <div className="h-full flex flex-col justify-center px-6">
       <Nav title="The Crossroads" subtitle="Choice Point" onBack={onBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={65} />
-      <div className="flex-1 flex flex-col justify-center overflow-y-auto hide-scrollbar pb-4">
+      <div className="flex-1 min-h-0 flex flex-col justify-center overflow-y-auto hide-scrollbar pb-4">
         <h1 className="font-serif text-4xl text-white text-center italic mb-8">Transformation</h1>
         <div className="grid gap-4">
           <button onClick={() => setView('regulate')} className={`p-8 rounded-[32px] glass-panel text-left hover:bg-white/10 ${recommendStillness ? 'border-teal-500/50 glow-pulse' : ''}`}>
@@ -1436,7 +1444,7 @@ const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, s
   return (
     <div className="h-full flex flex-col justify-center items-center">
       <Nav title="Regulation" subtitle="Box Breath" onBack={onBack} toggleSound={toggleSound} soundEnabled={soundEnabled} />
-      <div className="flex-1 flex flex-col items-center justify-center relative overflow-y-auto hide-scrollbar pb-4">
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center relative overflow-y-auto hide-scrollbar pb-4">
 
 
         {breathing && (
@@ -1490,7 +1498,7 @@ const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, s
 const Insight: React.FC<InsightProps> = ({ expandingBelief, setExpandingBelief, setView, toggleSound, soundEnabled, onBack }) => (
   <div className="h-full flex flex-col justify-center px-6 text-center">
     <Nav title="The Clarity" subtitle="Harvesting" onBack={onBack} toggleSound={toggleSound} soundEnabled={soundEnabled} />
-    <div className="flex-1 flex flex-col justify-center overflow-y-auto hide-scrollbar pb-4">
+    <div className="flex-1 min-h-0 flex flex-col justify-center overflow-y-auto hide-scrollbar pb-4">
       <h3 className="font-serif text-2xl text-white italic mb-6">"In the stillness, what became clear?"</h3>
       <input autoFocus className="w-full bg-transparent border-b border-white/20 py-4 text-center text-white font-light text-lg focus:outline-none mb-12" placeholder="The truth is..." value={expandingBelief} onChange={e => setExpandingBelief(e.target.value)} onKeyDown={e => e.key === 'Enter' && setView('alchemy')} />
       <button onClick={() => setView('alchemy')} disabled={!expandingBelief} className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-0">
@@ -1507,7 +1515,7 @@ const Insight: React.FC<InsightProps> = ({ expandingBelief, setExpandingBelief, 
 const Alchemy: React.FC<AlchemyProps & { setAlchemyType: (t: string) => void }> = ({ setView, toggleSound, soundEnabled, onBack, setAlchemyType }) => (
   <div className="h-full flex flex-col">
     <Nav title="Vitality Alchemy" subtitle="Select Chemistry" onBack={onBack} toggleSound={toggleSound} soundEnabled={soundEnabled} />
-    <div className="flex-1 space-y-4 px-4 pt-4 overflow-y-auto hide-scrollbar pb-4">
+    <div className="flex-1 min-h-0 space-y-4 px-4 pt-4 overflow-y-auto hide-scrollbar pb-4">
       {[
         { id: 'perform', label: 'Performance', desc: 'Sharpen focus and executive capacity.', icon: Zap },
         { id: 'connect', label: 'Connection', desc: 'Open the heart. Deepen relationships.', icon: Heart },
@@ -1537,7 +1545,7 @@ const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
   const current = steps[step];
   const next = () => { if (step < steps.length - 1) setStep(step + 1); else onComplete(); };
   return (
-    <div className="h-full flex flex-col justify-center items-center text-center animate-enter overflow-y-auto hide-scrollbar">
+    <div className="flex-1 min-h-0 flex flex-col justify-center items-center text-center animate-enter overflow-y-auto hide-scrollbar">
       <div className="min-h-full flex flex-col justify-center items-center py-10 w-full">
         <div className="mb-8 relative"><div className="absolute inset-0 bg-teal-500/20 blur-xl rounded-full" /><current.icon size={64} className="text-white relative z-10 animate-pulse" strokeWidth={1} /></div>
         <h2 className="font-serif text-3xl text-white italic mb-4 animate-enter" key={`t-${step}`}>{current.title}</h2>
@@ -1559,7 +1567,7 @@ const Integration: React.FC<IntegrationProps> = ({
   resetApp, setView, toggleSound, soundEnabled, somaticZones,
   isBurnoutPath, userName, energyAnalysis, stressLevel, energyLevel,
   postStressLevel, setPostStressLevel, postEnergyLevel, setPostEnergyLevel,
-  onBack, saveSession, setHasCompletedFreeCycle
+  onBack, saveSession, updateLatestSession, setHasCompletedFreeCycle
 }: any) => {
   const [primingDone, setPrimingDone] = useState(false);
   const [manifesto, setManifesto] = useState("");
@@ -1644,11 +1652,11 @@ const Integration: React.FC<IntegrationProps> = ({
 
 
   useEffect(() => {
-    if (isLocked) {
-      setPostStressLevel(postStress);
-      setPostEnergyLevel(postEnergy);
-    }
-  }, [isLocked]);
+    if (!sessionSaved) return;
+    setPostStressLevel(postStress);
+    setPostEnergyLevel(postEnergy);
+    updateLatestSession({ postStress, postEnergy, energyLevel: exitLevel });
+  }, [postStress, postEnergy, sessionSaved]);
 
 
   useEffect(() => {
@@ -1714,7 +1722,7 @@ const Integration: React.FC<IntegrationProps> = ({
         {showToast && <Toast message={toastMsg} onDone={() => setShowToast(false)} />}
 
 
-        <div className="flex-1 overflow-y-auto hide-scrollbar pb-20 pt-4">
+        <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar pb-20 pt-4">
 
 
           <div className="glass-panel p-8 rounded-[2rem] border-t-4 border-teal-500 shadow-2xl text-center mb-6 animate-enter">
@@ -1882,7 +1890,7 @@ const Integration: React.FC<IntegrationProps> = ({
   return (
     <div className="h-full flex flex-col">
       <Nav title="Integration" subtitle="Blueprint" onBack={onBack} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={90} />
-      <div className="flex-1 overflow-y-auto hide-scrollbar">
+      <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar">
         <div className="glass-panel p-8 rounded-[32px] m-4">
           <h3 className="font-serif text-xl text-white italic mb-6">{current.q}</h3>
           {current.id === 'when' ? (
@@ -1942,7 +1950,7 @@ const Preservation: React.FC<PreservationProps> = ({ setView, toggleSound, sound
   return (
     <div className="h-full flex flex-col">
       <Nav title="Preservation Mode" subtitle="Recovery Loop" onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={33 * (step + 1)} />
-      <div className="flex-1 flex flex-col justify-center items-center animate-enter text-center px-4 overflow-y-auto hide-scrollbar">
+      <div className="flex-1 min-h-0 flex flex-col justify-center items-center animate-enter text-center px-4 overflow-y-auto hide-scrollbar">
         <div className="mb-8 relative mx-auto"><div className="absolute inset-0 bg-orange-500/20 blur-2xl rounded-full" /><current.icon size={64} className="text-orange-200 relative z-10" strokeWidth={1} /></div>
         <h2 className="font-serif text-3xl text-white italic mb-4">{current.title}</h2>
         <p className="font-sans text-sm text-orange-100/70 leading-relaxed mb-12 max-w-xs mx-auto">{current.desc}</p>
@@ -2027,7 +2035,7 @@ const VitalityScan: React.FC<VitalityScanProps> = ({ setView, setBurnoutPath, to
   return (
     <div className="h-full flex flex-col">
       <Nav title="Vitality Scan" subtitle={`Question ${step + 1} / 6`} onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={((step + 1) / 6) * 100} />
-      <div className="flex-1 flex flex-col justify-start items-center text-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-6 pt-8">
+      <div className="flex-1 min-h-0 flex flex-col justify-start items-center text-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-6 pt-8">
         <h3 className="font-serif text-2xl text-white italic mb-2 shrink-0">{questions[step].q}</h3>
         <p className="font-sans text-sm text-white/70 leading-relaxed mb-8 max-w-xs shrink-0">{questions[step].text}</p>
         <div className="w-full space-y-4 shrink-0">
@@ -2111,7 +2119,7 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView, onBack }) => {
   return (
     <div className="h-full flex flex-col justify-center animate-enter">
       <Nav title="Energy Lens" subtitle={`Question ${step + 1} / 6`} onBack={onBack} soundEnabled={false} toggleSound={() => {}} progress={((step + 1) / 6) * 100} />
-      <div className="flex-1 flex flex-col justify-start items-center text-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-2 pt-8">
+      <div className="flex-1 min-h-0 flex flex-col justify-start items-center text-center overflow-y-auto hide-scrollbar pb-8 animate-enter px-2 pt-8">
         <h2 className="font-serif text-2xl text-white italic mb-8 text-center px-4">{questions[step].q}</h2>
         <div className="grid gap-3 w-full shrink-0">
           {questions[step].options.map((opt, i) => (
@@ -2188,11 +2196,7 @@ const App = () => {
 
 
   const setView = (v: string) => {
-    if ((v === 'dashboard' || v === 'profile' || v === 'welcome') && hasCompletedFreeCycle) {
-      setViewState('checkout');
-    } else {
-      setViewState(v);
-    }
+    setViewState(v);
   };
 
 
@@ -2201,8 +2205,8 @@ const App = () => {
   const [perception, setPerception] = useState('');
   const [fear, setFear] = useState('');
   const [distortionType, setDistortionType] = useState<'fact' | 'assumption' | null>(null);
-  const [stressLevel, setStressLevel] = useState(50);
-  const [energyLevel, setEnergyLevel] = useState(50);
+  const [stressLevel, setStressLevel] = useState(5);
+  const [energyLevel, setEnergyLevel] = useState(5);
   const [postStressLevel, setPostStressLevel] = useState(50);
   const [postEnergyLevel, setPostEnergyLevel] = useState(50);
   const [isBurnoutPath, setIsBurnoutPath] = useState(false);
@@ -2254,6 +2258,16 @@ const App = () => {
   };
 
 
+  const updateLatestSession = (patch: Partial<SessionRecord>) => {
+    setSessionHistory(prev => {
+      if (prev.length === 0) return prev;
+      const updated = [{ ...prev[0], ...patch }, ...prev.slice(1)];
+      storageSet(STORAGE_KEYS.SESSION_HISTORY, updated);
+      return updated;
+    });
+  };
+
+
   const completeSession = () => {}; 
 
 
@@ -2302,6 +2316,7 @@ const App = () => {
               sessionHistory={sessionHistory}
               setFrictionSource={setFrictionSource}
               setSomaticZones={setSomaticZones}
+              hasCompletedFreeCycle={hasCompletedFreeCycle}
               onBack={() => setView('profile')}
             />
           )}
@@ -2367,6 +2382,7 @@ const App = () => {
               postStressLevel={postStressLevel} setPostStressLevel={setPostStressLevel}
               postEnergyLevel={postEnergyLevel} setPostEnergyLevel={setPostEnergyLevel}
               saveSession={saveSession}
+              updateLatestSession={updateLatestSession}
               setHasCompletedFreeCycle={setHasCompletedFreeCycle}
               onBack={() => setView('alchemy')}
             />

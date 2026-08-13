@@ -55,7 +55,12 @@
 .animate-fade-in { animation: fadeIn 1s ease-out forwards; }
 
 .hide-scrollbar::-webkit-scrollbar { display: none; }
-.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
 
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
