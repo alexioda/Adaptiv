@@ -2207,8 +2207,8 @@ const App = () => {
   const [distortionType, setDistortionType] = useState<'fact' | 'assumption' | null>(null);
   const [stressLevel, setStressLevel] = useState(5);
   const [energyLevel, setEnergyLevel] = useState(5);
-  const [postStressLevel, setPostStressLevel] = useState(50);
-  const [postEnergyLevel, setPostEnergyLevel] = useState(50);
+  const [postStressLevel, setPostStressLevel] = useState(5);
+  const [postEnergyLevel, setPostEnergyLevel] = useState(5);
   const [isBurnoutPath, setIsBurnoutPath] = useState(false);
   const [somaticZones, setSomaticZones] = useState<string[]>([]);
   
@@ -2272,17 +2272,13 @@ const App = () => {
 
 
   const resetApp = () => {
-    if (hasCompletedFreeCycle) {
-      setViewState('checkout');
-      return;
-    }
-    setViewState('welcome');
     setStressor(''); setPerception(''); setSomaticZones([]);
     setIsLocked(false); setIsBurnoutPath(false);
     setPartsStep('experience'); setSensation(''); setProtection('');
     setExpandingBelief(''); setFear(''); setDistortionType(null);
     setGoal({ what: '', measure: '', when: '', outcome: '', action: '' });
     setGoalStep(0);
+    setViewState(hasCompletedFreeCycle ? 'checkout' : 'welcome');
   };
 
 
@@ -2323,8 +2319,8 @@ const App = () => {
 
 
           {viewState === 'energy_reflection' && <EnergyReflection {...common} energyAnalysis={energyAnalysis} frictionSource={frictionSource} onBack={() => setView('dashboard')} />}
-          {viewState === 'diffuser' && <Diffuser {...common} fear={fear} setFear={setFear} setDistortionType={setDistortionType} onBack={() => setView('dashboard')} />}
-          {viewState === 'somatic' && <Vessel {...common} somaticZones={somaticZones} setSomaticZones={setSomaticZones} onBack={() => setView('dashboard')} />}
+          {viewState === 'diffuser' && <Diffuser {...common} fear={fear} setFear={setFear} setDistortionType={setDistortionType} onBack={() => setView('energy_reflection')} />}
+          {viewState === 'somatic' && <Vessel {...common} somaticZones={somaticZones} setSomaticZones={setSomaticZones} onBack={() => setView('energy_reflection')} />}
 
 
           {viewState === 'partswork' && (
@@ -2352,7 +2348,7 @@ const App = () => {
           )}
 
 
-          {viewState === 'lens' && <Perspective {...common} pressure={pressure} setPressure={setPressure} ability={ability} setAbility={setAbility} onBack={() => setView('dashboard')} />}
+          {viewState === 'lens' && <Perspective {...common} pressure={pressure} setPressure={setPressure} ability={ability} setAbility={setAbility} onBack={() => setView('partswork')} />}
           {viewState === 'fork' && <Crossroads {...common} stressLevel={stressLevel} energyLevel={energyLevel} onBack={() => setView('lens')} />}
 
 
@@ -2366,7 +2362,7 @@ const App = () => {
 
 
           {viewState === 'insight' && <Insight {...common} expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief} onBack={() => setView('regulate')} />}
-          {viewState === 'alchemy' && <Alchemy {...common} setAlchemyType={setAlchemyType} onBack={() => setView('fork')} />}
+          {viewState === 'alchemy' && <Alchemy {...common} setAlchemyType={setAlchemyType} onBack={() => setView('insight')} />}
 
 
           {viewState === 'integration' && (
@@ -2400,7 +2396,7 @@ const App = () => {
 
           {viewState === 'burnout_check' && <VitalityScan {...common} setBurnoutPath={setIsBurnoutPath} onBack={() => setView('dashboard')} />}
           {viewState === 'energy' && <EnergyAnalyzer setView={setView} onBack={() => setView('dashboard')} />}
-          {viewState === 'checkout' && <CheckoutGate onBack={() => setViewState('integration')} />}
+          {viewState === 'checkout' && <CheckoutGate onBack={() => setViewState('dashboard')} />}
 
 
         </div>
