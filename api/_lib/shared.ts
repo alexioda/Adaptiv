@@ -247,10 +247,16 @@ export async function generate(opts: GenOpts): Promise<GenResult> {
     temperature = 0.8, maxOutputTokens = 300, jsonMode = false,
   } = opts;
 
+  // Gemini 2.5 counts internal reasoning tokens against maxOutputTokens.
+  // With a tight ceiling the model can spend the entire budget thinking and
+  // return a truncated fragment ("There is a") with finishReason MAX_TOKENS.
+  // These are all short, single-shot generations that need no deliberation,
+  // so thinking is disabled and a floor is applied as belt-and-braces.
   const generationConfig: Record<string, unknown> = {
     temperature,
-    maxOutputTokens,
+    maxOutputTokens: Math.max(maxOutputTokens, 256),
     topP: 0.92,
+    thinkingConfig: { thinkingBudget: 0 },
   };
   if (jsonMode) generationConfig.responseMimeType = 'application/json';
 
@@ -290,9 +296,14 @@ export async function generate(opts: GenOpts): Promise<GenResult> {
         console.warn('[liveadaptiv] candidate blocked by safety');
         return { text: '', blocked: true, reason: 'candidate_safety' };
       }
-      // MAX_TOKENS with no text usually means the model spent the
-      // budget on a preamble. Treat as a soft failure, not a block.
       return { text: '', blocked: false, reason: finish || 'empty' };
+    }
+
+    // Truncated output is worse than no output — a half sentence shown to a
+    // user reads as a broken app. Reject it so the caller's fallback runs.
+    if (finish === 'MAX_TOKENS' && !/[.!?"'\}\]]\s*$/.test(text)) {
+      console.warn('[liveadaptiv] truncated generation discarded');
+      return { text: '', blocked: false, reason: 'MAX_TOKENS_truncated' };
     }
 
     return { text, blocked: false, reason: finish || 'STOP' };
