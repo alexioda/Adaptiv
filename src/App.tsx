@@ -137,6 +137,10 @@ interface PartsWorkProps extends CommonProps {
   setExpandingBelief: (s: string) => void;
   partsStep: string;
   setPartsStep: (s: string) => void;
+  needed: string;
+  setNeeded: (s: string) => void;
+  resourceMemory: string;
+  setResourceMemory: (s: string) => void;
 }
 interface LaserCoachingProps extends CommonProps {
   stressor: string;
@@ -1093,18 +1097,29 @@ const Horizon: React.FC<HorizonProps> = ({
 // ─────────────────────────────────────────────
 // PARTS WORK
 // ─────────────────────────────────────────────
-const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensation, protection, setProtection, fear, setFear, expandingBelief, setExpandingBelief, partsStep, setPartsStep, setView, toggleSound, soundEnabled, onBack }) => {
+const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensation, protection, setProtection, fear, setFear, expandingBelief, setExpandingBelief, partsStep, setPartsStep, needed, setNeeded, resourceMemory, setResourceMemory, setView, toggleSound, soundEnabled, onBack }) => {
   const handleBack = () => {
     if (partsStep === 'experience') onBack?.();
     else if (partsStep === 'unblend') setPartsStep('experience');
     else if (partsStep === 'connect') setPartsStep('unblend');
     else if (partsStep === 'message') setPartsStep('connect');
-    else if (partsStep === 'channel') setPartsStep('message');
+    else if (partsStep === 'appreciate') setPartsStep('message');
+    else if (partsStep === 'resource') setPartsStep('appreciate');
+    else if (partsStep === 'channel') setPartsStep('resource');
   };
+
+  const PARTS_ORDER = ['experience','unblend','connect','message','appreciate','resource','channel'];
+  const partsProgress = 30 + (PARTS_ORDER.indexOf(partsStep) / (PARTS_ORDER.length - 1)) * 15;
+  const tidy = (s: string) => s.trim().replace(/\.$/, '').toLowerCase();
   const chip = "px-4 py-2 rounded-full border border-white/20 bg-white/5 text-xs text-white/90 hover:bg-white/20 transition-all";
+  // Chips used to overwrite whatever was already typed. Now they only fill
+  // an empty field, and append otherwise.
+  const applyChip = (current: string, value: string, setter: (s: string) => void) => {
+    setter(current.trim() ? `${current.trim()} ${value.toLowerCase()}` : value);
+  };
   return (
     <div className="h-full flex flex-col">
-      <Nav title="Parts Dialogue" subtitle={selectedPart} onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={30} />
+      <Nav title="Parts Dialogue" subtitle={selectedPart} onBack={handleBack} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={partsProgress} />
       <div className="flex-1 min-h-0 flex flex-col justify-start pt-6 space-y-6 animate-enter overflow-y-auto hide-scrollbar pb-16">
         {partsStep === 'experience' && (
           <div className="text-center">
@@ -1112,7 +1127,7 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
             <p className="font-serif text-2xl text-white/90 italic mb-6">"How does the {selectedPart} feel?"</p>
             <FlowInput value={sensation} onChange={setSensation} placeholder="It feels like..." onSubmit={() => sensation && setPartsStep('unblend')} className="mb-6" />
             <div className="flex flex-wrap justify-center gap-2 mb-8">
-              {["Tightness","Heat","Heaviness","Buzzing"].map(s => <button key={s} onClick={() => setSensation(s)} className={chip}>{s}</button>)}
+              {["Tight","Heavy","Hot","Buzzing","Hollow","Knotted"].map(s => <button key={s} onClick={() => applyChip(sensation, s, setSensation)} className={chip}>{s}</button>)}
             </div>
             <button onClick={() => setPartsStep('unblend')} disabled={!sensation} className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-40">Next</button>
           </div>
@@ -1140,20 +1155,92 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
             <p className="font-serif text-2xl text-white/90 italic mb-6">"What is it trying to do?"</p>
             <FlowInput value={protection} onChange={setProtection} placeholder="It is trying to..." onSubmit={() => protection && setPartsStep('channel')} className="mb-6" />
             <div className="flex flex-wrap justify-center gap-2 mb-8">
-              {["Prevent Failure","Keep me Safe","Control Outcomes"].map(p => <button key={p} onClick={() => setProtection(p)} className={chip}>{p}</button>)}
+              {["Keep me safe","Stop me being caught out","Keep me in control","Spare me the disappointment","Make sure I am ready"].map(p => <button key={p} onClick={() => applyChip(protection, p, setProtection)} className={chip}>{p}</button>)}
             </div>
-            <button onClick={() => setPartsStep('channel')} disabled={!protection} className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-40">Acknowledge</button>
+            <button onClick={() => setPartsStep('appreciate')} disabled={!protection} className="w-full py-4 rounded-full bg-white/10 text-white font-sans text-xs tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-40">Continue</button>
+          </div>
+        )}
+
+        {/* APPRECIATION — the part is thanked before anything is asked of it.
+            Skipping this is what makes the sequence feel like management
+            rather than dialogue. */}
+        {partsStep === 'appreciate' && (
+          <div className="text-center">
+            <Heart size={24} className="text-teal-200 mx-auto mb-4" strokeWidth={1.6} />
+            <p className="font-serif text-2xl text-teal-100 italic mb-5">Acknowledge It</p>
+            <p className="font-sans text-base text-white/75 leading-relaxed mb-4">
+              This part has been {protection ? tidy(protection) : 'holding the line'} for a long time. Nobody asked it to, and nobody thanked it.
+            </p>
+            <p className="font-sans text-base text-white/75 leading-relaxed mb-8">
+              Before you ask it to change anything, let it know you see what it has been carrying. Say it inwardly, in your own words. Take a breath before you move on.
+            </p>
+            <button onClick={() => setPartsStep('resource')} className="w-full py-4 rounded-full bg-teal-500/10 text-teal-200 border border-teal-500/20 font-sans text-xs tracking-widest uppercase hover:bg-teal-500/20 transition-all">
+              I have acknowledged it
+            </button>
+          </div>
+        )}
+
+        {/* RESOURCE — a protective part rarely lets go on request. It lets go
+            when something else can hold the weight. */}
+        {partsStep === 'resource' && (
+          <div className="text-center">
+            <Anchor size={24} className="text-indigo-200 mx-auto mb-4" strokeWidth={1.6} />
+            <p className="font-serif text-2xl text-indigo-100 italic mb-4">What It Needs</p>
+            <p className="font-sans text-base text-white/75 leading-relaxed mb-6">
+              A part this committed does not stand down because you asked. It stands down when something else can hold the weight.
+            </p>
+
+            <label className="block font-sans text-[11px] uppercase tracking-widest text-indigo-300/80 mb-3 text-left">
+              What would this part need in order to loosen its grip?
+            </label>
+            <FlowInput value={needed} onChange={setNeeded} placeholder="It would need..." accent="indigo" className="mb-4" />
+            <div className="flex flex-wrap justify-center gap-2 mb-8">
+              {["Steadiness","Backup","Permission to stop","Certainty","Rest"].map(n => (
+                <button key={n} onClick={() => applyChip(needed, n, setNeeded)} className="px-4 py-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 text-xs text-indigo-200 hover:bg-indigo-500/20 transition-all">{n}</button>
+              ))}
+            </div>
+
+            <label className="block font-sans text-[11px] uppercase tracking-widest text-indigo-300/80 mb-3 text-left">
+              When have you already had that? Any moment counts.
+            </label>
+            <FlowInput value={resourceMemory} onChange={setResourceMemory} placeholder="I had it when..." onSubmit={() => needed && resourceMemory && setPartsStep('channel')} accent="indigo" className="mb-4" />
+            <p className="font-sans text-xs text-white/40 mb-8 text-left">
+              That part of you still exists. Bring it alongside the one holding the {sensation ? tidy(sensation) : 'weight'} — not to argue with it, just to stand there.
+            </p>
+
+            <button onClick={() => setPartsStep('channel')} disabled={!needed || !resourceMemory} className="w-full py-4 rounded-full bg-indigo-500/15 text-indigo-200 border border-indigo-500/25 font-sans text-xs tracking-widest uppercase hover:bg-indigo-500/25 transition-all disabled:opacity-40">
+              They are standing together
+            </button>
+
+            {/* Searching for a resourced memory can come up empty, and for
+                some people that search is itself loaded. It must be a normal
+                exit, not a failure to complete the step. */}
+            <button onClick={() => setPartsStep('channel')} className="w-full mt-3 py-3 text-white/40 hover:text-white/70 font-sans text-[11px] tracking-widest uppercase transition-colors">
+              Nothing comes to mind
+            </button>
+            <p className="font-sans text-xs text-white/30 mt-2 leading-relaxed">
+              That is a common answer and not a wrong one. You can carry on without it.
+            </p>
           </div>
         )}
         {partsStep === 'channel' && (
           <div className="text-center">
             <Zap size={24} className="text-teal-200 mx-auto mb-4" />
-            <p className="font-serif text-2xl text-teal-100 italic mb-4">"Shift the Energy"</p>
-            <p className="font-sans text-sm text-white/60 mb-6">You don't need to destroy the energy. Use it.</p>
-            <FlowInput value={expandingBelief} onChange={setExpandingBelief} placeholder="I will use this energy to..." onSubmit={() => expandingBelief && setView('lens')} accent="teal" className="mb-6" />
+            <p className="font-serif text-2xl text-teal-100 italic mb-4">Shift the Energy</p>
+            <p className="font-sans text-base text-white/75 leading-relaxed mb-3">
+              It is not empty-handed now{needed ? `, it has ${tidy(needed)}` : ''}. The effort it has been spending on {protection ? tidy(protection) : 'holding the line'} is real energy, and it is yours.
+            </p>
+            <p className="font-sans text-base text-white/75 leading-relaxed mb-6">
+              You are not shutting it down. You are giving it a job you actually chose.
+            </p>
+            <label className="block font-sans text-[11px] uppercase tracking-widest text-teal-300/80 mb-3 text-left">
+              If this energy worked for you instead of against you, what would it do?
+            </label>
+            <FlowInput value={expandingBelief} onChange={setExpandingBelief} placeholder="I will use this energy to..." onSubmit={() => expandingBelief && setView('lens')} accent="teal" className="mb-4" />
+            <p className="font-sans text-xs text-white/40 mb-6 text-left">One line. Something the part can actually do tomorrow.</p>
             <div className="flex flex-wrap justify-center gap-2 mb-8">
-              {["Fuel my boundaries","Deepen my focus","Drive my commitment"].map(ex => (
-                <button key={ex} onClick={() => setExpandingBelief(ex)} className="px-4 py-2 rounded-full border border-teal-500/20 bg-teal-500/10 text-xs text-teal-200 hover:bg-teal-500/20 transition-all">{ex}</button>
+              {["Hold one boundary today","Say the thing I have avoided","Protect my recovery time","Finish one thing properly"].map(ex => (
+                <button key={ex} onClick={() => applyChip(expandingBelief, ex, setExpandingBelief)} className="px-4 py-2 rounded-full border border-teal-500/20 bg-teal-500/10 text-xs text-teal-200 hover:bg-teal-500/20 transition-all">{ex}</button>
               ))}
             </div>
             <button onClick={() => setView('lens')} disabled={!expandingBelief} className="w-full py-4 rounded-full bg-teal-500/10 text-teal-200 border border-teal-500/20 font-sans text-xs tracking-widest uppercase hover:bg-teal-500/20 transition-all disabled:opacity-40">Integrate</button>
@@ -1601,7 +1688,7 @@ const Integration: React.FC<IntegrationProps> = ({
         postEnergy: postEnergy,
         coreFear: fear,
         expandingBelief,
-        commitment: `${goal.action} (${goal.when})`,
+        commitment: commitmentSentence(),
         energyLevel: exitLevel,
       };
       saveSession(record);
@@ -1652,22 +1739,52 @@ const Integration: React.FC<IntegrationProps> = ({
   }, [isLocked, isBurnoutPath, manifesto]);
 
 
-  const quickTimes = ["Now", "Within 1 Hr", "Today", "Tomorrow"];
-  const steps = [
-    { id: 'outcome', q: 'The Goal', ph: 'Desired outcome?' },
-    { id: 'action', q: 'The Action', ph: 'Single step?' },
-    { id: 'when', q: 'The Commitment', ph: 'When?' },
+  // A cue beats a deadline. "Today" is a deadline; "when I close my laptop"
+  // is a cue, and cues are the part that actually drives follow-through.
+  const ACTION_CHIPS = [
+    'Send the message I have been avoiding',
+    'Close the laptop',
+    'Say no to one thing',
+    'Ask someone for help with this',
   ];
-  const current = steps[Math.min(goalStep, 2)];
-  const handleBack = () => { if (goalStep > 0) setGoalStep(goalStep - 1); else onBack?.(); };
-  const handleNextStep = () => {
-    if (!goal[current.id as keyof Goal]) return;
-    if (goalStep < 2) setGoalStep(goalStep + 1); else setIsLocked(true);
+  const TRIGGER_CHIPS = [
+    'When I close this app',
+    'Before I open my laptop tomorrow',
+    'At the end of this shift',
+    'Next time it comes up',
+  ];
+
+  const commitmentSentence = () => {
+    const raw = (goal.action || '').trim().replace(/\.$/, '');
+    const cue = (goal.when || '').trim().replace(/\.$/, '');
+    if (!raw) return '';
+
+    // Preservation Mode writes a full statement ("I am offline to realign"),
+    // and chips arrive capitalised. Both need handling or the sentence reads
+    // "I will I am offline to realign".
+    const alreadyASentence = /^i\s/i.test(raw);
+    const verb = raw.replace(/^I will\s+/i, '');
+    const lower = verb.charAt(0).toLowerCase() + verb.slice(1);
+    const clause = alreadyASentence ? raw.charAt(0).toUpperCase() + raw.slice(1) : `I will ${lower}`;
+
+    if (!cue) return `${clause}.`;
+    if (/^(when|before|after|at|next|the moment|first thing|tonight|tomorrow|now|today)\b/i.test(cue)) {
+      const head = cue.charAt(0).toUpperCase() + cue.slice(1);
+      return `${head}, ${clause}.`;
+    }
+    return `${clause} — ${cue}.`;
   };
+
+  const applyChip = (current: string, value: string, key: 'action' | 'when') => {
+    setGoal({ ...goal, [key]: current.trim() ? `${current.trim()} ${value.toLowerCase()}` : value });
+  };
+
+  const handleBack = () => onBack?.();
+  const handleNextStep = () => { if (goal.action?.trim()) setIsLocked(true); };
 
 
   const copyArtifact = async () => {
-    const text = `ADAPTIV DECREE\n\n${manifesto}\n\nCommitment: ${goal.action} (${goal.when})`;
+    const text = `ADAPTIV DECREE\n\n${manifesto}\n\n${commitmentSentence()}`;
     try {
       await navigator.clipboard.writeText(text);
       setToastMsg("Decree copied");
@@ -1680,13 +1797,13 @@ const Integration: React.FC<IntegrationProps> = ({
 
   const generateEmailLink = () => {
     const subject = `My Adaptiv Decree`;
-    const body = `${manifesto}\n\nMy Commitment: ${goal.action} (${goal.when})`;
+    const body = `${manifesto}\n\n${commitmentSentence()}`;
     return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
 
   const generateCalendarLink = () => {
-    const text = `Adaptiv Commitment: ${goal.action}`;
+    const text = `Adaptiv: ${goal.action}`;
     const details = `${manifesto}\n\nGenerated by Adaptiv`;
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(text)}&details=${encodeURIComponent(details)}`;
   };
@@ -1884,44 +2001,67 @@ const Integration: React.FC<IntegrationProps> = ({
 
   return (
     <div className="h-full flex flex-col">
-      <Nav title="Integration" subtitle="Blueprint" onBack={onBack} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={90} />
+      <Nav title="Integration" subtitle="The Move" onBack={handleBack} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={90} />
       <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar pb-8">
         <div className="glass-panel p-6 rounded-[32px]">
-          <h3 className="font-serif text-2xl text-white italic mb-6">{current.q}</h3>
-          {current.id === 'when' ? (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-3">
-                {quickTimes.map(time => (
-                  <button key={time} onClick={() => { setGoal({ ...goal, when: time }); setIsLocked(true); }} className="py-4 rounded-xl border border-white/20 bg-white/5 text-base font-sans text-white/90 hover:bg-white/20 hover:border-white/40 hover:text-white transition-all shadow-sm">
-                    {time}
-                  </button>
-                ))}
-              </div>
-              <p className="text-center text-[11px] text-white/40 uppercase tracking-widest mt-4">Select to Seal</p>
+
+          <h3 className="font-serif text-2xl text-white italic mb-2">The Move</h3>
+          <p className="font-sans text-sm text-white/50 mb-8 leading-relaxed">
+            One action, and the moment that will remind you. Not a plan — a cue.
+          </p>
+
+          <label className="block font-sans text-[11px] uppercase tracking-widest text-teal-400 mb-3">
+            What are you doing about it?
+          </label>
+          <FlowInput
+            value={goal.action || ''}
+            onChange={v => setGoal({ ...goal, action: v })}
+            placeholder="I will..."
+            accent="teal"
+            className="mb-4"
+          />
+          <div className="flex flex-wrap gap-2 mb-8">
+            {ACTION_CHIPS.map(a => (
+              <button key={a} onClick={() => applyChip(goal.action || '', a, 'action')}
+                className="px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs text-white/60 hover:bg-white/10 transition-colors">{a}</button>
+            ))}
+          </div>
+
+          <label className="block font-sans text-[11px] uppercase tracking-widest text-teal-400 mb-3">
+            What will remind you?
+          </label>
+          <FlowInput
+            value={goal.when || ''}
+            onChange={v => setGoal({ ...goal, when: v })}
+            placeholder="When I..."
+            onSubmit={handleNextStep}
+            accent="teal"
+            className="mb-4"
+          />
+          <div className="flex flex-wrap gap-2 mb-8">
+            {TRIGGER_CHIPS.map(t => (
+              <button key={t} onClick={() => applyChip(goal.when || '', t, 'when')}
+                className="px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs text-white/60 hover:bg-white/10 transition-colors">{t}</button>
+            ))}
+          </div>
+
+          {/* The sentence assembles live, so they seal something they can read
+              back rather than three disconnected fields. */}
+          {goal.action?.trim() && (
+            <div className="bg-white/5 border border-teal-500/20 rounded-2xl p-5 mb-6 animate-enter">
+              <span className="block font-sans text-[10px] uppercase tracking-widest text-white/40 mb-2">Your move</span>
+              <p className="font-serif text-lg text-white italic leading-relaxed">{commitmentSentence()}</p>
             </div>
-          ) : (
-            <>
-              {current.id === 'outcome' ? (
-                <div className="flex items-start bg-white/5 border border-white/10 focus-within:border-teal-500/50 rounded-2xl overflow-hidden transition-all relative z-10 mb-6">
-                  <div className="pl-4 pt-4 text-white/40 font-serif italic text-lg select-none shrink-0">To</div>
-                  <textarea value={goal.outcome} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setGoal({ ...goal, outcome: e.target.value })} className="w-full bg-transparent p-4 pl-2 pt-4 text-white text-base outline-none resize-none font-serif italic leading-relaxed h-28 placeholder:text-white/25" placeholder="execute the strategy without absorbing the team's anxiety..." />
-                </div>
-              ) : (
-                <FlowInput
-                  key={current.id}
-                  value={goal[current.id as keyof Goal] as string}
-                  onChange={v => setGoal({ ...goal, [current.id]: v })}
-                  placeholder={current.ph}
-                  onSubmit={handleNextStep}
-                  accent="teal"
-                  className="mb-6"
-                />
-              )}
-              <div className="flex gap-3">
-                <button onClick={handleBack} className="px-5 py-3 rounded-xl border border-white/10 text-white/50 hover:text-white transition-colors text-sm">Back</button>
-                <button onClick={handleNextStep} disabled={!goal[current.id as keyof Goal]} className="flex-1 py-3 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase tracking-widest disabled:opacity-50">Next</button>
-              </div>
-            </>
+          )}
+
+          <button onClick={handleNextStep} disabled={!goal.action?.trim()}
+            className="w-full py-4 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase tracking-widest transition-all disabled:opacity-40">
+            Seal It
+          </button>
+          {!goal.when?.trim() && goal.action?.trim() && (
+            <p className="text-center font-sans text-xs text-white/35 mt-3">
+              A cue makes it far more likely to happen, but you can seal without one.
+            </p>
           )}
         </div>
       </div>
@@ -2213,12 +2353,39 @@ const App = () => {
   };
 
 
-  const goHome = () => { setNavHistory([]); setViewState('dashboard'); };
+  const [crisisMessage, setCrisisMessage] = useState('');
+
+  // Everything that belongs to ONE cycle. Identity, streak, history and
+  // entitlement survive; the working answers do not. Without this, a second
+  // cycle inherits the first one's fear, sensation, belief and goal.
+  const clearCycleState = () => {
+    setStressor(''); setPerception(''); setFear(''); setDistortionType(null);
+    setSomaticZones([]); setFrictionSource('body');
+    setPartsStep('experience'); setSensation(''); setProtection('');
+    setNeeded(''); setResourceMemory('');
+    setExpandingBelief('');
+    setGoal({ what: '', measure: '', when: '', outcome: '', action: '' });
+    setGoalStep(0); setIsLocked(false); setIsBurnoutPath(false);
+    setEnergyAnalysis(null);
+    setStressLevel(5); setEnergyLevel(5);
+    setPostStressLevel(5); setPostEnergyLevel(5);
+    setPressure(50); setAbility(50);
+    setHorizon({ ...INITIAL_HORIZON });
+    setCrisisMessage('');
+  };
+
+  // "Return to Orbit" ends the cycle. It used to land on whatever Horizon
+  // step was left over — usually the body/mind chooser — instead of a
+  // clean start or the paywall.
+  const goHome = () => {
+    clearCycleState();
+    setNavHistory([]);
+    setViewState(hasCompletedFreeCycle ? 'checkout' : 'dashboard');
+  };
 
   // ── CRISIS ──
   // Any endpoint may return { crisis: true }. When it does we stop the
   // session flow entirely rather than degrading to generated content.
-  const [crisisMessage, setCrisisMessage] = useState('');
   const raiseCrisis = (message: string) => {
     setCrisisMessage(message || 'Please reach out to someone who can help. In the US, call or text 988 any time.');
     setNavHistory(h => [...h, viewState].slice(-25));
@@ -2252,6 +2419,8 @@ const App = () => {
   const [partsStep, setPartsStep] = useState('experience');
   const [sensation, setSensation] = useState('');
   const [protection, setProtection] = useState('');
+  const [needed, setNeeded] = useState('');
+  const [resourceMemory, setResourceMemory] = useState('');
   const [expandingBelief, setExpandingBelief] = useState('');
   const [pressure, setPressure] = useState(50);
   const [ability, setAbility] = useState(50);
@@ -2306,14 +2475,7 @@ const App = () => {
 
 
   const resetApp = () => {
-    setStressor(''); setPerception(''); setSomaticZones([]);
-    setIsLocked(false); setIsBurnoutPath(false);
-    setPartsStep('experience'); setSensation(''); setProtection('');
-    setExpandingBelief(''); setFear(''); setDistortionType(null);
-    setGoal({ what: '', measure: '', when: '', outcome: '', action: '' });
-    setGoalStep(0);
-    setHorizon({ ...INITIAL_HORIZON });
-    setCrisisMessage('');
+    clearCycleState();
     setNavHistory([]);
     setViewState(hasCompletedFreeCycle ? 'checkout' : 'welcome');
   };
@@ -2369,6 +2531,8 @@ const App = () => {
               fear={fear} setFear={setFear}
               expandingBelief={expandingBelief} setExpandingBelief={setExpandingBelief}
               partsStep={partsStep} setPartsStep={setPartsStep}
+              needed={needed} setNeeded={setNeeded}
+              resourceMemory={resourceMemory} setResourceMemory={setResourceMemory}
               onBack={goBack}
             />
           )}
@@ -2377,7 +2541,7 @@ const App = () => {
           {viewState === 'laser' && (
             <LaserCoaching {...common}
               stressor={stressor} perception={perception}
-              somatic={somaticZones[0] || 'Mental Loops / Cognitive Fog'}
+              somatic={[somaticZones[0], sensation && `sensation: ${sensation}`, needed && `the part needs: ${needed}`, resourceMemory && `their resource: ${resourceMemory}`].filter(Boolean).join('. ') || 'Mental Loops / Cognitive Fog'}
               fear={fear} distortionType={distortionType}
               setGoal={setGoal} setExpandingBelief={setExpandingBelief}
               energyLevel={energyLevel} stressLevel={stressLevel}
