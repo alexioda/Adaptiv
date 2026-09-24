@@ -52,10 +52,11 @@ Output the sentence only.`;
   });
 
   const insight = unquote(text);
+  const ok = insight.length > 10;
   return json({
-    insight: insight.length > 10 ? insight : FALLBACKS[level],
+    insight: ok ? insight : FALLBACKS[level],
     level, state: label,
-    source: insight ? 'ai' : 'fallback',
+    source: ok ? 'ai' : 'fallback',
     reason, blocked,
   }, 200, cors);
 }

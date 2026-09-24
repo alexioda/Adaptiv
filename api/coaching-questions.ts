@@ -8,17 +8,27 @@ export const config = { runtime: 'edge' };
 
 // Four real fallbacks, not one. The old version returned a single
 // question with status 500, which the client discarded anyway.
-function fallbackSet(friction: number, energy: number): string[] {
-  const opener = friction > 60 || energy < 40
-    ? 'What specifically is threatened by this situation?'
-    : energy > 70
-      ? 'If you were coaching your best self here, what would you tell them?'
-      : 'What is one assumption you are making that might not be true?';
+// Fallbacks follow the same standard as the prompt below: MIRROR, PIVOT,
+// VISION, CATALYST, none of the banned shapes, never answerable with a yes
+// or no. Keep src/lib/adaptivAI.ts's network-failure copy in step with this.
+function fallbackSet(friction: number, energy: number, distortion: string | null): string[] {
+  const depleted = friction > 60 || energy < 40;
+  const mirror = distortion === 'assumption'
+    ? 'What does it cost you to keep believing this without checking it?'
+    : distortion === 'fact'
+      ? 'Even if this is true, what is still yours to decide?'
+      : depleted
+        ? 'What have you already decided about this that you have not said out loud?'
+        : energy > 70
+          ? 'What are you tolerating here that you would not accept from anyone else?'
+          : 'Which part of this are you treating as certain without having checked it?';
   return [
-    opener,
-    'If this shifted tonight, what would you actually feel different?',
-    'What permission do you need to give yourself to move?',
-    'What is the smallest bold move that makes the rest easier?',
+    mirror,
+    'What is this arrangement costing you each week that you have stopped counting?',
+    'Once this is settled, what will you stop doing first thing in the morning?',
+    depleted
+      ? 'What could you drop tonight that nobody would notice was gone?'
+      : 'What message could you send tonight that makes the rest of this cheaper?',
   ];
 }
 
@@ -111,7 +121,7 @@ Return ONLY raw JSON: {"questions": ["...", "...", "...", "..."]}`;
     ? (parsed!.questions as unknown[]).map(q => String(q).trim()).filter(q => q.length > 8)
     : [];
 
-  const defaults = fallbackSet(friction, energy);
+  const defaults = fallbackSet(friction, energy, distortion);
   // Always hand back exactly four, topping up from defaults.
   const questions = [0, 1, 2, 3].map(i => list[i] ?? defaults[i]);
 

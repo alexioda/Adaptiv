@@ -1231,7 +1231,12 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
             <Zap size={24} className="text-teal-200 mx-auto mb-4" />
             <p className="font-serif text-2xl text-teal-100 italic mb-4">Shift the Energy</p>
             <p className="font-sans text-base text-white/75 leading-relaxed mb-3">
-              It is not empty-handed now{needed ? `, it has ${tidy(needed)}` : ''}. The effort it has been spending on {protection ? tidy(protection) : 'holding the line'} is real energy, and it is yours.
+              {/* "Nothing comes to mind" skips the resource, so only claim one
+                  when they actually named what it needs and when they had it. */}
+              {needed && resourceMemory
+                ? `It is not empty-handed now, it has ${tidy(needed)}. `
+                : 'Nothing had to be found for this to count. '}
+              The effort it has been spending on {protection ? tidy(protection) : 'holding the line'} is real energy, and it is yours.
             </p>
             <p className="font-sans text-base text-white/75 leading-relaxed mb-6">
               You are not shutting it down. You are giving it a job you actually chose.

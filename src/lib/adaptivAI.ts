@@ -187,13 +187,23 @@ export async function generateCoachingQuestions(
   energyLevel: number, stressLevel: number,
   fear = '', distortionType: 'fact' | 'assumption' | null = null,
 ): Promise<AIResult<string[]>> {
+  // Same set as api/coaching-questions.ts fallbackSet(), on the 1-10 scale.
+  const depleted = stressLevel > 6 || energyLevel < 4;
   const fallback = [
-    stressLevel > 6 || energyLevel < 4
-      ? 'What specifically is threatened by this situation?'
-      : 'What is one assumption you are making that might not be true?',
-    'If this shifted tonight, what would you actually feel different?',
-    'What permission do you need to give yourself to move?',
-    'What is the smallest bold move that makes the rest easier?',
+    distortionType === 'assumption'
+      ? 'What does it cost you to keep believing this without checking it?'
+      : distortionType === 'fact'
+        ? 'Even if this is true, what is still yours to decide?'
+        : depleted
+          ? 'What have you already decided about this that you have not said out loud?'
+          : energyLevel > 7
+            ? 'What are you tolerating here that you would not accept from anyone else?'
+            : 'Which part of this are you treating as certain without having checked it?',
+    'What is this arrangement costing you each week that you have stopped counting?',
+    'Once this is settled, what will you stop doing first thing in the morning?',
+    depleted
+      ? 'What could you drop tonight that nobody would notice was gone?'
+      : 'What message could you send tonight that makes the rest of this cheaper?',
   ];
 
   const r = await post('/api/coaching-questions', {
