@@ -20,6 +20,7 @@ import {
   generateEnergyInsight,
   generateManifesto,
 } from './lib/adaptivAI';
+import BuyMetabolizeButton from './components/BuyMetabolizeButton';
 
 
 // ─────────────────────────────────────────────
@@ -2178,6 +2179,20 @@ const CheckoutGate: React.FC<{ onBack: () => void }> = ({ onBack }) => (
 );
 
 
+const BookPage: React.FC<{ onBack: () => void }> = ({ onBack }) => (
+  <div className="h-full flex flex-col overflow-y-auto hide-scrollbar">
+    <div className="shrink-0 pt-1 pb-2">
+      <button aria-label="Go back" onClick={onBack} className="p-2 rounded-full glass-button text-white/70 hover:text-white transition-colors">
+        <ChevronLeft size={20} />
+      </button>
+    </div>
+    <div className="flex-1 py-6">
+      <BuyMetabolizeButton />
+    </div>
+  </div>
+);
+
+
 // ─────────────────────────────────────────────
 // APP ROOT
 // ─────────────────────────────────────────────
@@ -2191,7 +2206,10 @@ const App = () => {
   const setUserName = (n: string) => { setUserNameState(n); storageSet(STORAGE_KEYS.USER_NAME, n); };
 
 
-  const [viewState, setViewState] = useState(userName ? 'dashboard' : 'welcome');
+  // /metabolize is the one path-addressable view (served via the rewrite in vercel.json).
+  const [viewState, setViewState] = useState(() =>
+    window.location.pathname === '/metabolize' ? 'book' : userName ? 'dashboard' : 'welcome'
+  );
 
 
   // ── FIX 5: real navigation history, so Back returns where you actually were ──
@@ -2438,6 +2456,12 @@ const App = () => {
           {viewState === 'energy' && <EnergyAnalyzer setView={setView} onBack={goBack} />}
           {viewState === 'checkout' && <CheckoutGate onBack={goHome} />}
           {viewState === 'crisis' && <Crisis message={crisisMessage} onBack={goBack} />}
+          {viewState === 'book' && (
+            <BookPage onBack={() => {
+              window.history.replaceState(null, '', '/');
+              if (userName) goHome(); else { setNavHistory([]); setViewState('welcome'); }
+            }} />
+          )}
 
 
         </div>
