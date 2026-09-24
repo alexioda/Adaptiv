@@ -1281,7 +1281,7 @@ const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, abilit
         <div className={`relative w-48 h-48 shrink-0 rounded-full border border-white/10 flex items-center justify-center transition-all duration-1000 mb-8 animate-enter ${flowState ? 'shadow-[0_0_60px_rgba(20,184,166,0.2)] bg-teal-900/10' : 'shadow-[0_0_60px_rgba(244,63,94,0.2)] bg-rose-900/10'}`}>
           <div className="text-center relative z-10 px-2">
             <h2 className={`font-serif text-3xl italic mb-1 ${flowState ? 'text-teal-300' : 'text-rose-300'}`}>{flowState ? 'Flow State' : 'High Friction'}</h2>
-            <p className="font-sans text-[10px] tracking-widest uppercase text-white/60">{flowState ? 'Capacity exceeds demand.' : `Capacity deficit: -${deficit}%`}</p>
+            <p className="font-sans text-[10px] tracking-widest uppercase text-white/60">{flowState ? 'Capacity exceeds demand.' : `Capacity deficit: -${deficit}`}</p>
           </div>
           <div className={`absolute inset-4 rounded-full border border-dashed opacity-30 ${flowState ? 'border-teal-400 animate-[spin_20s_linear_infinite]' : 'border-rose-400 animate-pulse'}`} />
         </div>
@@ -1289,16 +1289,16 @@ const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, abilit
           <div className="space-y-2">
             <div className="flex justify-between items-end mb-3 gap-2">
               <div className="min-w-0"><p className="font-sans text-[11px] tracking-widest text-amber-300 uppercase font-bold">Requirement Intensity</p><p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">External Demand</p></div>
-              <div className="text-2xl font-serif italic text-amber-400 shrink-0">{pressure}%</div>
+              <div className="text-2xl font-serif italic text-amber-400 shrink-0">{pressure}</div>
             </div>
-            <input aria-label="Requirement intensity" type="range" min="1" max="100" value={pressure} onChange={e => setPressure(parseInt(e.target.value))} className="w-full slider-amber" />
+            <input aria-label="Requirement intensity" type="range" min="1" max="10" value={pressure} onChange={e => setPressure(parseInt(e.target.value))} className="w-full slider-amber" />
           </div>
           <div className="space-y-2">
             <div className="flex justify-between items-end mb-3 gap-2">
               <div className="min-w-0"><p className="font-sans text-[11px] tracking-widest text-indigo-300 uppercase font-bold">Internal Capacity</p><p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">Current Bandwidth</p></div>
-              <div className="text-2xl font-serif italic text-indigo-400 shrink-0">{ability}%</div>
+              <div className="text-2xl font-serif italic text-indigo-400 shrink-0">{ability}</div>
             </div>
-            <input aria-label="Internal capacity" type="range" min="1" max="100" value={ability} onChange={e => setAbility(parseInt(e.target.value))} className="w-full slider-indigo" />
+            <input aria-label="Internal capacity" type="range" min="1" max="10" value={ability} onChange={e => setAbility(parseInt(e.target.value))} className="w-full slider-indigo" />
           </div>
         </div>
       </div>
@@ -2266,7 +2266,7 @@ const App = () => {
   };
 
 
-  const goHome = () => { setNavHistory([]); setViewState('dashboard'); };
+  const goHome = () => { clearSessionState(); setViewState('dashboard'); };
 
   // ── CRISIS ──
   // Any endpoint may return { crisis: true }. When it does we stop the
@@ -2306,8 +2306,8 @@ const App = () => {
   const [sensation, setSensation] = useState('');
   const [protection, setProtection] = useState('');
   const [expandingBelief, setExpandingBelief] = useState('');
-  const [pressure, setPressure] = useState(50);
-  const [ability, setAbility] = useState(50);
+  const [pressure, setPressure] = useState(5);
+  const [ability, setAbility] = useState(5);
   const [goal, setGoal] = useState<Goal>({ what: '', measure: '', when: '', outcome: '', action: '' });
   const [goalStep, setGoalStep] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
@@ -2358,7 +2358,11 @@ const App = () => {
   const completeSession = () => {};
 
 
-  const resetApp = () => {
+  // ── Everything specific to one pass through the protocol. Shared by
+  // resetApp and goHome so "start fresh" means the same thing from
+  // either exit — previously goHome only reset the view, leaving stale
+  // stressor/fear/horizon-step state to bleed into the next session.
+  const clearSessionState = () => {
     setStressor(''); setPerception(''); setSomaticZones([]);
     setIsLocked(false); setIsBurnoutPath(false);
     setPartsStep('experience'); setSensation(''); setProtection('');
@@ -2368,6 +2372,10 @@ const App = () => {
     setHorizon({ ...INITIAL_HORIZON });
     setCrisisMessage('');
     setNavHistory([]);
+  };
+
+  const resetApp = () => {
+    clearSessionState();
     setViewState(hasCompletedFreeCycle && !hasManualAccess ? 'checkout' : 'welcome');
   };
 
