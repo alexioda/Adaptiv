@@ -2383,7 +2383,16 @@ const App = () => {
   const [sessionHistory, setSessionHistory] = useState<SessionRecord[]>(() => storageGet<SessionRecord[]>(STORAGE_KEYS.SESSION_HISTORY, []));
   const [hasCompletedFreeCycle, setHasCompletedFreeCycle] = useState(() => storageGet<boolean>(STORAGE_KEYS.FREE_CYCLE, false));
   const [hasManualAccess, setHasManualAccess] = useState(() => storageGet<boolean>(STORAGE_KEYS.MANUAL_ACCESS, false));
-  const unlockManualAccess = () => { setHasManualAccess(true); storageSet(STORAGE_KEYS.MANUAL_ACCESS, true); goHome(); };
+  // Goes straight to the dashboard rather than through goHome(): the
+  // hasManualAccess update isn't visible until the next render, so goHome()
+  // would still see a locked user and route back to checkout.
+  const unlockManualAccess = () => {
+    setHasManualAccess(true);
+    storageSet(STORAGE_KEYS.MANUAL_ACCESS, true);
+    clearCycleState();
+    setNavHistory([]);
+    setViewState('dashboard');
+  };
 
 
   const setUserName = (n: string) => { setUserNameState(n); storageSet(STORAGE_KEYS.USER_NAME, n); };
@@ -2438,7 +2447,7 @@ const App = () => {
   const goHome = () => {
     clearCycleState();
     setNavHistory([]);
-    setViewState(hasCompletedFreeCycle ? 'checkout' : 'dashboard');
+    setViewState(hasCompletedFreeCycle && !hasManualAccess ? 'checkout' : 'dashboard');
   };
 
   // ── CRISIS ──
