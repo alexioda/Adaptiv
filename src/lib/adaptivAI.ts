@@ -238,3 +238,13 @@ export async function generateManifesto(
   }
   return { isOffline: true, crisis: false };
 }
+
+// ── ACCESS CODE ──────────────────────────────────────────────
+// Manual unlock, alongside Lemon Squeezy checkout — for comps,
+// beta testers, partners. No AI, no crisis handling; a network
+// failure or any non-2xx just means "not valid".
+export async function verifyCipher(code: string): Promise<boolean> {
+  const r = await post('/api/verify-cipher', { code });
+  if (!r.ok) return false;
+  return r.json.valid === true;
+}
