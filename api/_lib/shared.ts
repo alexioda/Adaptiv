@@ -75,18 +75,55 @@ an outcome. Reflect and direct — do not assess.`.trim();
 // ── CRISIS GATE ──────────────────────────────────────────────
 // Deterministic, runs before any model call. Free, instant, and
 // unaffected by whatever the model's filters happen to do today.
-const CRISIS_RE = new RegExp(
-  [
-    'kill(ing)? myself', 'end (my life|it all)', 'ending my life',
-    'take my own life', 'suicid(e|al)',
-    'want to die', 'wanna die', 'better off dead',
-    'no reason to (live|go on)', "don'?t want to (be here|live)",
-    'self[- ]harm', 'harm(ing)? myself', 'hurt(ing)? myself',
-    'cut(ting)? myself', 'overdose',
-    "can'?t go on", 'nothing left to live for',
-  ].join('|'),
-  'i',
-);
+// Contractions are expanded before matching, so one pattern covers
+// "don't" / "dont" / "do not". Expansion is restricted to an explicit list:
+// a generic /(\w)n't/ rule silently mangled "want" into "wa not", which
+// disabled every "want to die" pattern.
+const CONTRACTIONS: [RegExp, string][] = [
+  [/\bcan'?t\b/g, 'cannot'],
+  [/\bcannot\b/g, 'cannot'],
+  [/\bwon'?t\b/g, 'will not'],
+  [/\bdon'?t\b/g, 'do not'],
+  [/\bdoesn'?t\b/g, 'does not'],
+  [/\bdidn'?t\b/g, 'did not'],
+  [/\bisn'?t\b/g, 'is not'],
+  [/\bain'?t\b/g, 'is not'],
+  [/\baren'?t\b/g, 'are not'],
+  [/\bwasn'?t\b/g, 'was not'],
+  [/\bhaven'?t\b/g, 'have not'],
+  [/\bhasn'?t\b/g, 'has not'],
+  [/\bwanna\b/g, 'want to'],
+  [/\bgonna\b/g, 'going to'],
+];
+
+function normalizeForScreening(text: string): string {
+  let out = text.toLowerCase().replace(/[\u2018\u2019\u02BC]/g, "'");
+  for (const [re, sub] of CONTRACTIONS) out = out.replace(re, sub);
+  return out.replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+const CRISIS_PATTERNS = [
+  // explicit intent
+  'kill (myself|my self)', 'killing myself',
+  'suicid(e|al)', 'take my (own )?life',
+  'end (my life|it all)', 'ending my life',
+  // ideation
+  // "die on that hill" is a business idiom, never a crisis statement.
+  'want to die(?!\\s+on (that|this) hill)',
+  'wish (i was|i were|i am) dead', 'better off dead',
+  'do not want to (be here|live|wake up|exist)',
+  'no longer want to (be here|live)',
+  'nothing (left )?to live for', 'no reason to (live|go on)',
+  // "cannot go on with the vendor" is a work sentence, not a crisis one —
+  // the lookahead keeps the phrase without catching ordinary complaints.
+  'cannot go on(?!\\s+(with|about|for|to|without))',
+  'cannot do this anymore', 'cannot keep going',
+  // self-harm
+  'self harm', 'harm(ing)? myself', 'hurt(ing)? myself',
+  'cut(ting)? myself', 'overdose',
+];
+
+const CRISIS_RE = new RegExp(CRISIS_PATTERNS.join('|'), 'i');
 
 export const CRISIS_MESSAGE =
   'What you wrote sounds heavy, and this tool is not the right ' +
@@ -96,8 +133,8 @@ export const CRISIS_MESSAGE =
   'are in immediate danger, call your local emergency number.';
 
 export function screenForCrisis(...fields: unknown[]): boolean {
-  const text = fields.filter(f => typeof f === 'string').join(' \n ');
-  return CRISIS_RE.test(text);
+  const raw = fields.filter(f => typeof f === 'string').join(' . ');
+  return CRISIS_RE.test(normalizeForScreening(raw));
 }
 
 export function crisisResponse(cors: Record<string, string>): Response {
@@ -247,10 +284,16 @@ export async function generate(opts: GenOpts): Promise<GenResult> {
     temperature = 0.8, maxOutputTokens = 300, jsonMode = false,
   } = opts;
 
+  // Gemini 2.5 counts internal reasoning tokens against maxOutputTokens.
+  // With a tight ceiling the model can spend the entire budget thinking and
+  // return a truncated fragment ("There is a") with finishReason MAX_TOKENS.
+  // These are all short, single-shot generations that need no deliberation,
+  // so thinking is disabled and a floor is applied as belt-and-braces.
   const generationConfig: Record<string, unknown> = {
     temperature,
-    maxOutputTokens,
+    maxOutputTokens: Math.max(maxOutputTokens, 256),
     topP: 0.92,
+    thinkingConfig: { thinkingBudget: 0 },
   };
   if (jsonMode) generationConfig.responseMimeType = 'application/json';
 
@@ -290,9 +333,14 @@ export async function generate(opts: GenOpts): Promise<GenResult> {
         console.warn('[liveadaptiv] candidate blocked by safety');
         return { text: '', blocked: true, reason: 'candidate_safety' };
       }
-      // MAX_TOKENS with no text usually means the model spent the
-      // budget on a preamble. Treat as a soft failure, not a block.
       return { text: '', blocked: false, reason: finish || 'empty' };
+    }
+
+    // Truncated output is worse than no output — a half sentence shown to a
+    // user reads as a broken app. Reject it so the caller's fallback runs.
+    if (finish === 'MAX_TOKENS' && !/[.!?"'\}\]]\s*$/.test(text)) {
+      console.warn('[liveadaptiv] truncated generation discarded');
+      return { text: '', blocked: false, reason: 'MAX_TOKENS_truncated' };
     }
 
     return { text, blocked: false, reason: finish || 'STOP' };
