@@ -44,17 +44,22 @@ async function post<T>(path: string, payload: unknown): Promise<
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    if (!res.ok) return { ok: false };
+    if (!res.ok) { trace(path, { source: `http-${res.status}` }); return { ok: false }; }
     return { ok: true, json: await res.json() };
-  } catch {
+  } catch (e: any) {
+    trace(path, { source: 'network-error', reason: e?.message });
     return { ok: false };
   }
 }
 
 // Dev-only visibility into whether the AI layer is actually live.
 // Previously a dead endpoint just looked like a working app.
+// Also fires on *.vercel.app preview deploys, so a preview build shows in
+// the console whether each call hit the AI, fell back, or errored.
 function trace(label: string, body: any) {
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+  if (typeof window === 'undefined') return;
+  const host = window.location.hostname;
+  if (host === 'localhost' || host.endsWith('.vercel.app')) {
     // eslint-disable-next-line no-console
     console.info(`[adaptiv:${label}]`, body?.source ?? 'network-error', body?.reason ?? '');
   }

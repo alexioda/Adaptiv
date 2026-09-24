@@ -58,6 +58,7 @@ export default async function handler(req: Request): Promise<Response> {
   let body: Record<string, unknown> = {};
   try {
     const raw = await req.text();
+    if (raw.length > 1_000) return json({ valid: false }, 413, cors);
     body = raw ? JSON.parse(raw) : {};
   } catch {
     return json({ valid: false }, 400, cors);
