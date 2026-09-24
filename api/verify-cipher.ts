@@ -2,7 +2,7 @@
 // ─────────────────────────────────────────────────────────────
 // Lets Alex hand a code to someone (comp, beta tester, partner)
 // that grants full access without Lemon Squeezy checkout. Checked
-// against VALID_CIPHERS — a comma-separated allowlist env var,
+// against ACCESS_CIPHERS — a comma-separated allowlist env var,
 // e.g. "BETA2026,FRIEND-ALEX,COMP-PODCAST".
 //
 // This does NOT use guard() from ./_lib/shared: guard() requires
@@ -66,7 +66,7 @@ export default async function handler(req: Request): Promise<Response> {
   const code = typeof body.code === 'string' ? body.code.trim() : '';
   if (!code) return json({ valid: false }, 400, cors);
 
-  const validCiphers = (process.env.VALID_CIPHERS || '')
+  const validCiphers = (process.env.ACCESS_CIPHERS || '')
     .split(',')
     .map(c => c.trim().toUpperCase())
     .filter(Boolean);
