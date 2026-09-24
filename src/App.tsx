@@ -19,6 +19,7 @@ import {
   generateCoachingQuestions,
   generateEnergyInsight,
   generateManifesto,
+  verifyCipher,
 } from './lib/adaptivAI';
 
 
@@ -117,6 +118,7 @@ interface HorizonProps extends CommonProps {
   setFrictionSource: (s: string) => void;
   setSomaticZones: (zones: string[]) => void;
   hasCompletedFreeCycle: boolean;
+  hasManualAccess: boolean;
   horizon: HorizonState;
   patchHorizon: (p: HorizonPatch) => void;
 }
@@ -214,6 +216,7 @@ const STORAGE_KEYS = {
   SESSION_COUNT: 'adaptiv_sessionCount',
   SESSION_HISTORY: 'adaptiv_sessionHistory',
   FREE_CYCLE: 'la_adaptiv_free_cycle_done',
+  MANUAL_ACCESS: 'la_adaptiv_manual_access',
 };
 
 
@@ -730,7 +733,7 @@ const Horizon: React.FC<HorizonProps> = ({
   setView, toggleSound, soundEnabled, resetApp, setEnergyAnalysis,
   soundType, setSoundType, onBack, sessionHistory,
   stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout,
-  setFrictionSource, setSomaticZones, hasCompletedFreeCycle,
+  setFrictionSource, setSomaticZones, hasCompletedFreeCycle, hasManualAccess,
   horizon, patchHorizon, raiseCrisis
 }) => {
   const { step, chatHistory, aiQuestionCount, showChatInput, showRouteButton, burnoutIntercept, pickingZone, patternInsight, patternLoaded } = horizon;
@@ -788,7 +791,7 @@ const Horizon: React.FC<HorizonProps> = ({
 
   const startAIConversation = async () => {
     if (stressor.length < 5 || perception.length < 5) return;
-    if (hasCompletedFreeCycle) { setView('checkout'); return; }
+    if (hasCompletedFreeCycle && !hasManualAccess) { setView('checkout'); return; }
 
 
     patchHorizon({
@@ -971,7 +974,7 @@ const Horizon: React.FC<HorizonProps> = ({
               ) : null}
 
 
-              {hasCompletedFreeCycle && (
+              {hasCompletedFreeCycle && !hasManualAccess && (
                 <p className="text-[11px] text-teal-300/70 mt-5 leading-relaxed">
                   Your first cycle is complete. Starting a new one opens the access options.
                 </p>
@@ -1278,7 +1281,7 @@ const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, abilit
         <div className={`relative w-48 h-48 shrink-0 rounded-full border border-white/10 flex items-center justify-center transition-all duration-1000 mb-8 animate-enter ${flowState ? 'shadow-[0_0_60px_rgba(20,184,166,0.2)] bg-teal-900/10' : 'shadow-[0_0_60px_rgba(244,63,94,0.2)] bg-rose-900/10'}`}>
           <div className="text-center relative z-10 px-2">
             <h2 className={`font-serif text-3xl italic mb-1 ${flowState ? 'text-teal-300' : 'text-rose-300'}`}>{flowState ? 'Flow State' : 'High Friction'}</h2>
-            <p className="font-sans text-[10px] tracking-widest uppercase text-white/60">{flowState ? 'Capacity exceeds demand.' : `Capacity deficit: -${deficit}%`}</p>
+            <p className="font-sans text-[10px] tracking-widest uppercase text-white/60">{flowState ? 'Capacity exceeds demand.' : `Capacity deficit: -${deficit}`}</p>
           </div>
           <div className={`absolute inset-4 rounded-full border border-dashed opacity-30 ${flowState ? 'border-teal-400 animate-[spin_20s_linear_infinite]' : 'border-rose-400 animate-pulse'}`} />
         </div>
@@ -1286,16 +1289,16 @@ const Perspective: React.FC<PerspectiveProps> = ({ pressure, setPressure, abilit
           <div className="space-y-2">
             <div className="flex justify-between items-end mb-3 gap-2">
               <div className="min-w-0"><p className="font-sans text-[11px] tracking-widest text-amber-300 uppercase font-bold">Requirement Intensity</p><p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">External Demand</p></div>
-              <div className="text-2xl font-serif italic text-amber-400 shrink-0">{pressure}%</div>
+              <div className="text-2xl font-serif italic text-amber-400 shrink-0">{pressure}</div>
             </div>
-            <input aria-label="Requirement intensity" type="range" min="1" max="100" value={pressure} onChange={e => setPressure(parseInt(e.target.value))} className="w-full slider-amber" />
+            <input aria-label="Requirement intensity" type="range" min="1" max="10" value={pressure} onChange={e => setPressure(parseInt(e.target.value))} className="w-full slider-amber" />
           </div>
           <div className="space-y-2">
             <div className="flex justify-between items-end mb-3 gap-2">
               <div className="min-w-0"><p className="font-sans text-[11px] tracking-widest text-indigo-300 uppercase font-bold">Internal Capacity</p><p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">Current Bandwidth</p></div>
-              <div className="text-2xl font-serif italic text-indigo-400 shrink-0">{ability}%</div>
+              <div className="text-2xl font-serif italic text-indigo-400 shrink-0">{ability}</div>
             </div>
-            <input aria-label="Internal capacity" type="range" min="1" max="100" value={ability} onChange={e => setAbility(parseInt(e.target.value))} className="w-full slider-indigo" />
+            <input aria-label="Internal capacity" type="range" min="1" max="10" value={ability} onChange={e => setAbility(parseInt(e.target.value))} className="w-full slider-indigo" />
           </div>
         </div>
       </div>
@@ -2139,43 +2142,91 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView, onBack }) => {
 // ─────────────────────────────────────────────
 // CHECKOUT GATE (PAYWALL)
 // ─────────────────────────────────────────────
-const CheckoutGate: React.FC<{ onBack: () => void }> = ({ onBack }) => (
-  <div className="h-full flex flex-col overflow-y-auto hide-scrollbar">
-    <div className="shrink-0 pt-1 pb-2">
-      <button aria-label="Go back" onClick={onBack} className="p-2 rounded-full glass-button text-white/70 hover:text-white transition-colors">
-        <ChevronLeft size={20} />
-      </button>
-    </div>
-    <div className="flex-1 flex flex-col justify-center text-center py-6">
-      <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6 border border-teal-500/30 bg-teal-500/10 shrink-0">
-        <Lock size={32} className="text-teal-400" />
+const CheckoutGate: React.FC<{ onBack: () => void; onUnlock: () => void }> = ({ onBack, onUnlock }) => {
+  const [showCode, setShowCode] = useState(false);
+  const [code, setCode] = useState('');
+  const [checking, setChecking] = useState(false);
+  const [error, setError] = useState(false);
+
+  const submitCode = async () => {
+    if (!code.trim() || checking) return;
+    setChecking(true);
+    setError(false);
+    const valid = await verifyCipher(code.trim());
+    setChecking(false);
+    if (valid) { onUnlock(); return; }
+    setError(true);
+    setCode('');
+  };
+
+  return (
+    <div className="h-full flex flex-col overflow-y-auto hide-scrollbar">
+      <div className="shrink-0 pt-1 pb-2">
+        <button aria-label="Go back" onClick={onBack} className="p-2 rounded-full glass-button text-white/70 hover:text-white transition-colors">
+          <ChevronLeft size={20} />
+        </button>
       </div>
-      <p className="font-sans text-[11px] uppercase tracking-widest text-white/60 mb-2">The Baseline is Set</p>
-      <h2 className="font-serif text-3xl text-white italic mb-6">Sustained Architecture</h2>
-      <p className="font-sans text-base text-white/70 mb-10 leading-relaxed max-w-sm mx-auto">
-        You have run the initial protocol and metabolized your friction. Sustained performance requires sustained architecture. Continue your daily practice in the app, or go deeper with a focused protocol.
-      </p>
+      <div className="flex-1 flex flex-col justify-center text-center py-6">
+        <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6 border border-teal-500/30 bg-teal-500/10 shrink-0">
+          <Lock size={32} className="text-teal-400" />
+        </div>
+        <p className="font-sans text-[11px] uppercase tracking-widest text-white/60 mb-2">The Baseline is Set</p>
+        <h2 className="font-serif text-3xl text-white italic mb-6">Sustained Architecture</h2>
+        <p className="font-sans text-base text-white/70 mb-10 leading-relaxed max-w-sm mx-auto">
+          You have run the initial protocol and metabolized your friction. Sustained performance requires sustained architecture. Continue your daily practice in the app, or go deeper with a focused protocol.
+        </p>
 
 
-      <div className="space-y-4">
-        <a href="https://billing.liveadaptiv.com/checkout/buy/db8aa0f8-12f1-4024-950f-d016d0e35373" target="_blank" rel="noopener noreferrer" className="block w-full py-4 rounded-xl border border-teal-500/50 bg-teal-500/20 text-teal-200 font-sans text-[11px] tracking-widest uppercase transition-all hover:bg-teal-500/30 shadow-[0_0_20px_rgba(20,184,166,0.15)]">
-          Continue in the App — Monthly Access
-        </a>
-        <a href="https://billing.liveadaptiv.com/checkout/buy/670a3228-4463-41a4-8520-54bddffcf5d1" target="_blank" rel="noopener noreferrer" className="block w-full py-4 rounded-xl border border-white/20 bg-white/5 text-white/80 font-sans text-[11px] tracking-widest uppercase transition-all hover:bg-white/10 hover:text-white">
-          Go Deeper: Alchemist Field Guide — $97
-        </a>
-        <a href="https://billing.liveadaptiv.com/checkout/buy/d29e3b81-78a4-4611-83f8-11fe76d9d82e" target="_blank" rel="noopener noreferrer" className="block w-full py-4 rounded-xl border border-white/20 bg-white/5 text-white/80 font-sans text-[11px] tracking-widest uppercase transition-all hover:bg-white/10 hover:text-white">
-          Stress Transformation Guide — $47
-        </a>
+        <div className="space-y-4">
+          <a href="https://billing.liveadaptiv.com/checkout/buy/db8aa0f8-12f1-4024-950f-d016d0e35373" target="_blank" rel="noopener noreferrer" className="block w-full py-4 rounded-xl border border-teal-500/50 bg-teal-500/20 text-teal-200 font-sans text-[11px] tracking-widest uppercase transition-all hover:bg-teal-500/30 shadow-[0_0_20px_rgba(20,184,166,0.15)]">
+            Continue in the App — Monthly Access
+          </a>
+          <a href="https://billing.liveadaptiv.com/checkout/buy/670a3228-4463-41a4-8520-54bddffcf5d1" target="_blank" rel="noopener noreferrer" className="block w-full py-4 rounded-xl border border-white/20 bg-white/5 text-white/80 font-sans text-[11px] tracking-widest uppercase transition-all hover:bg-white/10 hover:text-white">
+            Go Deeper: Alchemist Field Guide — $97
+          </a>
+          <a href="https://billing.liveadaptiv.com/checkout/buy/d29e3b81-78a4-4611-83f8-11fe76d9d82e" target="_blank" rel="noopener noreferrer" className="block w-full py-4 rounded-xl border border-white/20 bg-white/5 text-white/80 font-sans text-[11px] tracking-widest uppercase transition-all hover:bg-white/10 hover:text-white">
+            Stress Transformation Guide — $47
+          </a>
+        </div>
+
+
+        {!showCode ? (
+          <button onClick={() => setShowCode(true)} className="mt-8 text-[11px] text-white/40 hover:text-white uppercase tracking-widest">
+            Have an access code?
+          </button>
+        ) : (
+          <div className="mt-8 w-full max-w-sm mx-auto">
+            <label htmlFor="cipher-code" className="block text-[11px] text-white/50 uppercase tracking-widest mb-3">Enter your access code</label>
+            <div className="flex gap-2">
+              <input
+                id="cipher-code" type="text" value={code}
+                onChange={e => { setCode(e.target.value); setError(false); }}
+                onKeyDown={e => e.key === 'Enter' && submitCode()}
+                placeholder="ACCESS CODE"
+                autoCapitalize="characters"
+                className="flex-1 min-w-0 bg-white/5 border border-white/10 focus:border-teal-400/70 rounded-xl px-4 py-3 text-white text-sm tracking-widest uppercase text-center outline-none transition-colors placeholder:text-white/25"
+              />
+              <button
+                onClick={submitCode} disabled={!code.trim() || checking}
+                className="shrink-0 px-5 py-3 rounded-xl bg-white/10 text-white font-sans text-[11px] font-bold tracking-widest uppercase hover:bg-white/20 transition-all disabled:opacity-40"
+              >
+                {checking ? <Loader2 size={14} className="animate-spin" /> : 'Unlock'}
+              </button>
+            </div>
+            {error && (
+              <p className="text-[11px] text-rose-400 uppercase tracking-widest mt-3">That code didn't work. Check it and try again.</p>
+            )}
+          </div>
+        )}
+
+
+        <button onClick={onBack} className="mt-8 text-[11px] text-white/40 hover:text-white uppercase tracking-widest">
+          Back to my sessions
+        </button>
       </div>
-
-
-      <button onClick={onBack} className="mt-8 text-[11px] text-white/40 hover:text-white uppercase tracking-widest">
-        Back to my sessions
-      </button>
     </div>
-  </div>
-);
+  );
+};
 
 
 // ─────────────────────────────────────────────
@@ -2186,6 +2237,8 @@ const App = () => {
   const [sessionCount, setSessionCount] = useState(() => storageGet<number>(STORAGE_KEYS.SESSION_COUNT, 0));
   const [sessionHistory, setSessionHistory] = useState<SessionRecord[]>(() => storageGet<SessionRecord[]>(STORAGE_KEYS.SESSION_HISTORY, []));
   const [hasCompletedFreeCycle, setHasCompletedFreeCycle] = useState(() => storageGet<boolean>(STORAGE_KEYS.FREE_CYCLE, false));
+  const [hasManualAccess, setHasManualAccess] = useState(() => storageGet<boolean>(STORAGE_KEYS.MANUAL_ACCESS, false));
+  const unlockManualAccess = () => { setHasManualAccess(true); storageSet(STORAGE_KEYS.MANUAL_ACCESS, true); goHome(); };
 
 
   const setUserName = (n: string) => { setUserNameState(n); storageSet(STORAGE_KEYS.USER_NAME, n); };
@@ -2213,7 +2266,7 @@ const App = () => {
   };
 
 
-  const goHome = () => { setNavHistory([]); setViewState('dashboard'); };
+  const goHome = () => { clearSessionState(); setViewState('dashboard'); };
 
   // ── CRISIS ──
   // Any endpoint may return { crisis: true }. When it does we stop the
@@ -2253,8 +2306,8 @@ const App = () => {
   const [sensation, setSensation] = useState('');
   const [protection, setProtection] = useState('');
   const [expandingBelief, setExpandingBelief] = useState('');
-  const [pressure, setPressure] = useState(50);
-  const [ability, setAbility] = useState(50);
+  const [pressure, setPressure] = useState(5);
+  const [ability, setAbility] = useState(5);
   const [goal, setGoal] = useState<Goal>({ what: '', measure: '', when: '', outcome: '', action: '' });
   const [goalStep, setGoalStep] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
@@ -2305,7 +2358,11 @@ const App = () => {
   const completeSession = () => {};
 
 
-  const resetApp = () => {
+  // ── Everything specific to one pass through the protocol. Shared by
+  // resetApp and goHome so "start fresh" means the same thing from
+  // either exit — previously goHome only reset the view, leaving stale
+  // stressor/fear/horizon-step state to bleed into the next session.
+  const clearSessionState = () => {
     setStressor(''); setPerception(''); setSomaticZones([]);
     setIsLocked(false); setIsBurnoutPath(false);
     setPartsStep('experience'); setSensation(''); setProtection('');
@@ -2315,7 +2372,11 @@ const App = () => {
     setHorizon({ ...INITIAL_HORIZON });
     setCrisisMessage('');
     setNavHistory([]);
-    setViewState(hasCompletedFreeCycle ? 'checkout' : 'welcome');
+  };
+
+  const resetApp = () => {
+    clearSessionState();
+    setViewState(hasCompletedFreeCycle && !hasManualAccess ? 'checkout' : 'welcome');
   };
 
 
@@ -2351,6 +2412,7 @@ const App = () => {
               setFrictionSource={setFrictionSource}
               setSomaticZones={setSomaticZones}
               hasCompletedFreeCycle={hasCompletedFreeCycle}
+              hasManualAccess={hasManualAccess}
               horizon={horizon} patchHorizon={patchHorizon}
               onBack={goBack}
             />
@@ -2436,7 +2498,7 @@ const App = () => {
 
           {viewState === 'burnout_check' && <VitalityScan {...common} setBurnoutPath={setIsBurnoutPath} onBack={goBack} />}
           {viewState === 'energy' && <EnergyAnalyzer setView={setView} onBack={goBack} />}
-          {viewState === 'checkout' && <CheckoutGate onBack={goHome} />}
+          {viewState === 'checkout' && <CheckoutGate onBack={goHome} onUnlock={unlockManualAccess} />}
           {viewState === 'crisis' && <Crisis message={crisisMessage} onBack={goBack} />}
 
 

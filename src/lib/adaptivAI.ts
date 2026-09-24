@@ -44,17 +44,23 @@ async function post<T>(path: string, payload: unknown): Promise<
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    if (!res.ok) return { ok: false };
+    if (!res.ok) { trace(path, { source: `http-${res.status}` }); return { ok: false }; }
     return { ok: true, json: await res.json() };
-  } catch {
+  } catch (e: any) {
+    trace(path, { source: 'network-error', reason: e?.message });
     return { ok: false };
   }
 }
 
 // Dev-only visibility into whether the AI layer is actually live.
 // Previously a dead endpoint just looked like a working app.
+// Also fires on Vercel preview deploys, not just localhost — otherwise
+// a preview build is undiagnosable: nothing tells you whether a call
+// hit the AI, fell back, or errored, from the browser console.
 function trace(label: string, body: any) {
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+  if (typeof window === 'undefined') return;
+  const host = window.location.hostname;
+  if (host === 'localhost' || host.endsWith('.vercel.app')) {
     // eslint-disable-next-line no-console
     console.info(`[adaptiv:${label}]`, body?.source ?? 'network-error', body?.reason ?? '');
   }
@@ -237,4 +243,14 @@ export async function generateManifesto(
     return { isOffline: r.json.source !== 'ai', crisis: false };
   }
   return { isOffline: true, crisis: false };
+}
+
+// ── ACCESS CODE ──────────────────────────────────────────────
+// Manual unlock, alongside Lemon Squeezy checkout — for comps,
+// beta testers, partners. No AI, no crisis handling; a network
+// failure or any non-2xx just means "not valid".
+export async function verifyCipher(code: string): Promise<boolean> {
+  const r = await post('/api/verify-cipher', { code });
+  if (!r.ok) return false;
+  return r.json.valid === true;
 }
