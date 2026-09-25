@@ -55,9 +55,10 @@ Output the sentence only.`;
   });
 
   const insight = unquote(text);
+  const ok = insight.length > 15;
   return json({
-    insight: insight.length > 15 ? insight : '',
-    source: insight ? 'ai' : 'fallback',
+    insight: ok ? insight : '',
+    source: ok ? 'ai' : 'fallback',
     reason, blocked,
   }, 200, cors);
 }

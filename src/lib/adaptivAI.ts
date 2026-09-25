@@ -44,17 +44,22 @@ async function post<T>(path: string, payload: unknown): Promise<
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    if (!res.ok) return { ok: false };
+    if (!res.ok) { trace(path, { source: `http-${res.status}` }); return { ok: false }; }
     return { ok: true, json: await res.json() };
-  } catch {
+  } catch (e: any) {
+    trace(path, { source: 'network-error', reason: e?.message });
     return { ok: false };
   }
 }
 
 // Dev-only visibility into whether the AI layer is actually live.
 // Previously a dead endpoint just looked like a working app.
+// Also fires on *.vercel.app preview deploys, so a preview build shows in
+// the console whether each call hit the AI, fell back, or errored.
 function trace(label: string, body: any) {
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+  if (typeof window === 'undefined') return;
+  const host = window.location.hostname;
+  if (host === 'localhost' || host.endsWith('.vercel.app')) {
     // eslint-disable-next-line no-console
     console.info(`[adaptiv:${label}]`, body?.source ?? 'network-error', body?.reason ?? '');
   }
@@ -182,13 +187,23 @@ export async function generateCoachingQuestions(
   energyLevel: number, stressLevel: number,
   fear = '', distortionType: 'fact' | 'assumption' | null = null,
 ): Promise<AIResult<string[]>> {
+  // Same set as api/coaching-questions.ts fallbackSet(), on the 1-10 scale.
+  const depleted = stressLevel > 6 || energyLevel < 4;
   const fallback = [
-    stressLevel > 6 || energyLevel < 4
-      ? 'What specifically is threatened by this situation?'
-      : 'What is one assumption you are making that might not be true?',
-    'If this shifted tonight, what would you actually feel different?',
-    'What permission do you need to give yourself to move?',
-    'What is the smallest bold move that makes the rest easier?',
+    distortionType === 'assumption'
+      ? 'What does it cost you to keep believing this without checking it?'
+      : distortionType === 'fact'
+        ? 'Even if this is true, what is still yours to decide?'
+        : depleted
+          ? 'What have you already decided about this that you have not said out loud?'
+          : energyLevel > 7
+            ? 'What are you tolerating here that you would not accept from anyone else?'
+            : 'Which part of this are you treating as certain without having checked it?',
+    'What is this arrangement costing you each week that you have stopped counting?',
+    'Once this is settled, what will you stop doing first thing in the morning?',
+    depleted
+      ? 'What could you drop tonight that nobody would notice was gone?'
+      : 'What message could you send tonight that makes the rest of this cheaper?',
   ];
 
   const r = await post('/api/coaching-questions', {
@@ -237,4 +252,14 @@ export async function generateManifesto(
     return { isOffline: r.json.source !== 'ai', crisis: false };
   }
   return { isOffline: true, crisis: false };
+}
+
+// ── ACCESS CODE ──────────────────────────────────────────────
+// Manual unlock, alongside Lemon Squeezy checkout — for comps,
+// beta testers, partners. No AI, no crisis handling; a network
+// failure or any non-2xx just means "not valid".
+export async function verifyCipher(code: string): Promise<boolean> {
+  const r = await post('/api/verify-cipher', { code });
+  if (!r.ok) return false;
+  return r.json.valid === true;
 }
