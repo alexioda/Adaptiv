@@ -10,37 +10,12 @@
 // this endpoint calls no AI. It gets its own tighter limit — a
 // short code is a brute-force target, not a cost-abuse target.
 // ─────────────────────────────────────────────────────────────
-import { isAllowedOrigin, json } from './_lib/shared';
+import { isAllowedOrigin, corsFor, json, createLimiter } from './_lib/shared';
 
 export const config = { runtime: 'edge' };
 
-function corsFor(origin: string): Record<string, string> {
-  const h: Record<string, string> = {
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    Vary: 'Origin',
-  };
-  if (isAllowedOrigin(origin)) h['Access-Control-Allow-Origin'] = origin;
-  return h;
-}
-
 // 8 attempts / 10 minutes / IP.
-const hits = new Map<string, { n: number; reset: number }>();
-const LIMIT = 8;
-const WINDOW_MS = 10 * 60_000;
-
-function rateLimited(req: Request): boolean {
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
-  const now = Date.now();
-  const rec = hits.get(ip);
-  if (!rec || now > rec.reset) {
-    hits.set(ip, { n: 1, reset: now + WINDOW_MS });
-    if (hits.size > 5000) hits.clear();
-    return false;
-  }
-  rec.n += 1;
-  return rec.n > LIMIT;
-}
+const rateLimited = createLimiter(8, 10 * 60_000);
 
 export default async function handler(req: Request): Promise<Response> {
   const origin = req.headers.get('origin') ?? '';

@@ -11,7 +11,8 @@ production.
   function returns usable data even when the network fails.
 - `api/*.ts` — one endpoint per AI job (`reflection`, `horizon-question`,
   `horizon-validation`, `coaching-questions`, `somatic-echo`, `manifesto`,
-  `energy-analysis`, `pattern-insight`), plus `verify-cipher` (access codes, no AI).
+  `energy-analysis`, `pattern-insight`), plus `verify-cipher` (access codes) and
+  `verify-license` (Lemon Squeezy license keys), neither of which calls AI.
 - `api/_lib/shared.ts` — shared server code: origin check, rate limit, crisis
   gate, scale normalisation, voice rules, the Gemini call. The underscore stops
   Vercel from deploying `_lib` as an endpoint. `src/lib/adaptivAI.ts` lives in
@@ -58,18 +59,36 @@ production.
 - `GEMINI_API_KEY` (falls back to `GOOGLE_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`).
 - `ACCESS_CIPHERS` — comma-separated access codes for `api/verify-cipher.ts`,
   case-insensitive. This is the only name for it. Do not add `VALID_CIPHERS`.
+- `LEMONSQUEEZY_STORE_ID`, `LEMONSQUEEZY_ALLOWED_VARIANTS` (comma-separated;
+  the Monthly Access variant only) for `api/verify-license.ts`. Unset means
+  every license key is refused with `not_configured`.
 - Read them with `process.env`, never `globalThis`.
 
 ## Access and payment
 - Free first cycle, then `CheckoutGate` (Lemon Squeezy links at
-  `billing.liveadaptiv.com`). A locked user (free cycle done, no access code)
+  `billing.liveadaptiv.com`). A locked user (free cycle done, no access)
   lands on it from "Return to Orbit" or when starting a new cycle; it has no
-  back link. Unlocked users never see it. "Have an access code?" on the same screen calls
-  `/api/verify-cipher`; a valid code sets `la_adaptiv_manual_access` in
-  localStorage and the user is never routed back to checkout.
-- Access is client-side state only, not server-side entitlement. A Lemon
-  Squeezy purchase is not detected at all: nothing comes back to the app, so
-  a paying subscriber is still locked until they enter an access code.
+  back link. Unlocked users never see it.
+- Unlocked (`hasAccess` in `App.tsx`) = a valid access code **or** a Monthly
+  Access license key on this device. Both are entered in one field ("Have an
+  access code or license key?"); a UUID-shaped entry goes to
+  `/api/verify-license`, anything else to `/api/verify-cipher`.
+- Access code: sets `la_adaptiv_manual_access`. Never expires.
+- License key (`la_adaptiv_license`: key, instanceId, expiresAt, checkedAt,
+  validAt):
+  - First use activates the device in Lemon Squeezy (3 devices per key).
+  - Re-checked about once a day, and whenever `expiresAt` has passed.
+  - A definite no (expired, disabled, deactivated device) removes it at once.
+    No verdict (offline, Lemon Squeezy down) keeps it for 7 days after the last yes.
+  - The License API answers "valid" for any store's key, so
+    `verify-license` also checks the store ID and variant, and validates
+    before activating, so a foreign key never spends a slot.
+  - Only Monthly Access unlocks the app. The Field Guide and Stress
+    Transformation Guide do not.
+- Both non-AI endpoints use `createLimiter()` from `shared.ts`: 8 tries per
+  10 minutes per IP, plus the same origin check and 1 KB body cap.
+- Access is still client-side state, not server-side entitlement: the AI
+  endpoints don't check it.
 
 ## Voice (the `VOICE` block in `shared.ts` applies it to every prompt)
 Never: leverage, optimize, unlock, game-changer, journey, passion, seamless,

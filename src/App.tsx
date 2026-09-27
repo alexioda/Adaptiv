@@ -20,8 +20,10 @@ import {
   generateEnergyInsight,
   generateManifesto,
   verifyCipher,
+  verifyLicense,
+  looksLikeLicenseKey,
 } from './lib/adaptivAI';
-import type { QuestionPair, LaserQuestion } from './lib/adaptivAI';
+import type { QuestionPair, LaserQuestion, LicenseReason } from './lib/adaptivAI';
 
 
 // ─────────────────────────────────────────────
@@ -126,7 +128,7 @@ interface HorizonProps extends CommonProps {
   setFrictionSource: (s: string) => void;
   setSomaticZones: (zones: string[]) => void;
   hasCompletedFreeCycle: boolean;
-  hasManualAccess: boolean;
+  hasAccess: boolean;
   horizon: HorizonState;
   patchHorizon: (p: HorizonPatch) => void;
 }
@@ -232,7 +234,19 @@ const STORAGE_KEYS = {
   SESSION_HISTORY: 'adaptiv_sessionHistory',
   FREE_CYCLE: 'la_adaptiv_free_cycle_done',
   MANUAL_ACCESS: 'la_adaptiv_manual_access',
+  LICENSE: 'la_adaptiv_license',
 };
+
+// A Monthly Access license key activated on this device.
+interface StoredLicense {
+  key: string;
+  instanceId: string;
+  expiresAt: string | null;
+  checkedAt: number;   // last time we asked, whatever the answer
+  validAt: number;     // last time the answer was yes
+}
+const LICENSE_RECHECK_MS = 24 * 60 * 60_000;     // re-check about once a day
+const LICENSE_GRACE_MS = 7 * 24 * 60 * 60_000;   // keep access this long if we can't reach a verdict
 
 
 function storageGet<T>(key: string, fallback: T): T {
@@ -774,7 +788,7 @@ const Horizon: React.FC<HorizonProps> = ({
   setView, toggleSound, soundEnabled, resetApp, setEnergyAnalysis,
   soundType, setSoundType, onBack, sessionHistory,
   stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout,
-  setFrictionSource, setSomaticZones, hasCompletedFreeCycle, hasManualAccess,
+  setFrictionSource, setSomaticZones, hasCompletedFreeCycle, hasAccess,
   horizon, patchHorizon, raiseCrisis
 }) => {
   const { step, chatHistory, aiQuestionCount, showChatInput, showRouteButton, burnoutIntercept, pickingZone, patternInsight, patternLoaded } = horizon;
@@ -832,7 +846,7 @@ const Horizon: React.FC<HorizonProps> = ({
 
   const startAIConversation = async () => {
     if (stressor.length < 5 || perception.length < 5) return;
-    if (hasCompletedFreeCycle && !hasManualAccess) { setView('checkout'); return; }
+    if (hasCompletedFreeCycle && !hasAccess) { setView('checkout'); return; }
 
 
     patchHorizon({
@@ -1015,7 +1029,7 @@ const Horizon: React.FC<HorizonProps> = ({
               ) : null}
 
 
-              {hasCompletedFreeCycle && !hasManualAccess && (
+              {hasCompletedFreeCycle && !hasAccess && (
                 <p className="text-[11px] text-teal-300/70 mt-5 leading-relaxed">
                   Your first cycle is complete. Starting a new one opens the access options.
                 </p>
@@ -2387,20 +2401,42 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView, onBack }) => {
 // ─────────────────────────────────────────────
 // Only a locked user ever sees this (free cycle done, no access code). It has
 // no way back: every other screen would route them straight here again.
-const CheckoutGate: React.FC<{ onUnlock: () => void }> = ({ onUnlock }) => {
+const LICENSE_ERRORS: Record<LicenseReason, string> = {
+  invalid: "That key didn't work. Check it and try again.",
+  wrong_product: "That key isn't for Monthly Access.",
+  expired: 'This subscription has ended. Renew Monthly Access to continue.',
+  limit: 'This key is already active on 3 devices.',
+  not_configured: "We couldn't check that key right now. Try again later.",
+  unavailable: "We couldn't check that key right now. Try again in a minute.",
+};
+
+const CheckoutGate: React.FC<{
+  onUnlock: () => void;
+  onUnlockLicense: (key: string, instanceId: string, expiresAt: string | null) => void;
+}> = ({ onUnlock, onUnlockLicense }) => {
   const [showCode, setShowCode] = useState(false);
   const [code, setCode] = useState('');
   const [checking, setChecking] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState('');
 
+  // One field for both: a UUID-shaped entry is a Lemon Squeezy license key,
+  // anything else an access code.
   const submitCode = async () => {
-    if (!code.trim() || checking) return;
+    const entry = code.trim();
+    if (!entry || checking) return;
     setChecking(true);
-    setError(false);
-    const valid = await verifyCipher(code.trim());
+    setError('');
+    if (looksLikeLicenseKey(entry)) {
+      const r = await verifyLicense(entry);
+      setChecking(false);
+      if (r.valid && r.instanceId) { onUnlockLicense(entry, r.instanceId, r.expiresAt ?? null); return; }
+      setError(LICENSE_ERRORS[r.reason ?? 'invalid']);
+      return;
+    }
+    const valid = await verifyCipher(entry);
     setChecking(false);
     if (valid) { onUnlock(); return; }
-    setError(true);
+    setError("That code didn't work. Check it and try again.");
     setCode('');
   };
 
@@ -2432,17 +2468,18 @@ const CheckoutGate: React.FC<{ onUnlock: () => void }> = ({ onUnlock }) => {
 
         {!showCode ? (
           <button onClick={() => setShowCode(true)} className="mt-8 text-[11px] text-white/40 hover:text-white uppercase tracking-widest">
-            Have an access code?
+            Have an access code or license key?
           </button>
         ) : (
           <div className="mt-8 w-full max-w-sm mx-auto">
-            <label htmlFor="cipher-code" className="block text-[11px] text-white/50 uppercase tracking-widest mb-3">Enter your access code</label>
+            <label htmlFor="cipher-code" className="block text-[11px] text-white/50 uppercase tracking-widest mb-3">Enter your access code or license key</label>
+            <p className="text-xs text-white/40 mb-3 leading-relaxed">Bought Monthly Access? Your license key is in your receipt email.</p>
             <div className="flex gap-2">
               <input
                 id="cipher-code" type="text" value={code}
-                onChange={e => { setCode(e.target.value); setError(false); }}
+                onChange={e => { setCode(e.target.value); setError(''); }}
                 onKeyDown={e => e.key === 'Enter' && submitCode()}
-                placeholder="ACCESS CODE"
+                placeholder="CODE OR KEY"
                 autoCapitalize="characters"
                 className="flex-1 min-w-0 bg-white/5 border border-white/10 focus:border-teal-400/70 rounded-xl px-4 py-3 text-white text-sm tracking-widest uppercase text-center outline-none transition-colors placeholder:text-white/25"
               />
@@ -2454,7 +2491,7 @@ const CheckoutGate: React.FC<{ onUnlock: () => void }> = ({ onUnlock }) => {
               </button>
             </div>
             {error && (
-              <p className="text-[11px] text-rose-400 uppercase tracking-widest mt-3">That code didn't work. Check it and try again.</p>
+              <p className="text-[11px] text-rose-400 uppercase tracking-widest mt-3">{error}</p>
             )}
           </div>
         )}
@@ -2474,16 +2511,57 @@ const App = () => {
   const [sessionHistory, setSessionHistory] = useState<SessionRecord[]>(() => storageGet<SessionRecord[]>(STORAGE_KEYS.SESSION_HISTORY, []));
   const [hasCompletedFreeCycle, setHasCompletedFreeCycle] = useState(() => storageGet<boolean>(STORAGE_KEYS.FREE_CYCLE, false));
   const [hasManualAccess, setHasManualAccess] = useState(() => storageGet<boolean>(STORAGE_KEYS.MANUAL_ACCESS, false));
-  // Goes straight to the dashboard rather than through goHome(): the
-  // hasManualAccess update isn't visible until the next render, so goHome()
+  const [license, setLicenseState] = useState<StoredLicense | null>(() => storageGet<StoredLicense | null>(STORAGE_KEYS.LICENSE, null));
+  const setLicense = (l: StoredLicense | null) => {
+    setLicenseState(l);
+    if (l) storageSet(STORAGE_KEYS.LICENSE, l);
+    else { try { localStorage.removeItem(STORAGE_KEYS.LICENSE); } catch { /* storage blocked */ } }
+  };
+  // Unlocked = an access code, or a Monthly Access license on this device.
+  const hasAccess = hasManualAccess || license !== null;
+
+  // Both unlocks go straight to the dashboard rather than through goHome():
+  // the access update isn't visible until the next render, so goHome()
   // would still see a locked user and route back to checkout.
-  const unlockManualAccess = () => {
-    setHasManualAccess(true);
-    storageSet(STORAGE_KEYS.MANUAL_ACCESS, true);
+  const enterUnlocked = () => {
     clearCycleState();
     setNavHistory([]);
     setViewState('dashboard');
   };
+  const unlockManualAccess = () => {
+    setHasManualAccess(true);
+    storageSet(STORAGE_KEYS.MANUAL_ACCESS, true);
+    enterUnlocked();
+  };
+  const unlockLicense = (key: string, instanceId: string, expiresAt: string | null) => {
+    const now = Date.now();
+    setLicense({ key, instanceId, expiresAt, checkedAt: now, validAt: now });
+    enterUnlocked();
+  };
+
+  // Re-check a stored license about once a day, and whenever its expiry has
+  // passed, so a cancelled subscription stops working. A definite "no"
+  // removes it at once; no verdict (offline, Lemon Squeezy down) keeps it
+  // for up to LICENSE_GRACE_MS since the last "yes".
+  useEffect(() => {
+    if (!license) return;
+    const now = Date.now();
+    const expired = license.expiresAt !== null && Date.parse(license.expiresAt) < now;
+    if (!expired && now - license.checkedAt < LICENSE_RECHECK_MS) return;
+    let cancelled = false;
+    verifyLicense(license.key, license.instanceId).then(r => {
+      if (cancelled) return;
+      const t = Date.now();
+      if (r.valid) {
+        setLicense({ ...license, expiresAt: r.expiresAt ?? null, checkedAt: t, validAt: t });
+      } else if (r.reason === 'unavailable' || r.reason === 'not_configured') {
+        if (t - license.validAt > LICENSE_GRACE_MS) setLicense(null);
+      } else {
+        setLicense(null);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
 
 
   const setUserName = (n: string) => { setUserNameState(n); storageSet(STORAGE_KEYS.USER_NAME, n); };
@@ -2539,7 +2617,7 @@ const App = () => {
   const goHome = () => {
     clearCycleState();
     setNavHistory([]);
-    setViewState(hasCompletedFreeCycle && !hasManualAccess ? 'checkout' : 'dashboard');
+    setViewState(hasCompletedFreeCycle && !hasAccess ? 'checkout' : 'dashboard');
   };
 
   // ── CRISIS ──
@@ -2639,7 +2717,7 @@ const App = () => {
   const resetApp = () => {
     clearCycleState();
     setNavHistory([]);
-    setViewState(hasCompletedFreeCycle && !hasManualAccess ? 'checkout' : 'welcome');
+    setViewState(hasCompletedFreeCycle && !hasAccess ? 'checkout' : 'welcome');
   };
 
 
@@ -2675,7 +2753,7 @@ const App = () => {
               setFrictionSource={setFrictionSource}
               setSomaticZones={setSomaticZones}
               hasCompletedFreeCycle={hasCompletedFreeCycle}
-              hasManualAccess={hasManualAccess}
+              hasAccess={hasAccess}
               horizon={horizon} patchHorizon={patchHorizon}
               onBack={goBack}
             />
@@ -2765,7 +2843,7 @@ const App = () => {
 
           {viewState === 'burnout_check' && <VitalityScan {...common} setBurnoutPath={setIsBurnoutPath} onBack={goBack} />}
           {viewState === 'energy' && <EnergyAnalyzer setView={setView} onBack={goBack} />}
-          {viewState === 'checkout' && <CheckoutGate onUnlock={unlockManualAccess} />}
+          {viewState === 'checkout' && <CheckoutGate onUnlock={unlockManualAccess} onUnlockLicense={unlockLicense} />}
           {viewState === 'crisis' && <Crisis message={crisisMessage} onBack={goBack} />}
 
 

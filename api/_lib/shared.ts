@@ -179,7 +179,7 @@ export function json(payload: unknown, status: number, cors: Record<string, stri
   });
 }
 
-function corsFor(origin: string): Record<string, string> {
+export function corsFor(origin: string): Record<string, string> {
   const h: Record<string, string> = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -207,6 +207,25 @@ function rateLimited(req: Request): boolean {
   }
   rec.n += 1;
   return rec.n > LIMIT;
+}
+
+// For the non-AI endpoints (access codes, license keys), which can't use
+// guard(): it needs a Gemini key and applies the AI rate limit. Each call to
+// createLimiter() gets its own bucket.
+export function createLimiter(limit: number, windowMs: number): (req: Request) => boolean {
+  const seen = new Map<string, { n: number; reset: number }>();
+  return (req: Request) => {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
+    const now = Date.now();
+    const rec = seen.get(ip);
+    if (!rec || now > rec.reset) {
+      seen.set(ip, { n: 1, reset: now + windowMs });
+      if (seen.size > 5000) seen.clear();
+      return false;
+    }
+    rec.n += 1;
+    return rec.n > limit;
+  };
 }
 
 export type Guard =

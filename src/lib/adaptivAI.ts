@@ -287,3 +287,29 @@ export async function verifyCipher(code: string): Promise<boolean> {
   if (!r.ok) return false;
   return r.json.valid === true;
 }
+
+// ── LICENSE KEY (Monthly Access) ─────────────────────────────
+// A Lemon Squeezy license key from a Monthly Access purchase. First use
+// activates this device (no instanceId); later calls re-check that
+// activation. 'unavailable' means we couldn't reach a verdict (network,
+// Lemon Squeezy down, a 429) — never treat it as a "no".
+export type LicenseReason = 'invalid' | 'wrong_product' | 'expired' | 'limit' | 'not_configured' | 'unavailable';
+export interface LicenseResult {
+  valid: boolean;
+  instanceId?: string;
+  expiresAt?: string | null;
+  reason?: LicenseReason;
+}
+
+// Lemon Squeezy keys are UUID-shaped; access codes are short words.
+export const looksLikeLicenseKey = (s: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.trim());
+
+export async function verifyLicense(key: string, instanceId?: string): Promise<LicenseResult> {
+  const r = await post('/api/verify-license', instanceId ? { key, instanceId } : { key });
+  if (!r.ok) return { valid: false, reason: 'unavailable' };
+  if (r.json.valid === true && typeof r.json.instanceId === 'string') {
+    return { valid: true, instanceId: r.json.instanceId, expiresAt: r.json.expiresAt ?? null };
+  }
+  return { valid: false, reason: r.json.reason ?? 'invalid' };
+}
