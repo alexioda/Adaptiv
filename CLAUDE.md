@@ -61,7 +61,8 @@ production.
 - Read them with `process.env`, never `globalThis`.
 
 ## Access and payment
-- Free first cycle, then `CheckoutGate` (Lemon Squeezy links at
+- Free first cycle, then `CheckoutGate` when a locked user starts a new cycle
+  ("Return to Orbit" always lands on the dashboard, never checkout) (Lemon Squeezy links at
   `billing.liveadaptiv.com`). "Have an access code?" on the same screen calls
   `/api/verify-cipher`; a valid code sets `la_adaptiv_manual_access` in
   localStorage and the user is never routed back to checkout.
@@ -79,14 +80,24 @@ authority. Avoid iPEC's trademarked "Energy Leadership", "catabolic" and
 ## Laser Coaching and The Move
 Laser Coaching asks three questions, then the Integration screen asks one Move:
 1. **The Story** (AI) — what they tell themselves the situation means. Placeholder "I tell myself…".
-2. **True or Familiar** (fixed wording, from the Diffuser label) — assumption: "What changes if you stop treating it as true?"; fact: "If this is true, what part is still up to you?"; none (Body path): "Is that true, or just familiar?". Placeholder "It's…".
+2. **True or Familiar** (fixed wording, from the Diffuser label; their Story answer is shown above it) — assumption: "If that’s an assumption, what else could it mean?"; fact: "If that’s a fact, what part is still up to you?"; none (Body path): "Is that true, or just familiar?". Never ask them to re-judge what they already labelled. Placeholder "It's…".
 3. **The Signal** (AI) — what the situation is showing them. Placeholder "It's showing me…".
-4. **The Move** (AI action question, same API call) — then "When will you do it?". Sentence: "[When], I will [action]."
+4. **The Move** (AI action question, same API call) — aimed at how they handle the hard part (what they avoid or put off), never a chore on the object itself; `MOVE_CHORE` rejects "check / look at / review…". Then "When will you do it?". Sentence: "[When], I will [action]."
 
 - `api/coaching-questions.ts` returns every question with an `alternate` for "Say it another way". The fallback and fixed wording live there and in `src/lib/adaptivAI.ts` (`coachingFallback`); keep both copies identical.
 - The prompt uses its own plain-language rules, not `VOICE`: no brand words in questions, no state or pacing notes repeated to the person, shaped by one detail rather than restating their situation, under 14 words, no "Why", no yes/no. Describe what a question should *do*; never put copyable question wording in the prompt (that is how "What does that buy you?" happened).
 - `questionProblem()` enforces this in code: a failing question (banned shape, brand word, statement opener, yes/no, too long, restating input) is swapped for its fallback and the response is labelled `'partial'` (`'fallback'` if nothing survived).
 - Answers can be skipped ("Skip for now") and save as blank. All three go to the decree (`story`, `truthCheck`, `signal`) and to session history; the Signal answer becomes `expandingBelief`, the decree's truth. Sentence-starter chips fill an empty field and add to typed text, never overwrite.
+
+## Other prompts that mirror the person
+- `reflection` and `horizon-question` use only what the person wrote. Never
+  seed them with example symptoms ("cognitive fog", "racing thoughts") — the
+  model repeats them back as if the person said them.
+- `horizon-question` answers their last chat reply; "not sure" gets an
+  easier question, not the same one reworded. Generic shapes ("what are you
+  observing", "what signs") are swapped for a fallback.
+- Diffuser asks for the loop as a statement. A question or "I don't know"
+  gets one nudge before the Fact/Assumption filter.
 
 ## Careful with
 - Every slider in the app is 1–10. `normalizeScale()` converts to 0–100 for

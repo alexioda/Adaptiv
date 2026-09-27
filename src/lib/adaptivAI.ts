@@ -76,8 +76,8 @@ export async function analyzeCurrentEnergy(
   const fallback: EnergyAnalysis = {
     level: depleted ? 2 : 3,
     reflection: depleted
-      ? 'You are carrying the weight of this and bracing against what it might cost you.'
-      : 'You are handling this on logic, and you may be tolerating more than you have admitted.',
+      ? 'This is weighing on you, and you have been carrying it for a while.'
+      : 'This is on your mind, and it matters to you how it turns out.',
   };
 
   const r = await post('/api/reflection', {
@@ -102,7 +102,7 @@ export async function analyzeCurrentEnergy(
 export async function generateHorizonQuestion(
   stressor: string, perception: string, history: string, turn = 1,
 ): Promise<AIResult<string>> {
-  const fallback = 'What specifically feels most threatened by this situation right now?';
+  const fallback = 'What part of this bothers you most?';
   const r = await post('/api/horizon-question', { stressor, perception, history, turn });
   if (!r.ok) return { data: fallback, crisis: false, source: 'error' };
   trace('horizon-question', r.json);
@@ -199,19 +199,19 @@ function coachingFallback(
 ): CoachingQuestions {
   const depleted = stressLevel > 6 || energyLevel < 4;
   const truth: QuestionPair = distortionType === 'assumption'
-    ? { question: 'What changes if you stop treating it as true?', alternate: 'What would you do if it wasn’t true?' }
+    ? { question: 'If that’s an assumption, what else could it mean?', alternate: 'What’s another way to read this?' }
     : distortionType === 'fact'
-      ? { question: 'If this is true, what part is still up to you?', alternate: 'What can you still choose here?' }
+      ? { question: 'If that’s a fact, what part is still up to you?', alternate: 'What can you still choose here?' }
       : { question: 'Is that true, or just familiar?', alternate: 'Is this what’s happening, or what usually happens?' };
   return {
     questions: [
       { id: 'story', question: 'When this happens, what do you tell yourself it means?', alternate: 'What does your mind say this means?' },
       { id: 'truth', ...truth },
-      { id: 'signal', question: 'What is this trying to show you?', alternate: 'What might this be pointing to?' },
+      { id: 'signal', question: 'What does this show you that you care about?', alternate: 'What matters to you here?' },
     ],
     move: depleted
       ? { question: 'What can you stop doing about this for now?', alternate: 'What can you put down tonight?' }
-      : { question: 'What are you going to do about this?', alternate: 'What will you actually do next?' },
+      : { question: 'What will you do differently the next time this comes up?', alternate: 'What will you do next time?' },
   };
 }
 

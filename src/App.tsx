@@ -705,28 +705,54 @@ const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, fri
 
 const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setDistortionType, setView, toggleSound, soundEnabled, onBack }) => {
   const [step, setStep] = useState(0);
+  const [nudge, setNudge] = useState<'question' | 'unsure' | null>(null);
   const chooseDistortion = (t: 'fact' | 'assumption') => { setDistortionType(t); setView('laser'); };
+  // The Filter sorts a statement into fact or assumption. A question ("Why is
+  // this happening?") or "I don't know…" can't be sorted, so ask once for the
+  // statement underneath it. They can still carry on as written.
+  const capture = () => {
+    const t = fear.trim();
+    if (!t) return;
+    if (!nudge) {
+      if (t.endsWith('?') || /^(why|what|how|when|where|who|will|should|can|could|is|are|am|do|does)\b/i.test(t)) { setNudge('question'); return; }
+      if (/\b(don'?t|dont|do not) know\b|\bnot sure\b|\bno idea\b/i.test(t)) { setNudge('unsure'); return; }
+    }
+    setNudge(null);
+    setStep(1);
+  };
   return (
     <div className="h-full flex flex-col">
       <Nav title="The Filter" subtitle="Fact vs. Fiction" onBack={() => step > 0 ? setStep(0) : onBack?.()} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={25} />
       <div className="flex-1 min-h-0 flex flex-col justify-center animate-enter overflow-y-auto hide-scrollbar pb-8">
         {step === 0 ? (
           <>
-            <h3 className="font-serif text-2xl text-white italic mb-6 text-center">"What is the loudest loop?"</h3>
+            <h3 className="font-serif text-2xl text-white italic mb-3 text-center">"What is the loudest loop?"</h3>
+            <p className="font-sans text-sm text-white/55 text-center leading-relaxed mb-6">
+              The thought your mind keeps repeating about this, written as a statement.
+              <span className="block text-white/40 mt-1">For example: "They think I'm not ready." or "This launch will flop."</span>
+            </p>
             <FlowInput
               value={fear}
-              onChange={setFear}
-              placeholder="I keep thinking about..."
-              onSubmit={() => fear && setStep(1)}
+              onChange={v => { setFear(v); setNudge(null); }}
+              placeholder="I keep thinking that..."
+              onSubmit={capture}
               accent="indigo"
-              className="mb-8"
+              className="mb-4"
             />
-            <button onClick={() => setStep(1)} disabled={!fear} className="w-full py-4 rounded-full bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 font-sans text-xs tracking-widest uppercase hover:bg-indigo-500/30 transition-all disabled:opacity-40">Capture Thought</button>
+            {nudge && (
+              <p className="font-sans text-sm text-indigo-200/80 leading-relaxed mb-4">
+                {nudge === 'question'
+                  ? "That's a question. What answer does your mind keep giving it? Write that answer, or continue as it is."
+                  : "Not knowing is real. Underneath it, what does your mind say will happen? Write that, or continue as it is."}
+              </p>
+            )}
+            <button onClick={capture} disabled={!fear.trim()} className="w-full mt-4 py-4 rounded-full bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 font-sans text-xs tracking-widest uppercase hover:bg-indigo-500/30 transition-all disabled:opacity-40">{nudge ? 'Continue as it is' : 'Capture Thought'}</button>
           </>
         ) : (
           <div className="text-center">
             <Split size={48} className="text-indigo-300 mx-auto mb-6" />
             <h3 className="font-serif text-2xl text-white italic mb-4">The Filter</h3>
+            <p className="font-serif text-lg text-white/85 italic mb-4 leading-relaxed">"{fear.trim()}"</p>
             <p className="text-base text-white/70 mb-8 leading-relaxed">Is this thought an absolute <strong>Fact</strong> (provable in court) or an <strong>Assumption</strong> (an interpretation)?</p>
             <div className="grid grid-cols-2 gap-4">
               <button onClick={() => chooseDistortion('fact')} className="py-4 rounded-xl border border-white/10 hover:bg-white/5 transition-all text-[11px] uppercase tracking-widest">It's a Fact</button>
@@ -1315,7 +1341,7 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
   // match what is being asked. True-or-Familiar starters follow the Diffuser
   // label, like the question itself.
   const TRUTH_CHIPS =
-    distortionType === 'assumption' ? ["I'd stop…", "I'd start…", "I'd feel…"]
+    distortionType === 'assumption' ? ["It could mean…", "Maybe they…", "Maybe it's…"]
     : distortionType === 'fact' ? ["I can still…", "It's up to me to…", "I get to decide…"]
     : ["It's true because…", "It's familiar because…", "Part of it is true…"];
 
@@ -1372,6 +1398,9 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
                 <p className="font-serif text-base text-white/55 italic mb-6 leading-relaxed border-l-2 border-teal-500/30 pl-3">{somaticEcho}</p>
               )}
               <span className="font-sans text-[10px] text-white/50 uppercase tracking-widest mb-4 block">{current.label} · {step + 1} of {STEPS.length}</span>
+              {step > 0 && answers.story.trim() && (
+                <p className="font-serif text-base text-white/55 italic mb-4 leading-relaxed border-l-2 border-white/15 pl-3">Your story: "{answers.story.trim()}"</p>
+              )}
               <h3 className="font-serif text-2xl text-white italic mb-3 leading-snug">{questionText}</h3>
               {hasAlt && (
                 <button onClick={() => setShowAlt({ ...showAlt, [step]: !showAlt[step] })}
@@ -2512,13 +2541,14 @@ const App = () => {
     setCrisisMessage('');
   };
 
-  // "Return to Orbit" ends the cycle. It used to land on whatever Horizon
-  // step was left over — usually the body/mind chooser — instead of a
-  // clean start or the paywall.
+  // "Return to Orbit" ends the cycle and lands on a clean dashboard. Locked
+  // users meet checkout only when they start a new cycle (startAIConversation);
+  // sending them here straight to checkout made checkout's "Back to my
+  // sessions" loop back to checkout.
   const goHome = () => {
     clearCycleState();
     setNavHistory([]);
-    setViewState(hasCompletedFreeCycle && !hasManualAccess ? 'checkout' : 'dashboard');
+    setViewState('dashboard');
   };
 
   // ── CRISIS ──
@@ -2683,7 +2713,7 @@ const App = () => {
           {viewState === 'laser' && (
             <LaserCoaching {...common}
               stressor={stressor} perception={perception}
-              somatic={[somaticZones[0], sensation && `sensation: ${sensation}`, needed && `the part needs: ${needed}`, resourceMemory && `their resource: ${resourceMemory}`].filter(Boolean).join('. ') || 'Mental Loops / Cognitive Fog'}
+              somatic={[somaticZones[0], sensation && `sensation: ${sensation}`, needed && `the part needs: ${needed}`, resourceMemory && `their resource: ${resourceMemory}`].filter(Boolean).join('. ') || 'In their thoughts'}
               fear={fear} distortionType={distortionType}
               setExpandingBelief={setExpandingBelief}
               setLaserAnswers={setLaserAnswers} setMoveQuestion={setMoveQuestion}

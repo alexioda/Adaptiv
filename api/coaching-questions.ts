@@ -23,10 +23,10 @@ interface Pair { question: string; alternate: string }
 // the recurring thought in Diffuser (the Body path has no label).
 function truthPair(distortion: Distortion): Pair {
   if (distortion === 'assumption') {
-    return { question: 'What changes if you stop treating it as true?', alternate: 'What would you do if it wasn’t true?' };
+    return { question: 'If that’s an assumption, what else could it mean?', alternate: 'What’s another way to read this?' };
   }
   if (distortion === 'fact') {
-    return { question: 'If this is true, what part is still up to you?', alternate: 'What can you still choose here?' };
+    return { question: 'If that’s a fact, what part is still up to you?', alternate: 'What can you still choose here?' };
   }
   return { question: 'Is that true, or just familiar?', alternate: 'Is this what’s happening, or what usually happens?' };
 }
@@ -34,10 +34,10 @@ function truthPair(distortion: Distortion): Pair {
 function fallbacks(depleted: boolean): { story: Pair; signal: Pair; move: Pair } {
   return {
     story: { question: 'When this happens, what do you tell yourself it means?', alternate: 'What does your mind say this means?' },
-    signal: { question: 'What is this trying to show you?', alternate: 'What might this be pointing to?' },
+    signal: { question: 'What does this show you that you care about?', alternate: 'What matters to you here?' },
     move: depleted
       ? { question: 'What can you stop doing about this for now?', alternate: 'What can you put down tonight?' }
-      : { question: 'What are you going to do about this?', alternate: 'What will you actually do next?' },
+      : { question: 'What will you do differently the next time this comes up?', alternate: 'What will you do next time?' },
   };
 }
 
@@ -91,6 +91,10 @@ export function restatesInput(question: string, situation: string): boolean {
   // Nearly all of their words, and hardly anything of its own.
   return covered / content.length >= 0.8 && qContent - covered <= 2;
 }
+
+// The Move is about how they handle the situation, not a chore on the thing
+// itself ("What will you check in your app today?").
+const MOVE_CHORE = /\b(check|look at|looking at|review|browse|scroll|open up)\b/i;
 
 export function questionProblem(text: unknown, situation: string): string | null {
   if (typeof text !== 'string') return 'missing';
@@ -154,10 +158,15 @@ WRITE THREE QUESTIONS
 - story: asks what they tell themselves this situation means about them,
   about someone else, or about how things will go. The first meaning they
   jump to.
-- signal: asks what this situation might be pointing them toward: what it
-  shows them they need, want, or care about.
-- move: asks what they will actually do about it, sized to what they have in
-  them right now.
+- signal: asks what this situation shows them they care about, need, or
+  want. Concrete, not mystical: never "the universe", never "trying to tell
+  you".
+- move: asks what they will actually do about the hard part of this for
+  them: what they are avoiding, putting off, bracing against, or not saying.
+  Aim it at how they are handling the situation, not at a chore on the
+  object itself. If the situation is launching a product, the move is about
+  their hesitation or pressure around the launch, not about checking or
+  looking at the product. Sized to what they have in them right now.
 
 HOW EVERY QUESTION READS
 - One sentence, one question, ending in "?". Nothing in front of it.
@@ -204,8 +213,9 @@ Return only JSON:
   const pick = (slot: 'story' | 'signal' | 'move'): Pair => {
     const got = parsed?.[slot];
     const fb = defaults[slot];
-    const qProblem = questionProblem(got?.question, situation);
-    const aProblem = questionProblem(got?.alternate, situation);
+    const chore = (t: unknown) => slot === 'move' && typeof t === 'string' && MOVE_CHORE.test(t) ? 'move_chore' : null;
+    const qProblem = questionProblem(got?.question, situation) ?? chore(got?.question);
+    const aProblem = questionProblem(got?.alternate, situation) ?? chore(got?.alternate);
     if (qProblem) problems.push(`${slot}.question:${qProblem}`);
     if (aProblem) problems.push(`${slot}.alternate:${aProblem}`);
     // A good question with a bad alternate keeps the question; a bad
