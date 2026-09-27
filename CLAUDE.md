@@ -61,12 +61,15 @@ production.
 - Read them with `process.env`, never `globalThis`.
 
 ## Access and payment
-- Free first cycle, then `CheckoutGate` when a locked user starts a new cycle
-  ("Return to Orbit" always lands on the dashboard, never checkout) (Lemon Squeezy links at
-  `billing.liveadaptiv.com`). "Have an access code?" on the same screen calls
+- Free first cycle, then `CheckoutGate` (Lemon Squeezy links at
+  `billing.liveadaptiv.com`). A locked user (free cycle done, no access code)
+  lands on it from "Return to Orbit" or when starting a new cycle; it has no
+  back link. Unlocked users never see it. "Have an access code?" on the same screen calls
   `/api/verify-cipher`; a valid code sets `la_adaptiv_manual_access` in
   localStorage and the user is never routed back to checkout.
-- Access is client-side state only, not server-side entitlement.
+- Access is client-side state only, not server-side entitlement. A Lemon
+  Squeezy purchase is not detected at all: nothing comes back to the app, so
+  a paying subscriber is still locked until they enter an access code.
 
 ## Voice (the `VOICE` block in `shared.ts` applies it to every prompt)
 Never: leverage, optimize, unlock, game-changer, journey, passion, seamless,

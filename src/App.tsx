@@ -2385,7 +2385,9 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView, onBack }) => {
 // ─────────────────────────────────────────────
 // CHECKOUT GATE (PAYWALL)
 // ─────────────────────────────────────────────
-const CheckoutGate: React.FC<{ onBack: () => void; onUnlock: () => void }> = ({ onBack, onUnlock }) => {
+// Only a locked user ever sees this (free cycle done, no access code). It has
+// no way back: every other screen would route them straight here again.
+const CheckoutGate: React.FC<{ onUnlock: () => void }> = ({ onUnlock }) => {
   const [showCode, setShowCode] = useState(false);
   const [code, setCode] = useState('');
   const [checking, setChecking] = useState(false);
@@ -2404,11 +2406,6 @@ const CheckoutGate: React.FC<{ onBack: () => void; onUnlock: () => void }> = ({ 
 
   return (
     <div className="h-full flex flex-col overflow-y-auto hide-scrollbar">
-      <div className="shrink-0 pt-1 pb-2">
-        <button aria-label="Go back" onClick={onBack} className="p-2 rounded-full glass-button text-white/70 hover:text-white transition-colors">
-          <ChevronLeft size={20} />
-        </button>
-      </div>
       <div className="flex-1 flex flex-col justify-center text-center py-6">
         <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6 border border-teal-500/30 bg-teal-500/10 shrink-0">
           <Lock size={32} className="text-teal-400" />
@@ -2462,10 +2459,6 @@ const CheckoutGate: React.FC<{ onBack: () => void; onUnlock: () => void }> = ({ 
           </div>
         )}
 
-
-        <button onClick={onBack} className="mt-8 text-[11px] text-white/40 hover:text-white uppercase tracking-widest">
-          Back to my sessions
-        </button>
       </div>
     </div>
   );
@@ -2541,14 +2534,12 @@ const App = () => {
     setCrisisMessage('');
   };
 
-  // "Return to Orbit" ends the cycle and lands on a clean dashboard. Locked
-  // users meet checkout only when they start a new cycle (startAIConversation);
-  // sending them here straight to checkout made checkout's "Back to my
-  // sessions" loop back to checkout.
+  // "Return to Orbit" ends the cycle. Locked users (free cycle done, no access
+  // code) land on checkout; everyone else on a clean dashboard.
   const goHome = () => {
     clearCycleState();
     setNavHistory([]);
-    setViewState('dashboard');
+    setViewState(hasCompletedFreeCycle && !hasManualAccess ? 'checkout' : 'dashboard');
   };
 
   // ── CRISIS ──
@@ -2774,7 +2765,7 @@ const App = () => {
 
           {viewState === 'burnout_check' && <VitalityScan {...common} setBurnoutPath={setIsBurnoutPath} onBack={goBack} />}
           {viewState === 'energy' && <EnergyAnalyzer setView={setView} onBack={goBack} />}
-          {viewState === 'checkout' && <CheckoutGate onBack={goHome} onUnlock={unlockManualAccess} />}
+          {viewState === 'checkout' && <CheckoutGate onUnlock={unlockManualAccess} />}
           {viewState === 'crisis' && <Crisis message={crisisMessage} onBack={goBack} />}
 
 
