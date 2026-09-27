@@ -76,13 +76,17 @@ Short declarative sentences. No therapy-speak. Never diagnose or imply clinical
 authority. Avoid iPEC's trademarked "Energy Leadership", "catabolic" and
 "anabolic" — use "Kinetic States" (1 Depleted … 7 Sovereign).
 
-## Coaching questions
-The standard lives in the `coaching-questions.ts` prompt: four questions
-(MIRROR, PIVOT, VISION, CATALYST), each tied to the person's own details. Never
-the generic shapes ("what would it look like if", "what's holding you back",
-"best self", "one small step", "how does that make you feel", anything starting
-"Why", anything answerable yes/no). The fallback questions follow the same rule,
-and the server and client copies must stay identical.
+## Laser Coaching and The Move
+Laser Coaching asks three questions, then the Integration screen asks one Move:
+1. **The Story** (AI) — what they tell themselves the situation means. Placeholder "I tell myself…".
+2. **True or Familiar** (fixed wording, from the Diffuser label) — assumption: "What changes if you stop treating it as true?"; fact: "If this is true, what part is still up to you?"; none (Body path): "Is that true, or just familiar?". Placeholder "It's…".
+3. **The Signal** (AI) — what the situation is showing them. Placeholder "It's showing me…".
+4. **The Move** (AI action question, same API call) — then "When will you do it?". Sentence: "[When], I will [action]."
+
+- `api/coaching-questions.ts` returns every question with an `alternate` for "Say it another way". The fallback and fixed wording live there and in `src/lib/adaptivAI.ts` (`coachingFallback`); keep both copies identical.
+- The prompt uses its own plain-language rules, not `VOICE`: no brand words in questions, no state or pacing notes repeated to the person, shaped by one detail rather than restating their situation, under 14 words, no "Why", no yes/no. Describe what a question should *do*; never put copyable question wording in the prompt (that is how "What does that buy you?" happened).
+- `questionProblem()` enforces this in code: a failing question (banned shape, brand word, statement opener, yes/no, too long, restating input) is swapped for its fallback and the response is labelled `'partial'` (`'fallback'` if nothing survived).
+- Answers can be skipped ("Skip for now") and save as blank. All three go to the decree (`story`, `truthCheck`, `signal`) and to session history; the Signal answer becomes `expandingBelief`, the decree's truth. Sentence-starter chips fill an empty field and add to typed text, never overwrite.
 
 ## Careful with
 - Every slider in the app is 1–10. `normalizeScale()` converts to 0–100 for

@@ -18,6 +18,8 @@ export interface SessionRecord {
   preEnergy: number; postEnergy: number;
   coreFear: string; expandingBelief: string;
   commitment: string; energyLevel: number;
+  // Laser Coaching answers; blank when skipped, absent on older records.
+  story?: string; truthCheck?: string; signal?: string;
 }
 export interface HorizonValidation {
   acknowledgment: string; validation: string; pivot: string;
@@ -182,29 +184,47 @@ export async function getSomaticEcho(
 }
 
 // ── COACHING QUESTIONS ───────────────────────────────────────
+// Laser Coaching asks three questions (The Story, True or Familiar, The
+// Signal); The Move's action question comes back in the same call. Every
+// question has a simpler alternate for "Say it another way".
+export interface QuestionPair { question: string; alternate: string }
+export interface LaserQuestion extends QuestionPair { id: 'story' | 'truth' | 'signal' }
+export interface CoachingQuestions { questions: LaserQuestion[]; move: QuestionPair }
+
+// Same wording as api/coaching-questions.ts (truthPair and fallbacks), used
+// when the network fails. The depleted test matches the server's on the
+// 1-10 scale.
+function coachingFallback(
+  stressLevel: number, energyLevel: number, distortionType: 'fact' | 'assumption' | null,
+): CoachingQuestions {
+  const depleted = stressLevel > 6 || energyLevel < 4;
+  const truth: QuestionPair = distortionType === 'assumption'
+    ? { question: 'What changes if you stop treating it as true?', alternate: 'What would you do if it wasn’t true?' }
+    : distortionType === 'fact'
+      ? { question: 'If this is true, what part is still up to you?', alternate: 'What can you still choose here?' }
+      : { question: 'Is that true, or just familiar?', alternate: 'Is this what’s happening, or what usually happens?' };
+  return {
+    questions: [
+      { id: 'story', question: 'When this happens, what do you tell yourself it means?', alternate: 'What does your mind say this means?' },
+      { id: 'truth', ...truth },
+      { id: 'signal', question: 'What is this trying to show you?', alternate: 'What might this be pointing to?' },
+    ],
+    move: depleted
+      ? { question: 'What can you stop doing about this for now?', alternate: 'What can you put down tonight?' }
+      : { question: 'What are you going to do about this?', alternate: 'What will you actually do next?' },
+  };
+}
+
+function isPair(p: any): p is QuestionPair {
+  return p && typeof p.question === 'string' && p.question.trim() && typeof p.alternate === 'string' && p.alternate.trim();
+}
+
 export async function generateCoachingQuestions(
   stressor: string, perception: string, somatic: string,
   energyLevel: number, stressLevel: number,
   fear = '', distortionType: 'fact' | 'assumption' | null = null,
-): Promise<AIResult<string[]>> {
-  // Same set as api/coaching-questions.ts fallbackSet(), on the 1-10 scale.
-  const depleted = stressLevel > 6 || energyLevel < 4;
-  const fallback = [
-    distortionType === 'assumption'
-      ? 'What does it cost you to keep believing this without checking it?'
-      : distortionType === 'fact'
-        ? 'Even if this is true, what is still yours to decide?'
-        : depleted
-          ? 'What have you already decided about this that you have not said out loud?'
-          : energyLevel > 7
-            ? 'What are you tolerating here that you would not accept from anyone else?'
-            : 'Which part of this are you treating as certain without having checked it?',
-    'What is this arrangement costing you each week that you have stopped counting?',
-    'Once this is settled, what will you stop doing first thing in the morning?',
-    depleted
-      ? 'What could you drop tonight that nobody would notice was gone?'
-      : 'What message could you send tonight that makes the rest of this cheaper?',
-  ];
+): Promise<AIResult<CoachingQuestions>> {
+  const fallback = coachingFallback(stressLevel, energyLevel, distortionType);
 
   const r = await post('/api/coaching-questions', {
     stressor, perception, somatic, energyLevel, stressLevel, fear, distortionType,
@@ -216,7 +236,10 @@ export async function generateCoachingQuestions(
   }
   const qs = Array.isArray(r.json.questions) ? r.json.questions : [];
   return {
-    data: [0, 1, 2, 3].map(i => qs[i] || fallback[i]),
+    data: {
+      questions: fallback.questions.map((fb, i) => (isPair(qs[i]) ? { ...qs[i], id: fb.id } : fb)),
+      move: isPair(r.json.move) ? r.json.move : fallback.move,
+    },
     crisis: false, source: r.json.source ?? 'ai',
   };
 }
@@ -233,12 +256,13 @@ export async function generateEnergyInsight(level: number, type: string): Promis
 export async function generateManifesto(
   stressor: string, truth: string, action: string, fear: string,
   currentLevel: number, isBurnoutPath: boolean,
+  reflection: { story: string; truthCheck: string; signal: string },
   onUpdate: (text: string) => void,
 ): Promise<{ isOffline: boolean; crisis: boolean; crisisMessage?: string }> {
   // currentLevel was previously accepted and never sent, so the
   // endpoint could not tone-match. It is sent now, with the path.
   const r = await post('/api/manifesto', {
-    stressor, truth, action, fear, currentLevel, isBurnoutPath,
+    stressor, truth, action, fear, currentLevel, isBurnoutPath, ...reflection,
   });
 
   if (!r.ok) return { isOffline: true, crisis: false };

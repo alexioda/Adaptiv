@@ -21,6 +21,7 @@ import {
   generateManifesto,
   verifyCipher,
 } from './lib/adaptivAI';
+import type { QuestionPair, LaserQuestion } from './lib/adaptivAI';
 
 
 // ─────────────────────────────────────────────
@@ -61,7 +62,14 @@ interface SessionRecord {
   expandingBelief: string;
   commitment: string;
   energyLevel: number;
+  // Laser Coaching answers; blank when skipped, absent on older records.
+  story?: string;
+  truthCheck?: string;
+  signal?: string;
 }
+
+interface LaserAnswers { story: string; truthCheck: string; signal: string }
+const EMPTY_LASER_ANSWERS: LaserAnswers = { story: '', truthCheck: '', signal: '' };
 
 
 // ── FIX 9: Horizon conversation state lives in App so it survives navigation ──
@@ -150,8 +158,9 @@ interface LaserCoachingProps extends CommonProps {
   somatic: string;
   fear: string;
   distortionType: 'fact' | 'assumption' | null;
-  setGoal: (g: any) => void;
   setExpandingBelief: (s: string) => void;
+  setLaserAnswers: (a: LaserAnswers) => void;
+  setMoveQuestion: (q: QuestionPair | null) => void;
   energyLevel: number;
   stressLevel: number;
 }
@@ -185,6 +194,8 @@ interface IntegrationProps extends CommonProps {
   expandingBelief: string;
   stressor: string;
   fear: string;
+  laserAnswers: LaserAnswers;
+  moveQuestion: QuestionPair | null;
   sessionCount: number;
   completeSession: () => void;
   resetApp: () => void;
@@ -1263,23 +1274,36 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
 // ─────────────────────────────────────────────
 // LASER COACHING
 // ─────────────────────────────────────────────
-const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, somatic, fear, distortionType, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, energyLevel, stressLevel, onBack, raiseCrisis }) => {
+// Sentence starters fill an empty field and add to typed text otherwise —
+// never overwrite. Shown with "…", inserted without it.
+const addStarter = (current: string, chip: string) => {
+  const base = chip.replace(/…$/, '').trim();
+  if (!current.trim()) return `${base} `;
+  const keepCase = /^I(\s|')/.test(base);
+  const joined = keepCase ? base : base.charAt(0).toLowerCase() + base.slice(1);
+  return `${current.trim()} ${joined} `;
+};
+
+const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, somatic, fear, distortionType, setView, toggleSound, soundEnabled, setExpandingBelief, setLaserAnswers, setMoveQuestion, energyLevel, stressLevel, onBack, raiseCrisis }) => {
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<any>({ topic: '', result: '', permission: '', action: '' });
-  const [aiQuestions, setAiQuestions] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<LaserAnswers>(EMPTY_LASER_ANSWERS);
+  const [questions, setQuestions] = useState<LaserQuestion[]>([]);
+  const [move, setMove] = useState<QuestionPair | null>(null);
+  const [showAlt, setShowAlt] = useState<Record<number, boolean>>({});
   const [somaticEcho, setSomaticEcho] = useState('');
   const [loading, setLoading] = useState(true);
 
 
   useEffect(() => {
-    if (aiQuestions.length === 0) {
+    if (questions.length === 0) {
       setLoading(true);
       Promise.all([
         generateCoachingQuestions(stressor || "General Stress", perception || "Feeling Stuck", somatic, energyLevel, stressLevel, fear, distortionType),
         getSomaticEcho(somatic, stressor, stressLevel, energyLevel),
       ]).then(([q, echo]) => {
         if (q.crisis) { raiseCrisis(q.crisisMessage!); return; }
-        setAiQuestions(q.data);
+        setQuestions(q.data.questions);
+        setMove(q.data.move);
         setSomaticEcho(echo);
         setLoading(false);
       });
@@ -1287,65 +1311,98 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
   }, []);
 
 
-  const starters: Record<number, string[]> = {
-    0: ["My insight is...","The real issue is...","I'm realizing that...","I sense..."],
-    1: ["To feel...","To achieve...","To experience...","To become..."],
-    2: ["To make a mess.","To prioritize me.","To let go.","To trust myself."],
-    3: ["I will call...","I will write...","I will stop...","I will start..."],
+  // Labels, placeholders and starters are fixed per question so they always
+  // match what is being asked. True-or-Familiar starters follow the Diffuser
+  // label, like the question itself.
+  const TRUTH_CHIPS =
+    distortionType === 'assumption' ? ["I'd stop…", "I'd start…", "I'd feel…"]
+    : distortionType === 'fact' ? ["I can still…", "It's up to me to…", "I get to decide…"]
+    : ["It's true because…", "It's familiar because…", "Part of it is true…"];
+
+  const STEPS: { key: keyof LaserAnswers; label: string; ph: string; chips: string[] }[] = [
+    { key: 'story', label: 'The Story', ph: 'I tell myself…', chips: ["It means I…", "It means they…", "It means this will…"] },
+    { key: 'truthCheck', label: 'True or Familiar', ph: "It's…", chips: TRUTH_CHIPS },
+    { key: 'signal', label: 'The Signal', ph: "It's showing me…", chips: ["It's showing me I need…", "It's showing me I care about…", "It's showing me it's time to…"] },
+  ];
+
+  const current = STEPS[step];
+  const q = questions[step];
+  const questionText = q ? (showAlt[step] ? q.alternate : q.question) : '';
+  const hasAlt = !!q && q.alternate.trim() !== '' && q.alternate.trim() !== q.question.trim();
+  const value = answers[current.key];
+
+  const finish = (final: LaserAnswers) => {
+    const cleaned: LaserAnswers = {
+      story: final.story.trim(), truthCheck: final.truthCheck.trim(), signal: final.signal.trim(),
+    };
+    setLaserAnswers(cleaned);
+    // What the friction is showing them is the truth the decree stands on.
+    // A skipped Signal leaves any earlier belief (e.g. from Parts Dialogue).
+    if (cleaned.signal) setExpandingBelief(cleaned.signal);
+    setMoveQuestion(move);
+    setView('integration');
   };
 
+  const advance = (next: LaserAnswers) => {
+    if (step < STEPS.length - 1) setStep(step + 1);
+    else finish(next);
+  };
 
-  const currentQ = [
-    { id: 'topic', label: 'The Insight', q: aiQuestions[0] || "Connecting to the field...", ph: 'My insight is...' },
-    { id: 'result', label: 'The Vision', q: aiQuestions[1] || "If this shifted, what state or outcome would you experience?", ph: 'I want to...' },
-    { id: 'permission', label: 'Permission', q: aiQuestions[2] || "What permission do you need to give yourself to move forward?", ph: 'I give myself permission to...' },
-    { id: 'action', label: 'The Move', q: aiQuestions[3] || "What is the single boldest step that makes everything else easier?", ph: 'I will...' },
-  ][step];
+  // ── FIX 8: never advance on an empty field — skipping is its own button ──
+  const handleNext = () => { if (value.trim()) advance(answers); };
 
-
-  // ── FIX 8: never advance on an empty field ──
-  const handleNext = () => {
-    if (!answers[currentQ.id]) return;
-    if (step < 3) setStep(step + 1);
-    else {
-      setExpandingBelief(answers.topic);
-      setGoal((prev: any) => ({ ...prev, outcome: answers.result, action: answers.action }));
-      setView('integration');
-    }
+  // Skipped answers save as blank; the decree and The Move work without them.
+  const handleSkip = () => {
+    const next = { ...answers, [current.key]: '' };
+    setAnswers(next);
+    advance(next);
   };
 
 
   return (
     <div className="h-full flex flex-col">
-      <Nav title="Breakthrough Laser" subtitle="Rapid Shift" onBack={() => step > 0 ? setStep(step - 1) : onBack?.()} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={80} aiActive={!loading} />
+      <Nav title="Breakthrough Laser" subtitle={current.label} onBack={() => step > 0 ? setStep(step - 1) : onBack?.()} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={70 + step * 5} aiActive={!loading} />
       <div className="flex-1 min-h-0 pt-2 overflow-y-auto hide-scrollbar pb-10">
         <div className="glass-panel p-6 rounded-[32px]">
           {loading ? (
             <div className="text-center py-10"><Loader2 className="animate-spin mx-auto text-teal-400" /></div>
           ) : (
-            <div className="animate-enter">
+            <div className="animate-enter" key={step}>
               {step === 0 && somaticEcho && (
                 <p className="font-serif text-base text-white/55 italic mb-6 leading-relaxed border-l-2 border-teal-500/30 pl-3">{somaticEcho}</p>
               )}
-              <span className="font-sans text-[10px] text-white/50 uppercase tracking-widest mb-4 block">{currentQ.label}</span>
-              <h3 className="font-serif text-2xl text-white italic mb-8 leading-snug">{currentQ.q}</h3>
+              <span className="font-sans text-[10px] text-white/50 uppercase tracking-widest mb-4 block">{current.label} · {step + 1} of {STEPS.length}</span>
+              <h3 className="font-serif text-2xl text-white italic mb-3 leading-snug">{questionText}</h3>
+              {hasAlt && (
+                <button onClick={() => setShowAlt({ ...showAlt, [step]: !showAlt[step] })}
+                  className="mb-6 text-[11px] text-teal-300/80 hover:text-teal-200 uppercase tracking-widest transition-colors">
+                  {showAlt[step] ? 'Back to the first way' : 'Say it another way'}
+                </button>
+              )}
               <FlowInput
-                key={currentQ.id}
-                value={answers[currentQ.id]}
-                onChange={v => setAnswers({ ...answers, [currentQ.id]: v })}
-                placeholder={currentQ.ph}
+                key={current.key}
+                value={value}
+                onChange={v => setAnswers({ ...answers, [current.key]: v })}
+                placeholder={current.ph}
                 onSubmit={handleNext}
                 accent="teal"
-                className="mb-6"
+                className="mb-4"
               />
               <div className="flex flex-wrap gap-2 mb-6">
-                {(starters[step] || []).map(s => (
-                  <button key={s} onClick={() => setAnswers({ ...answers, [currentQ.id]: s })} className="px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs text-white/60 hover:bg-white/10 transition-colors">{s}</button>
+                {current.chips.map(c => (
+                  <button key={c} onClick={() => setAnswers({ ...answers, [current.key]: addStarter(value, c) })}
+                    className="px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs text-white/60 hover:bg-white/10 transition-colors">{c}</button>
                 ))}
               </div>
-              <div className="flex justify-end">
-                <button onClick={handleNext} disabled={!answers[currentQ.id]} className="px-8 py-3 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-widest uppercase disabled:opacity-50">
-                  {step === 3 ? "Lock It In" : "Next"}
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <button onClick={handleSkip} className="text-[11px] text-white/45 hover:text-white/75 uppercase tracking-widest transition-colors">
+                    Skip for now
+                  </button>
+                  <p className="font-sans text-xs text-white/30 mt-1">Not knowing is an answer too.</p>
+                </div>
+                <button onClick={handleNext} disabled={!value.trim()} className="shrink-0 px-8 py-3 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-widest uppercase disabled:opacity-50">
+                  {step === STEPS.length - 1 ? "On to The Move" : "Next"}
                 </button>
               </div>
             </div>
@@ -1619,7 +1676,7 @@ const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
 // ─────────────────────────────────────────────
 const Integration: React.FC<IntegrationProps> = ({
   goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked,
-  expandingBelief, stressor, fear, sessionCount, completeSession,
+  expandingBelief, stressor, fear, laserAnswers, moveQuestion, sessionCount, completeSession,
   resetApp, setView, toggleSound, soundEnabled, somaticZones,
   isBurnoutPath, userName, energyAnalysis, stressLevel, energyLevel,
   postStressLevel, setPostStressLevel, postEnergyLevel, setPostEnergyLevel,
@@ -1698,6 +1755,9 @@ const Integration: React.FC<IntegrationProps> = ({
         expandingBelief,
         commitment: commitmentSentence(),
         energyLevel: exitLevel,
+        story: laserAnswers?.story ?? '',
+        truthCheck: laserAnswers?.truthCheck ?? '',
+        signal: laserAnswers?.signal ?? '',
       };
       saveSession(record);
       setSessionSaved(true);
@@ -1735,7 +1795,7 @@ const Integration: React.FC<IntegrationProps> = ({
     setGenerating(true);
 
 
-    generateManifesto(stressor, truth, action, fear, entryLevel, isBurnoutPath, (text) => setManifesto(text))
+    generateManifesto(stressor, truth, action, fear, entryLevel, isBurnoutPath, laserAnswers ?? EMPTY_LASER_ANSWERS, (text) => setManifesto(text))
       .then(res => {
         setGenerating(false);
         // The server refuses to write a decree on top of crisis language.
@@ -1747,24 +1807,31 @@ const Integration: React.FC<IntegrationProps> = ({
   }, [isLocked, isBurnoutPath, manifesto]);
 
 
-  // A cue beats a deadline. "Today" is a deadline; "when I close my laptop"
-  // is a cue, and cues are the part that actually drives follow-through.
+  // The Move is one action and when they will do it. The action question
+  // comes from Laser Coaching's same AI call; this is the fallback.
+  const actionPair: QuestionPair = moveQuestion ?? {
+    question: isBurnoutPath ? 'What can you stop doing about this for now?' : 'What are you going to do about this?',
+    alternate: isBurnoutPath ? 'What can you put down tonight?' : 'What will you actually do next?',
+  };
+  const [showActionAlt, setShowActionAlt] = useState(false);
+
   const ACTION_CHIPS = [
     'Send the message I have been avoiding',
     'Close the laptop',
     'Say no to one thing',
     'Ask someone for help with this',
   ];
-  const TRIGGER_CHIPS = [
-    'When I close this app',
+  const WHEN_CHIPS = [
+    'Right after my morning coffee',
     'Before I open my laptop tomorrow',
+    'Tonight, before bed',
     'At the end of this shift',
-    'Next time it comes up',
   ];
 
+  // Reads "[When], I will [action]." — or "I will [action]." with no time.
   const commitmentSentence = () => {
-    const raw = (goal.action || '').trim().replace(/\.$/, '');
-    const cue = (goal.when || '').trim().replace(/\.$/, '');
+    const raw = (goal.action || '').trim().replace(/[.,;]+$/, '');
+    const when = (goal.when || '').trim().replace(/[.,;]+$/, '');
     if (!raw) return '';
 
     // Preservation Mode writes a full statement ("I am offline to realign"),
@@ -1773,14 +1840,10 @@ const Integration: React.FC<IntegrationProps> = ({
     const alreadyASentence = /^i\s/i.test(raw);
     const verb = raw.replace(/^I will\s+/i, '');
     const lower = verb.charAt(0).toLowerCase() + verb.slice(1);
-    const clause = alreadyASentence ? raw.charAt(0).toUpperCase() + raw.slice(1) : `I will ${lower}`;
+    const clause = alreadyASentence ? `I${raw.slice(1)}` : `I will ${lower}`;
 
-    if (!cue) return `${clause}.`;
-    if (/^(when|before|after|at|next|the moment|first thing|tonight|tomorrow|now|today)\b/i.test(cue)) {
-      const head = cue.charAt(0).toUpperCase() + cue.slice(1);
-      return `${head}, ${clause}.`;
-    }
-    return `${clause} — ${cue}.`;
+    if (!when) return `${clause}.`;
+    return `${when.charAt(0).toUpperCase() + when.slice(1)}, ${clause}.`;
   };
 
   const applyChip = (current: string, value: string, key: 'action' | 'when') => {
@@ -2015,12 +2078,18 @@ const Integration: React.FC<IntegrationProps> = ({
 
           <h3 className="font-serif text-2xl text-white italic mb-2">The Move</h3>
           <p className="font-sans text-sm text-white/50 mb-8 leading-relaxed">
-            One action, and the moment that will remind you. Not a plan — a cue.
+            One action, and when you will do it.
           </p>
 
-          <label className="block font-sans text-[11px] uppercase tracking-widest text-teal-400 mb-3">
-            What are you doing about it?
+          <label className="block font-sans text-base text-white/85 mb-2 leading-snug">
+            {showActionAlt ? actionPair.alternate : actionPair.question}
           </label>
+          {actionPair.alternate.trim() && actionPair.alternate.trim() !== actionPair.question.trim() && (
+            <button onClick={() => setShowActionAlt(!showActionAlt)}
+              className="mb-4 text-[11px] text-teal-300/80 hover:text-teal-200 uppercase tracking-widest transition-colors">
+              {showActionAlt ? 'Back to the first way' : 'Say it another way'}
+            </button>
+          )}
           <FlowInput
             value={goal.action || ''}
             onChange={v => setGoal({ ...goal, action: v })}
@@ -2036,18 +2105,18 @@ const Integration: React.FC<IntegrationProps> = ({
           </div>
 
           <label className="block font-sans text-[11px] uppercase tracking-widest text-teal-400 mb-3">
-            What will remind you?
+            When will you do it?
           </label>
           <FlowInput
             value={goal.when || ''}
             onChange={v => setGoal({ ...goal, when: v })}
-            placeholder="When I..."
+            placeholder="e.g. Right after my morning coffee"
             onSubmit={handleNextStep}
             accent="teal"
             className="mb-4"
           />
           <div className="flex flex-wrap gap-2 mb-8">
-            {TRIGGER_CHIPS.map(t => (
+            {WHEN_CHIPS.map(t => (
               <button key={t} onClick={() => applyChip(goal.when || '', t, 'when')}
                 className="px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs text-white/60 hover:bg-white/10 transition-colors">{t}</button>
             ))}
@@ -2068,7 +2137,7 @@ const Integration: React.FC<IntegrationProps> = ({
           </button>
           {!goal.when?.trim() && goal.action?.trim() && (
             <p className="text-center font-sans text-xs text-white/35 mt-3">
-              A cue makes it far more likely to happen, but you can seal without one.
+              Picking a time makes it far more likely to happen, but you can seal without one.
             </p>
           )}
         </div>
@@ -2438,6 +2507,8 @@ const App = () => {
     setPostStressLevel(5); setPostEnergyLevel(5);
     setPressure(5); setAbility(5);
     setHorizon({ ...INITIAL_HORIZON });
+    setLaserAnswers(EMPTY_LASER_ANSWERS);
+    setMoveQuestion(null);
     setCrisisMessage('');
   };
 
@@ -2492,6 +2563,9 @@ const App = () => {
   const [pressure, setPressure] = useState(5);
   const [ability, setAbility] = useState(5);
   const [goal, setGoal] = useState<Goal>({ what: '', measure: '', when: '', outcome: '', action: '' });
+  // Laser Coaching's answers, and the action question it hands to The Move.
+  const [laserAnswers, setLaserAnswers] = useState<LaserAnswers>(EMPTY_LASER_ANSWERS);
+  const [moveQuestion, setMoveQuestion] = useState<QuestionPair | null>(null);
   const [goalStep, setGoalStep] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [breathing, setBreathing] = useState(false);
@@ -2611,7 +2685,8 @@ const App = () => {
               stressor={stressor} perception={perception}
               somatic={[somaticZones[0], sensation && `sensation: ${sensation}`, needed && `the part needs: ${needed}`, resourceMemory && `their resource: ${resourceMemory}`].filter(Boolean).join('. ') || 'Mental Loops / Cognitive Fog'}
               fear={fear} distortionType={distortionType}
-              setGoal={setGoal} setExpandingBelief={setExpandingBelief}
+              setExpandingBelief={setExpandingBelief}
+              setLaserAnswers={setLaserAnswers} setMoveQuestion={setMoveQuestion}
               energyLevel={energyLevel} stressLevel={stressLevel}
               onBack={goBack}
             />
@@ -2640,6 +2715,7 @@ const App = () => {
               goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep}
               isLocked={isLocked} setIsLocked={setIsLocked}
               expandingBelief={expandingBelief} stressor={stressor} fear={fear}
+              laserAnswers={laserAnswers} moveQuestion={moveQuestion}
               sessionCount={sessionCount} completeSession={completeSession}
               resetApp={resetApp} somaticZones={somaticZones}
               isBurnoutPath={isBurnoutPath} userName={userName}
