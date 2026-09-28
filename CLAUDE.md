@@ -59,8 +59,8 @@ production.
 - `GEMINI_API_KEY` (falls back to `GOOGLE_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`).
 - `ACCESS_CIPHERS` — comma-separated access codes for `api/verify-cipher.ts`,
   case-insensitive. This is the only name for it. Do not add `VALID_CIPHERS`.
-- `LEMONSQUEEZY_STORE_ID`, `LEMONSQUEEZY_ALLOWED_VARIANTS` (comma-separated;
-  the Monthly Access variant only) for `api/verify-license.ts`. Unset means
+- `LEMONSQUEEZY_STORE_ID` (295177), `LEMONSQUEEZY_ALLOWED_VARIANTS`
+  (comma-separated: 1576863 monthly, 1576855 yearly) for `api/verify-license.ts`. Unset means
   every license key is refused with `not_configured`.
 - Read them with `process.env`, never `globalThis`.
 
@@ -83,8 +83,8 @@ production.
   - The License API answers "valid" for any store's key, so
     `verify-license` also checks the store ID and variant, and validates
     before activating, so a foreign key never spends a slot.
-  - Only Monthly Access unlocks the app. The Field Guide and Stress
-    Transformation Guide do not.
+  - Only the app subscription (monthly or yearly) unlocks the app. The Field
+    Guide and Stress Transformation Guide do not.
 - Both non-AI endpoints use `createLimiter()` from `shared.ts`: 8 tries per
   10 minutes per IP, plus the same origin check and 1 KB body cap.
 - Access is still client-side state, not server-side entitlement: the AI

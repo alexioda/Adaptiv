@@ -65,8 +65,14 @@ async function ls(path: 'validate' | 'activate', fields: Record<string, string>)
 
 // Our store, an allowed variant, still active and not past its expiry.
 function problem(d: LsLicense, storeId: string, variants: string[]): Reason | null {
-  if (String(d.meta?.store_id ?? '') !== storeId) return 'wrong_product';
-  if (!variants.includes(String(d.meta?.variant_id ?? ''))) return 'wrong_product';
+  const store = String(d.meta?.store_id ?? '');
+  const variant = String(d.meta?.variant_id ?? '');
+  if (store !== storeId || !variants.includes(variant)) {
+    // Ids only, never the key. Shows in the Vercel logs if a real purchase
+    // is refused because the configured ids are wrong.
+    console.warn('[liveadaptiv] license refused: store', store, 'product', d.meta?.product_id, 'variant', variant);
+    return 'wrong_product';
+  }
   const status = d.license_key?.status;
   if (status === 'expired') return 'expired';
   if (status === 'disabled') return 'invalid';
