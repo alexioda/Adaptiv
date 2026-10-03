@@ -46,7 +46,10 @@ export default async function handler(req: Request): Promise<Response> {
   const friction = normalizeScale(body.stressLevel);
   const energy = normalizeScale(body.energyLevel);
 
-  if (screenForCrisis(stressor, perception, fear)) return crisisResponse(cors);
+  // somatic carries the Parts Work answers (sensation, what the part needs,
+  // the resource memory), so it is screened like any other free text.
+  // Screened before clean() caps it at 120 characters.
+  if (screenForCrisis(stressor, perception, fear, body.somatic)) return crisisResponse(cors);
 
   const loop = fear
     ? `${asData('recurring_thought', fear)}${

@@ -12,18 +12,20 @@ production.
 - `api/*.ts` — one endpoint per AI job (`reflection`, `horizon-question`,
   `horizon-validation`, `coaching-questions`, `somatic-echo`, `manifesto`,
   `energy-analysis`, `pattern-insight`), plus `verify-cipher` (access codes, no AI).
-- `api/_lib/shared.ts` — shared server code: origin check, rate limit, crisis
-  gate, scale normalisation, voice rules, the Gemini call. The underscore stops
-  Vercel from deploying `_lib` as an endpoint. `src/lib/adaptivAI.ts` lives in
-  `src/`, not `api/` — a misplaced copy of either broke the build once (#5).
+- `api/_lib/shared.ts` — shared server code: origin check, rate limit, scale
+  normalisation, voice rules, the Gemini call. The underscore stops Vercel from
+  deploying `_lib` as an endpoint. `src/lib/adaptivAI.ts` lives in `src/`, not
+  `api/` — a misplaced copy of either broke the build once (#5).
+- `api/_lib/crisis.ts` — the crisis gate. No dependencies, because the client
+  imports it too: `adaptivAI.ts` runs the same screen before every request.
 
 ## Architecture rules
 - Every endpoint is `export default async function handler(req: Request)` with
   `export const config = { runtime: 'edge' }`. Never `export async function
   POST` — that is Next.js App Router and does not route here.
 - AI endpoints start with `guard(req)`. It refuses non-POST, disallowed origins,
-  oversized bodies (8 KB), and more than 20 requests/minute/IP, and checks the
-  API key.
+  oversized bodies (8 KB), and more than 20 requests/minute/IP. A missing API
+  key is logged, not refused, so the endpoint's crisis screen still runs.
 - Endpoints return 200 with usable content even when the model fails. Callers
   never see a 500 for a model failure.
 - Every AI response carries `source: 'ai' | 'fallback' | 'partial' | 'crisis'`,
@@ -39,11 +41,23 @@ production.
   default, `BLOCK_MEDIUM_AND_ABOVE`, trips on ordinary distress language.)
 - `screenForCrisis()` runs before any model call on every endpoint that touches
   user text. Never remove it or move it after generation.
+- The client runs the same screen first (`adaptivAI.ts`, and `isCrisisText()`
+  on screens whose answers aren't sent straight away: Parts Work, Diffuser,
+  Laser answers, Insight, the Integration cue). That is what makes a failed
+  request safe. Any new free-text field gets screened the same way.
+- The crisis screen runs before the burnout intercept, the paywall, and
+  anything else on Horizon.
+- Integration renders nothing that reads as product, and saves no session,
+  until the decree's crisis check has come back.
+- Leaving the Crisis view (`exitCrisis`) clears the cycle and lands on the
+  dashboard. It never returns to the screen that raised it, and never routes
+  to checkout.
 - A crisis response is never followed by generated content, upsells, share
   buttons, or level readouts. The client shows the bare `Crisis` view.
-- Tuning the crisis gate: `CRISIS_PATTERNS` and `CONTRACTIONS` in `shared.ts`.
-  Test both directions every time. It must fire on "I do not want to be here
-  anymore" / "don't" / "dont", "I can't go on", "I want to kill myself", and
+- Tuning the crisis gate: `CRISIS_PATTERNS` and `CONTRACTIONS` in
+  `api/_lib/crisis.ts`. Test both directions every time: `npm run test:crisis`
+  (`scripts/crisis-check.ts`), and add the phrases you tuned for to it. It
+  must fire on "I do not want to be here anymore" / "don't" / "dont", "I can't go on", "I want to kill myself", and
   stay quiet on "I cannot go on with this vendor", "die on that hill", "this
   project is killing me", "I'm dead tired", "I could kill for a coffee".
 
@@ -53,6 +67,8 @@ production.
   `*.vercel.app` previews are allowed only when `VERCEL_ENV !== 'production'`.
 - Requests from any other origin get 403. A new production domain must be added
   here, or every AI call on it silently falls back to canned text.
+- `app.consciousgrowth.coach` is attached to this project but is not an app
+  origin: `vercel.json` redirects it to `app.liveadaptiv.com`.
 
 ## Environment variables (Vercel project `adaptiv`)
 - `GEMINI_API_KEY` (falls back to `GOOGLE_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`).
@@ -99,8 +115,9 @@ and the server and client copies must stay identical.
 ```bash
 npm ci
 npm run build        # tsc -b && vite build
+npm run test:crisis  # both directions of the crisis gate
 ```
-There is no test suite, and `npm run lint` currently fails on its own config.
+Apart from the crisis check there is no test suite, and `npm run lint` currently fails on its own config.
 For AI changes, check the browser console on a preview: `[adaptiv:*]` lines
 show `ai` or `fallback` for each call. `fallback` on every call means the
 endpoints aren't being reached.
