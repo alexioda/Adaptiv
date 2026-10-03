@@ -73,69 +73,10 @@ disorder, never imply medical or clinical authority, never promise
 an outcome. Reflect and direct — do not assess.`.trim();
 
 // ── CRISIS GATE ──────────────────────────────────────────────
-// Deterministic, runs before any model call. Free, instant, and
-// unaffected by whatever the model's filters happen to do today.
-// Contractions are expanded before matching, so one pattern covers
-// "don't" / "dont" / "do not". Expansion is restricted to an explicit list:
-// a generic /(\w)n't/ rule silently mangled "want" into "wa not", which
-// disabled every "want to die" pattern.
-const CONTRACTIONS: [RegExp, string][] = [
-  [/\bcan'?t\b/g, 'cannot'],
-  [/\bcannot\b/g, 'cannot'],
-  [/\bwon'?t\b/g, 'will not'],
-  [/\bdon'?t\b/g, 'do not'],
-  [/\bdoesn'?t\b/g, 'does not'],
-  [/\bdidn'?t\b/g, 'did not'],
-  [/\bisn'?t\b/g, 'is not'],
-  [/\bain'?t\b/g, 'is not'],
-  [/\baren'?t\b/g, 'are not'],
-  [/\bwasn'?t\b/g, 'was not'],
-  [/\bhaven'?t\b/g, 'have not'],
-  [/\bhasn'?t\b/g, 'has not'],
-  [/\bwanna\b/g, 'want to'],
-  [/\bgonna\b/g, 'going to'],
-];
-
-function normalizeForScreening(text: string): string {
-  let out = text.toLowerCase().replace(/[\u2018\u2019\u02BC]/g, "'");
-  for (const [re, sub] of CONTRACTIONS) out = out.replace(re, sub);
-  return out.replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
-const CRISIS_PATTERNS = [
-  // explicit intent
-  'kill (myself|my self)', 'killing myself',
-  'suicid(e|al)', 'take my (own )?life',
-  'end (my life|it all)', 'ending my life',
-  // ideation
-  // "die on that hill" is a business idiom, never a crisis statement.
-  'want to die(?!\\s+on (that|this) hill)',
-  'wish (i was|i were|i am) dead', 'better off dead',
-  'do not want to (be here|live|wake up|exist)',
-  'no longer want to (be here|live)',
-  'nothing (left )?to live for', 'no reason to (live|go on)',
-  // "cannot go on with the vendor" is a work sentence, not a crisis one —
-  // the lookahead keeps the phrase without catching ordinary complaints.
-  'cannot go on(?!\\s+(with|about|for|to|without))',
-  'cannot do this anymore', 'cannot keep going',
-  // self-harm
-  'self harm', 'harm(ing)? myself', 'hurt(ing)? myself',
-  'cut(ting)? myself', 'overdose',
-];
-
-const CRISIS_RE = new RegExp(CRISIS_PATTERNS.join('|'), 'i');
-
-export const CRISIS_MESSAGE =
-  'What you wrote sounds heavy, and this tool is not the right ' +
-  'support for it. Please talk to someone who can help. In the US ' +
-  'you can call or text 988 any time, or text HOME to 741741. ' +
-  'Outside the US, findahelpline.com lists local services. If you ' +
-  'are in immediate danger, call your local emergency number.';
-
-export function screenForCrisis(...fields: unknown[]): boolean {
-  const raw = fields.filter(f => typeof f === 'string').join(' . ');
-  return CRISIS_RE.test(normalizeForScreening(raw));
-}
+// The patterns live in ./crisis so the client can run the same screen
+// before a request goes out (see that file for the rules on editing it).
+import { screenForCrisis, CRISIS_MESSAGE } from './crisis';
+export { screenForCrisis, CRISIS_MESSAGE };
 
 export function crisisResponse(cors: Record<string, string>): Response {
   return json({ crisis: true, message: CRISIS_MESSAGE, source: 'crisis' }, 200, cors);
@@ -214,7 +155,7 @@ export type Guard =
   | { ok: false; response: Response };
 
 // Every endpoint starts with this. Enforces method, origin,
-// body size, rate limit, and API key presence.
+// body size and rate limit, and reads the API key.
 export async function guard(req: Request): Promise<Guard> {
   const origin = req.headers.get('origin') ?? '';
   const cors = corsFor(origin);
@@ -254,12 +195,13 @@ export async function guard(req: Request): Promise<Guard> {
     process.env.GOOGLE_API_KEY ??
     process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
-  if (!apiKey) {
-    console.error('[liveadaptiv] GEMINI_API_KEY missing');
-    return { ok: false, response: json({ error: 'API not configured.' }, 500, cors) };
-  }
+  // A missing key must not stop the request here: every endpoint runs its
+  // crisis screen after guard(), and a 500 at this point skipped it.
+  // generate() returns an empty result without a key, so the endpoint
+  // still screens and then falls back to its canned content.
+  if (!apiKey) console.error('[liveadaptiv] GEMINI_API_KEY missing');
 
-  return { ok: true, body, cors, apiKey };
+  return { ok: true, body, cors, apiKey: apiKey ?? '' };
 }
 
 // ── GEMINI ───────────────────────────────────────────────────
@@ -296,6 +238,8 @@ export async function generate(opts: GenOpts): Promise<GenResult> {
     thinkingConfig: { thinkingBudget: 0 },
   };
   if (jsonMode) generationConfig.responseMimeType = 'application/json';
+
+  if (!apiKey) return { text: '', blocked: false, reason: 'no_api_key' };
 
   try {
     const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
