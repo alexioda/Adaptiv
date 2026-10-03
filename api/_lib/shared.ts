@@ -120,7 +120,7 @@ export function json(payload: unknown, status: number, cors: Record<string, stri
   });
 }
 
-function corsFor(origin: string): Record<string, string> {
+export function corsFor(origin: string): Record<string, string> {
   const h: Record<string, string> = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -133,22 +133,24 @@ function corsFor(origin: string): Record<string, string> {
 // Weak per-instance limiter. Edge instances are ephemeral, so this
 // blunts casual abuse rather than stopping a determined attacker.
 // For hard limits put Upstash/Vercel KV behind this function.
-const hits = new Map<string, { n: number; reset: number }>();
-const LIMIT = 20;
-const WINDOW_MS = 60_000;
-
-function rateLimited(req: Request): boolean {
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
-  const now = Date.now();
-  const rec = hits.get(ip);
-  if (!rec || now > rec.reset) {
-    hits.set(ip, { n: 1, reset: now + WINDOW_MS });
-    if (hits.size > 5000) hits.clear();
-    return false;
-  }
-  rec.n += 1;
-  return rec.n > LIMIT;
+export function createLimiter(limit: number, windowMs: number): (req: Request) => boolean {
+  const hits = new Map<string, { n: number; reset: number }>();
+  return (req: Request) => {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
+    const now = Date.now();
+    const rec = hits.get(ip);
+    if (!rec || now > rec.reset) {
+      hits.set(ip, { n: 1, reset: now + windowMs });
+      if (hits.size > 5000) hits.clear();
+      return false;
+    }
+    rec.n += 1;
+    return rec.n > limit;
+  };
 }
+
+// 20 requests / minute / IP for the AI endpoints.
+const rateLimited = createLimiter(20, 60_000);
 
 export type Guard =
   | { ok: true; body: Record<string, unknown>; cors: Record<string, string>; apiKey: string }

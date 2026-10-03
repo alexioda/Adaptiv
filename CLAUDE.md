@@ -11,7 +11,8 @@ production.
   function returns usable data even when the network fails.
 - `api/*.ts` — one endpoint per AI job (`reflection`, `horizon-question`,
   `horizon-validation`, `coaching-questions`, `somatic-echo`, `manifesto`,
-  `energy-analysis`, `pattern-insight`), plus `verify-cipher` (access codes, no AI).
+  `energy-analysis`, `pattern-insight`), plus `verify-cipher` (access codes) and
+  `verify-license` (Lemon Squeezy license keys), neither of which uses AI.
 - `api/_lib/shared.ts` — shared server code: origin check, rate limit, scale
   normalisation, voice rules, the Gemini call. The underscore stops Vercel from
   deploying `_lib` as an endpoint. `src/lib/adaptivAI.ts` lives in `src/`, not
@@ -74,13 +75,23 @@ production.
 - `GEMINI_API_KEY` (falls back to `GOOGLE_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`).
 - `ACCESS_CIPHERS` — comma-separated access codes for `api/verify-cipher.ts`,
   case-insensitive. This is the only name for it. Do not add `VALID_CIPHERS`.
+- `LEMONSQUEEZY_STORE_ID` and `LEMONSQUEEZY_ALLOWED_VARIANTS` (comma-separated
+  variant ids whose license keys unlock the app) for `api/verify-license.ts`.
+  The License API answers "valid" for any store's key, so both are required;
+  a refused key logs its store/product/variant ids (never the key).
 - Read them with `process.env`, never `globalThis`.
 
 ## Access and payment
 - Free first cycle, then `CheckoutGate` (Lemon Squeezy links at
-  `billing.liveadaptiv.com`). "Have an access code?" on the same screen calls
-  `/api/verify-cipher`; a valid code sets `la_adaptiv_manual_access` in
-  localStorage and the user is never routed back to checkout.
+  `billing.liveadaptiv.com`). "Have a license key or access code?" on the same
+  screen takes either. A UUID goes to `/api/verify-license`; anything else to
+  `/api/verify-cipher`. Either sets `la_adaptiv_manual_access`.
+- License keys: the first check on a device activates the key (one Lemon
+  Squeezy activation slot) and stores `{ key, instanceId, checkedAt }` in
+  `la_adaptiv_license`. The app re-checks at most once a day. Access is
+  removed only on an explicit expired / invalid / wrong-product answer, never
+  because the check couldn't run, and never when an access code also unlocked
+  it (`la_adaptiv_code_access`).
 - Access is client-side state only, not server-side entitlement.
 
 ## Voice (the `VOICE` block in `shared.ts` applies it to every prompt)

@@ -20,6 +20,7 @@ import {
   generateEnergyInsight,
   generateManifesto,
   verifyCipher,
+  verifyLicense,
   isCrisisText,
   CRISIS_MESSAGE,
 } from './lib/adaptivAI';
@@ -225,7 +226,20 @@ const STORAGE_KEYS = {
   SESSION_HISTORY: 'adaptiv_sessionHistory',
   FREE_CYCLE: 'la_adaptiv_free_cycle_done',
   MANUAL_ACCESS: 'la_adaptiv_manual_access',
+  // Set when an access code (not a license key) unlocked the app, so a
+  // lapsed license never takes away a code someone was given.
+  CODE_ACCESS: 'la_adaptiv_code_access',
+  // { key, instanceId, checkedAt } for a Lemon Squeezy license key.
+  LICENSE: 'la_adaptiv_license',
 };
+
+interface LicenseRecord { key: string; instanceId: string; checkedAt: number; }
+
+// Lemon Squeezy license keys are UUIDs; access codes are short words.
+const LICENSE_KEY_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// How often a stored license is re-checked, so a cancelled subscription
+// stops unlocking the app.
+const LICENSE_RECHECK_MS = 24 * 60 * 60 * 1000;
 
 
 function storageGet<T>(key: string, fallback: T): T {
@@ -2364,20 +2378,45 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView, onBack }) => {
 // ─────────────────────────────────────────────
 // CHECKOUT GATE (PAYWALL)
 // ─────────────────────────────────────────────
-const CheckoutGate: React.FC<{ onBack: () => void; onUnlock: () => void }> = ({ onBack, onUnlock }) => {
+const LICENSE_ERRORS: Record<string, string> = {
+  invalid: "That license key didn't work. Copy it again from your receipt email and try once more.",
+  wrong_product: "That key is for a different product. Use the key from your Monthly Access receipt.",
+  expired: "That subscription has ended. Renew it, or start a new Monthly Access plan.",
+  limit: "That key is already active on the maximum number of devices. Email support to move it.",
+  not_configured: "License keys can't be checked right now. Try again later, or use an access code.",
+  unavailable: "We couldn't reach the license service. Check your connection and try again.",
+  rate_limited: "Too many tries. Wait a few minutes, then try again.",
+};
+
+const CheckoutGate: React.FC<{
+  onBack: () => void;
+  onUnlockCode: () => void;
+  onUnlockLicense: (record: LicenseRecord) => void;
+}> = ({ onBack, onUnlockCode, onUnlockLicense }) => {
   const [showCode, setShowCode] = useState(false);
   const [code, setCode] = useState('');
   const [checking, setChecking] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState('');
 
   const submitCode = async () => {
-    if (!code.trim() || checking) return;
+    const value = code.trim();
+    if (!value || checking) return;
     setChecking(true);
-    setError(false);
-    const valid = await verifyCipher(code.trim());
+    setError('');
+    if (LICENSE_KEY_RE.test(value)) {
+      const res = await verifyLicense(value);
+      setChecking(false);
+      if (res.valid && res.instanceId) {
+        onUnlockLicense({ key: value, instanceId: res.instanceId, checkedAt: Date.now() });
+        return;
+      }
+      setError(LICENSE_ERRORS[res.reason ?? 'invalid'] ?? LICENSE_ERRORS.invalid);
+      return;
+    }
+    const valid = await verifyCipher(value);
     setChecking(false);
-    if (valid) { onUnlock(); return; }
-    setError(true);
+    if (valid) { onUnlockCode(); return; }
+    setError("That code didn't work. Check it and try again.");
     setCode('');
   };
 
@@ -2414,18 +2453,19 @@ const CheckoutGate: React.FC<{ onBack: () => void; onUnlock: () => void }> = ({ 
 
         {!showCode ? (
           <button onClick={() => setShowCode(true)} className="mt-8 text-[11px] text-white/40 hover:text-white uppercase tracking-widest">
-            Have an access code?
+            Have a license key or access code?
           </button>
         ) : (
           <div className="mt-8 w-full max-w-sm mx-auto">
-            <label htmlFor="cipher-code" className="block text-[11px] text-white/50 uppercase tracking-widest mb-3">Enter your access code</label>
+            <label htmlFor="cipher-code" className="block text-[11px] text-white/50 uppercase tracking-widest mb-3">Enter your license key or access code</label>
             <div className="flex gap-2">
               <input
                 id="cipher-code" type="text" value={code}
-                onChange={e => { setCode(e.target.value); setError(false); }}
+                onChange={e => { setCode(e.target.value); setError(''); }}
                 onKeyDown={e => e.key === 'Enter' && submitCode()}
-                placeholder="ACCESS CODE"
+                placeholder="KEY OR CODE"
                 autoCapitalize="characters"
+                autoComplete="off" spellCheck={false}
                 className="flex-1 min-w-0 bg-white/5 border border-white/10 focus:border-teal-400/70 rounded-xl px-4 py-3 text-white text-sm tracking-widest uppercase text-center outline-none transition-colors placeholder:text-white/25"
               />
               <button
@@ -2435,8 +2475,11 @@ const CheckoutGate: React.FC<{ onBack: () => void; onUnlock: () => void }> = ({ 
                 {checking ? <Loader2 size={14} className="animate-spin" /> : 'Unlock'}
               </button>
             </div>
+            <p className="text-[11px] text-white/35 mt-3 leading-relaxed">
+              Bought Monthly Access? Your license key is in the receipt email from Lemon Squeezy.
+            </p>
             {error && (
-              <p className="text-[11px] text-rose-400 uppercase tracking-widest mt-3">That code didn't work. Check it and try again.</p>
+              <p role="alert" className="text-xs text-rose-400 mt-3 leading-relaxed">{error}</p>
             )}
           </div>
         )}
@@ -2470,6 +2513,36 @@ const App = () => {
     setNavHistory([]);
     setViewState('dashboard');
   };
+  const unlockWithCode = () => {
+    storageSet(STORAGE_KEYS.CODE_ACCESS, true);
+    unlockManualAccess();
+  };
+  const unlockWithLicense = (record: LicenseRecord) => {
+    storageSet(STORAGE_KEYS.LICENSE, record);
+    unlockManualAccess();
+  };
+
+  // Re-check a stored license at most once a day. Access is taken away only
+  // on an explicit "no" (expired, disabled, wrong product). If the check
+  // can't run (offline, Lemon Squeezy down), access stays and it tries
+  // again next load.
+  useEffect(() => {
+    const rec = storageGet<LicenseRecord | null>(STORAGE_KEYS.LICENSE, null);
+    if (!rec?.key || !rec.instanceId) return;
+    if (Date.now() - (rec.checkedAt || 0) < LICENSE_RECHECK_MS) return;
+    verifyLicense(rec.key, rec.instanceId).then(res => {
+      if (res.valid) {
+        storageSet(STORAGE_KEYS.LICENSE, { ...rec, checkedAt: Date.now() });
+        return;
+      }
+      if (res.reason !== 'expired' && res.reason !== 'invalid' && res.reason !== 'wrong_product') return;
+      try { localStorage.removeItem(STORAGE_KEYS.LICENSE); } catch {}
+      if (!storageGet<boolean>(STORAGE_KEYS.CODE_ACCESS, false)) {
+        storageSet(STORAGE_KEYS.MANUAL_ACCESS, false);
+        setHasManualAccess(false);
+      }
+    });
+  }, []);
 
 
   const setUserName = (n: string) => { setUserNameState(n); storageSet(STORAGE_KEYS.USER_NAME, n); };
@@ -2760,7 +2833,7 @@ const App = () => {
 
           {viewState === 'burnout_check' && <VitalityScan {...common} setBurnoutPath={setIsBurnoutPath} onBack={goBack} />}
           {viewState === 'energy' && <EnergyAnalyzer setView={setView} onBack={goBack} />}
-          {viewState === 'checkout' && <CheckoutGate onBack={goHome} onUnlock={unlockManualAccess} />}
+          {viewState === 'checkout' && <CheckoutGate onBack={goHome} onUnlockCode={unlockWithCode} onUnlockLicense={unlockWithLicense} />}
           {viewState === 'crisis' && <Crisis message={crisisMessage} onBack={exitCrisis} />}
 
 

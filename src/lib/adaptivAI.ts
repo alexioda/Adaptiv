@@ -54,7 +54,7 @@ export interface AIResult<T> {
 const TIMEOUT_MS = 20_000;
 
 async function post<T>(path: string, payload: unknown): Promise<
-  { ok: true; json: any } | { ok: false }
+  { ok: true; json: any } | { ok: false; status?: number }
 > {
   try {
     const res = await fetch(path, {
@@ -63,7 +63,7 @@ async function post<T>(path: string, payload: unknown): Promise<
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    if (!res.ok) { trace(path, { source: `http-${res.status}` }); return { ok: false }; }
+    if (!res.ok) { trace(path, { source: `http-${res.status}` }); return { ok: false, status: res.status }; }
     return { ok: true, json: await res.json() };
   } catch (e: any) {
     trace(path, { source: 'network-error', reason: e?.message });
@@ -312,4 +312,31 @@ export async function verifyCipher(code: string): Promise<boolean> {
   const r = await post('/api/verify-cipher', { code });
   if (!r.ok) return false;
   return r.json.valid === true;
+}
+
+// ── LICENSE KEY ──────────────────────────────────────────────
+// A Lemon Squeezy license key from a Monthly Access purchase. The first
+// check on a device activates it and returns an instanceId; re-checks
+// send that id back. See api/verify-license.ts.
+export type LicenseReason =
+  | 'invalid' | 'wrong_product' | 'expired' | 'limit' | 'not_configured' | 'unavailable' | 'rate_limited';
+
+export interface LicenseCheck {
+  valid: boolean;
+  reason?: LicenseReason;
+  instanceId?: string;
+  expiresAt?: string | null;
+}
+
+export async function verifyLicense(key: string, instanceId?: string): Promise<LicenseCheck> {
+  const r = await post('/api/verify-license', instanceId ? { key, instanceId } : { key });
+  // A refused or failed request is "couldn't check", never "no": a stored
+  // key is only revoked on an explicit answer from Lemon Squeezy.
+  if (!r.ok) return { valid: false, reason: r.status === 429 ? 'rate_limited' : 'unavailable' };
+  return {
+    valid: r.json.valid === true,
+    reason: r.json.reason,
+    instanceId: typeof r.json.instanceId === 'string' ? r.json.instanceId : undefined,
+    expiresAt: r.json.expiresAt ?? null,
+  };
 }
