@@ -9,7 +9,28 @@
 //      failure is the only path to the local fallback.
 //   2. Any endpoint may return { crisis: true }. Callers must
 //      handle that before rendering anything generative.
+//   3. Every function that sends user text runs the crisis screen
+//      here first, with the same patterns the server uses. That is
+//      what makes a failed request safe: a 403, 429, timeout or
+//      offline browser can only reach the fallback after the text
+//      has already been screened.
 // ─────────────────────────────────────────────────────────────
+
+import { screenForCrisis, CRISIS_MESSAGE } from '../../api/_lib/crisis';
+
+export { CRISIS_MESSAGE };
+
+// For screens that collect text which is never sent to the API, or is
+// sent later (Parts Work, Laser answers, the Integration cue).
+export function isCrisisText(...fields: unknown[]): boolean {
+  return screenForCrisis(...fields);
+}
+
+function localCrisis(label: string, ...fields: unknown[]): boolean {
+  if (!screenForCrisis(...fields)) return false;
+  trace(label, { source: 'crisis', reason: 'client-screen' });
+  return true;
+}
 
 export interface EnergyAnalysis { level: number; reflection: string; }
 export interface SessionRecord {
@@ -24,8 +45,6 @@ export interface SessionRecord {
 export interface HorizonValidation {
   acknowledgment: string; validation: string; pivot: string;
 }
-
-export const CRISIS_FLAG = '__CRISIS__';
 
 export interface AIResult<T> {
   data: T;
@@ -80,6 +99,10 @@ export async function analyzeCurrentEnergy(
       : 'This is on your mind, and it matters to you how it turns out.',
   };
 
+  if (localCrisis('reflection', stressor, perception)) {
+    return { data: { level: 1, reflection: CRISIS_MESSAGE }, crisis: true, crisisMessage: CRISIS_MESSAGE, source: 'crisis' };
+  }
+
   const r = await post('/api/reflection', {
     stressor, perception, stressLevel, energyLevel, frictionSource,
   });
@@ -103,6 +126,9 @@ export async function generateHorizonQuestion(
   stressor: string, perception: string, history: string, turn = 1,
 ): Promise<AIResult<string>> {
   const fallback = 'What part of this bothers you most?';
+  if (localCrisis('horizon-question', stressor, perception, history)) {
+    return { data: CRISIS_MESSAGE, crisis: true, crisisMessage: CRISIS_MESSAGE, source: 'crisis' };
+  }
   const r = await post('/api/horizon-question', { stressor, perception, history, turn });
   if (!r.ok) return { data: fallback, crisis: false, source: 'error' };
   trace('horizon-question', r.json);
@@ -120,6 +146,12 @@ export async function generateHorizonValidation(
     validation: 'It makes sense that this is sitting heavily. You have been carrying it without much room to put it down.',
     pivot: 'We can clear this static and reclaim your bandwidth. To shift this, we need to locate it.',
   };
+  if (localCrisis('horizon-validation', stressor, perception, history)) {
+    return {
+      data: { acknowledgment: '', validation: CRISIS_MESSAGE, pivot: '' },
+      crisis: true, crisisMessage: CRISIS_MESSAGE, source: 'crisis',
+    };
+  }
   const r = await post('/api/horizon-validation', { stressor, perception, history });
   if (!r.ok) return { data: fallback, crisis: false, source: 'error' };
   trace('horizon-validation', r.json);
@@ -140,17 +172,24 @@ export async function generateHorizonValidation(
 }
 
 // ── PATTERN ──────────────────────────────────────────────────
-export async function generatePatternInsight(history: SessionRecord[]): Promise<string> {
-  if (history.length < 2) return '';
+// Crisis hits are returned, not swallowed: the dashboard raises the
+// Crisis view for them the same way the session screens do.
+export async function generatePatternInsight(history: SessionRecord[]): Promise<AIResult<string>> {
+  if (history.length < 2) return { data: '', crisis: false, source: 'fallback' };
   const sessions = history.slice(0, 5).map(s => ({
     date: s.date, stressor: s.stressor, coreFear: s.coreFear,
     preStress: s.preStress, postStress: s.postStress,
   }));
+  if (localCrisis('pattern-insight', ...sessions.flatMap(s => [s.stressor, s.coreFear]))) {
+    return { data: '', crisis: true, crisisMessage: CRISIS_MESSAGE, source: 'crisis' };
+  }
   const r = await post('/api/pattern-insight', { sessions });
-  if (!r.ok) return '';
+  if (!r.ok) return { data: '', crisis: false, source: 'error' };
   trace('pattern-insight', r.json);
-  if (r.json.crisis) return '';
-  return r.json.insight ?? '';
+  if (r.json.crisis) {
+    return { data: '', crisis: true, crisisMessage: r.json.message, source: 'crisis' };
+  }
+  return { data: r.json.insight ?? '', crisis: false, source: r.json.source ?? 'ai' };
 }
 
 // ── SOMATIC ECHO ─────────────────────────────────────────────
@@ -171,16 +210,21 @@ const ECHO_FALLBACKS: Record<string, string> = {
 
 export async function getSomaticEcho(
   somatic: string, stressor: string, stressLevel: number, energyLevel: number,
-): Promise<string> {
+): Promise<AIResult<string>> {
   const lower = (somatic || '').toLowerCase();
   const key = Object.keys(ECHO_FALLBACKS).find(k => k !== 'default' && lower.includes(k));
   const fallback = ECHO_FALLBACKS[key ?? 'default'];
 
+  if (localCrisis('somatic-echo', somatic, stressor)) {
+    return { data: '', crisis: true, crisisMessage: CRISIS_MESSAGE, source: 'crisis' };
+  }
   const r = await post('/api/somatic-echo', { somatic, stressor, stressLevel, energyLevel });
-  if (!r.ok) return fallback;
+  if (!r.ok) return { data: fallback, crisis: false, source: 'error' };
   trace('somatic-echo', r.json);
-  if (r.json.crisis) return '';
-  return r.json.echo || fallback;
+  if (r.json.crisis) {
+    return { data: '', crisis: true, crisisMessage: r.json.message, source: 'crisis' };
+  }
+  return { data: r.json.echo || fallback, crisis: false, source: r.json.source ?? 'ai' };
 }
 
 // ── COACHING QUESTIONS ───────────────────────────────────────
@@ -226,6 +270,9 @@ export async function generateCoachingQuestions(
 ): Promise<AIResult<CoachingQuestions>> {
   const fallback = coachingFallback(stressLevel, energyLevel, distortionType);
 
+  if (localCrisis('coaching-questions', stressor, perception, somatic, fear)) {
+    return { data: fallback, crisis: true, crisisMessage: CRISIS_MESSAGE, source: 'crisis' };
+  }
   const r = await post('/api/coaching-questions', {
     stressor, perception, somatic, energyLevel, stressLevel, fear, distortionType,
   });
@@ -259,6 +306,9 @@ export async function generateManifesto(
   reflection: { story: string; truthCheck: string; signal: string },
   onUpdate: (text: string) => void,
 ): Promise<{ isOffline: boolean; crisis: boolean; crisisMessage?: string }> {
+  if (localCrisis('manifesto', stressor, truth, action, fear, reflection.story, reflection.truthCheck, reflection.signal)) {
+    return { isOffline: false, crisis: true, crisisMessage: CRISIS_MESSAGE };
+  }
   // currentLevel was previously accepted and never sent, so the
   // endpoint could not tone-match. It is sent now, with the path.
   const r = await post('/api/manifesto', {

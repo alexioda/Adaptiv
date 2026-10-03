@@ -22,6 +22,8 @@ import {
   verifyCipher,
   verifyLicense,
   looksLikeLicenseKey,
+  isCrisisText,
+  CRISIS_MESSAGE,
 } from './lib/adaptivAI';
 import type { QuestionPair, LaserQuestion, LicenseReason } from './lib/adaptivAI';
 
@@ -131,6 +133,8 @@ interface HorizonProps extends CommonProps {
   hasAccess: boolean;
   horizon: HorizonState;
   patchHorizon: (p: HorizonPatch) => void;
+  patternCrisisShown: boolean;
+  onPatternCrisis: () => void;
 }
 interface DiffuserProps extends CommonProps {
   fear: string;
@@ -615,7 +619,7 @@ const Crisis: React.FC<{ message: string; onBack: () => void }> = ({ message, on
       </p>
 
       <button onClick={onBack} className="w-full mt-8 py-4 rounded-full border border-white/15 text-white/60 font-sans text-xs tracking-widest uppercase hover:text-white hover:bg-white/5 transition-all">
-        Go back
+        Back to start
       </button>
     </div>
   </div>
@@ -717,7 +721,7 @@ const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, fri
 );
 
 
-const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setDistortionType, setView, toggleSound, soundEnabled, onBack }) => {
+const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setDistortionType, setView, toggleSound, soundEnabled, onBack, raiseCrisis }) => {
   const [step, setStep] = useState(0);
   const [nudge, setNudge] = useState<'question' | 'unsure' | null>(null);
   const chooseDistortion = (t: 'fact' | 'assumption') => { setDistortionType(t); setView('laser'); };
@@ -727,6 +731,7 @@ const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setDistortionType, s
   const capture = () => {
     const t = fear.trim();
     if (!t) return;
+    if (isCrisisText(t)) { raiseCrisis(CRISIS_MESSAGE); return; }
     if (!nudge) {
       if (t.endsWith('?') || /^(why|what|how|when|where|who|will|should|can|could|is|are|am|do|does)\b/i.test(t)) { setNudge('question'); return; }
       if (/\b(don'?t|dont|do not) know\b|\bnot sure\b|\bno idea\b/i.test(t)) { setNudge('unsure'); return; }
@@ -789,7 +794,7 @@ const Horizon: React.FC<HorizonProps> = ({
   soundType, setSoundType, onBack, sessionHistory,
   stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout,
   setFrictionSource, setSomaticZones, hasCompletedFreeCycle, hasAccess,
-  horizon, patchHorizon, raiseCrisis
+  horizon, patchHorizon, raiseCrisis, patternCrisisShown, onPatternCrisis
 }) => {
   const { step, chatHistory, aiQuestionCount, showChatInput, showRouteButton, burnoutIntercept, pickingZone, patternInsight, patternLoaded } = horizon;
   const [chatInput, setChatInput] = useState('');
@@ -812,9 +817,16 @@ const Horizon: React.FC<HorizonProps> = ({
   useEffect(() => {
     if (patternLoaded || sessionHistory.length < 2) return;
     setLoadingPattern(true);
-    generatePatternInsight(sessionHistory).then(insight => {
-      patchHorizon({ patternInsight: insight, patternLoaded: true });
+    generatePatternInsight(sessionHistory).then(res => {
+      patchHorizon({ patternInsight: res.crisis ? '' : res.data, patternLoaded: true });
       setLoadingPattern(false);
+      // Stored history can hold crisis language from before the gate
+      // covered every screen. Surface it once per visit, not on every
+      // return to the dashboard.
+      if (res.crisis && !patternCrisisShown) {
+        onPatternCrisis();
+        raiseCrisis(res.crisisMessage!);
+      }
     });
   }, [patternLoaded, sessionHistory.length]);
 
@@ -838,14 +850,17 @@ const Horizon: React.FC<HorizonProps> = ({
   };
 
 
-  const checkDepletion = (text: string) => {
-    const triggers = ['burnout','exhausted','drained','empty','depleted','overwhelm','overwhelmed','done','tired'];
-    return triggers.some(w => text.toLowerCase().includes(w));
-  };
+  // Whole words only: "done" used to match "abandoned" and "condone".
+  const checkDepletion = (text: string) =>
+    /\b(burnout|burned out|burnt out|exhausted|drained|empty|depleted|overwhelm|overwhelmed|done|tired)\b/i.test(text);
 
 
   const startAIConversation = async () => {
     if (stressor.length < 5 || perception.length < 5) return;
+    // The crisis screen runs before anything else, including the paywall
+    // and the burnout intercept. The intercept used to answer first, so
+    // "I'm exhausted and I want to kill myself" got a Vitality Scan offer.
+    if (isCrisisText(stressor, perception)) { raiseCrisis(CRISIS_MESSAGE); return; }
     if (hasCompletedFreeCycle && !hasAccess) { setView('checkout'); return; }
 
 
@@ -877,6 +892,7 @@ const Horizon: React.FC<HorizonProps> = ({
   const sendUserMessage = async () => {
     if (!chatInput.trim()) return;
     const currentUserText = chatInput;
+    if (isCrisisText(currentUserText)) { setChatInput(''); raiseCrisis(CRISIS_MESSAGE); return; }
     const newHistory: ChatMessage[] = [...chatHistory, { role: 'user', text: currentUserText, isHtml: false }];
     patchHorizon({ chatHistory: newHistory, showChatInput: false });
     setChatInput('');
@@ -969,7 +985,7 @@ const Horizon: React.FC<HorizonProps> = ({
                 {loadingPattern ? (
                   <div className="flex items-center gap-2 text-white/40 text-sm"><Loader2 size={12} className="animate-spin" /> Analyzing your history...</div>
                 ) : (
-                  <p className="font-serif text-base text-white/85 italic leading-relaxed">{patternInsight || "Connecting patterns..."}</p>
+                  <p className="font-serif text-base text-white/85 italic leading-relaxed">{patternInsight || (patternLoaded ? "No clear thread yet. It shows up after a few more sessions." : "Connecting patterns...")}</p>
                 )}
                 {sessionHistory[0] && (
                   <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between gap-2">
@@ -1151,15 +1167,24 @@ const Horizon: React.FC<HorizonProps> = ({
 // ─────────────────────────────────────────────
 // PARTS WORK
 // ─────────────────────────────────────────────
-const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensation, protection, setProtection, fear, setFear, expandingBelief, setExpandingBelief, partsStep, setPartsStep, needed, setNeeded, resourceMemory, setResourceMemory, setView, toggleSound, soundEnabled, onBack }) => {
+const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensation, protection, setProtection, fear, setFear, expandingBelief, setExpandingBelief, partsStep, setPartsStep: setPartsStepRaw, needed, setNeeded, resourceMemory, setResourceMemory, setView: setViewRaw, toggleSound, soundEnabled, onBack, raiseCrisis }) => {
+  // None of these answers is sent anywhere until Laser or the Decree, so
+  // each one is screened as the person moves past it.
+  const screened = () => {
+    if (!isCrisisText(sensation, protection, fear, needed, resourceMemory, expandingBelief)) return true;
+    raiseCrisis(CRISIS_MESSAGE);
+    return false;
+  };
+  const setPartsStep = (next: string) => { if (screened()) setPartsStepRaw(next); };
+  const setView = (v: string) => { if (screened()) setViewRaw(v); };
   const handleBack = () => {
     if (partsStep === 'experience') onBack?.();
-    else if (partsStep === 'unblend') setPartsStep('experience');
-    else if (partsStep === 'connect') setPartsStep('unblend');
-    else if (partsStep === 'message') setPartsStep('connect');
-    else if (partsStep === 'appreciate') setPartsStep('message');
-    else if (partsStep === 'resource') setPartsStep('appreciate');
-    else if (partsStep === 'channel') setPartsStep('resource');
+    else if (partsStep === 'unblend') setPartsStepRaw('experience');
+    else if (partsStep === 'connect') setPartsStepRaw('unblend');
+    else if (partsStep === 'message') setPartsStepRaw('connect');
+    else if (partsStep === 'appreciate') setPartsStepRaw('message');
+    else if (partsStep === 'resource') setPartsStepRaw('appreciate');
+    else if (partsStep === 'channel') setPartsStepRaw('resource');
   };
 
   const PARTS_ORDER = ['experience','unblend','connect','message','appreciate','resource','channel'];
@@ -1342,9 +1367,10 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
         getSomaticEcho(somatic, stressor, stressLevel, energyLevel),
       ]).then(([q, echo]) => {
         if (q.crisis) { raiseCrisis(q.crisisMessage!); return; }
+        if (echo.crisis) { raiseCrisis(echo.crisisMessage!); return; }
         setQuestions(q.data.questions);
         setMove(q.data.move);
-        setSomaticEcho(echo);
+        setSomaticEcho(echo.data);
         setLoading(false);
       });
     }
@@ -1389,7 +1415,13 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
   };
 
   // ── FIX 8: never advance on an empty field — skipping is its own button ──
-  const handleNext = () => { if (value.trim()) advance(answers); };
+  // Laser answers only reach the server with the decree, so each one is
+  // screened here as it is given.
+  const handleNext = () => {
+    if (!value.trim()) return;
+    if (isCrisisText(value)) { raiseCrisis(CRISIS_MESSAGE); return; }
+    advance(answers);
+  };
 
   // Skipped answers save as blank; the decree and The Move work without them.
   const handleSkip = () => {
@@ -1644,7 +1676,12 @@ const Breath: React.FC<BreathProps> = ({ breathing, setBreathing, breathCount, s
 // ─────────────────────────────────────────────
 // INSIGHT
 // ─────────────────────────────────────────────
-const Insight: React.FC<InsightProps> = ({ expandingBelief, setExpandingBelief, setView, toggleSound, soundEnabled, onBack }) => (
+const Insight: React.FC<InsightProps> = ({ expandingBelief, setExpandingBelief, setView: setViewRaw, toggleSound, soundEnabled, onBack, raiseCrisis }) => {
+  const setView = (v: string) => {
+    if (isCrisisText(expandingBelief)) { raiseCrisis(CRISIS_MESSAGE); return; }
+    setViewRaw(v);
+  };
+  return (
   <div className="h-full flex flex-col">
     <Nav title="The Clarity" subtitle="Harvesting" onBack={onBack} toggleSound={toggleSound} soundEnabled={soundEnabled} />
     <div className="flex-1 min-h-0 flex flex-col justify-center text-center overflow-y-auto hide-scrollbar pb-6">
@@ -1662,7 +1699,8 @@ const Insight: React.FC<InsightProps> = ({ expandingBelief, setExpandingBelief, 
       </button>
     </div>
   </div>
-);
+  );
+};
 
 
 // ─────────────────────────────────────────────
@@ -1732,6 +1770,12 @@ const Integration: React.FC<IntegrationProps> = ({
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
   const [sessionSaved, setSessionSaved] = useState(false);
+  // True once the crisis check for this decree has come back clean (or the
+  // request failed after the client-side screen passed). Nothing that reads
+  // as product (readout, Clinical Read, decree, upsells) renders before it,
+  // and the session is not saved before it.
+  const [cleared, setCleared] = useState(false);
+  const decreeRequest = useRef(0);
 
 
   const [postStress, setPostStress] = useState(stressLevel);
@@ -1786,7 +1830,7 @@ const Integration: React.FC<IntegrationProps> = ({
 
 
   useEffect(() => {
-    if (isLocked && !sessionSaved) {
+    if (isLocked && cleared && !sessionSaved) {
       const record: SessionRecord = {
         date: new Date().toISOString(),
         stressor,
@@ -1808,7 +1852,7 @@ const Integration: React.FC<IntegrationProps> = ({
       storageSet(STORAGE_KEYS.FREE_CYCLE, true);
       setHasCompletedFreeCycle(true);
     }
-  }, [isLocked]);
+  }, [isLocked, cleared]);
 
 
   useEffect(() => {
@@ -1819,35 +1863,51 @@ const Integration: React.FC<IntegrationProps> = ({
   }, [postStress, postEnergy, sessionSaved]);
 
 
-  // ── FIX 7: seed the decree synchronously so the panel is never empty quotes ──
+  // ── The decree waits for the crisis check ──
+  // The seeded decree used to show at once, with the level readout and
+  // upsells, while /api/manifesto was still screening the same text. Now
+  // the whole panel waits for that answer. The seed is only the fallback
+  // for a request that failed after the client-side screen passed.
   useEffect(() => {
-    if (!isLocked || manifesto) return;
-
+    if (!isLocked) {
+      // Unsealed to edit the move: forget the old decree and check again.
+      decreeRequest.current += 1;
+      setCleared(false); setManifesto(''); setGenerating(false);
+      return;
+    }
+    if (cleared || generating) return;
 
     const truth = expandingBelief || (isBurnoutPath ? "I am the Asset. Rest is my strategy." : "I am the one who decides what I carry");
     const action = goal.action || (isBurnoutPath ? "I am offline to realign" : "I move on this now");
 
+    // goal.when and goal.outcome never reach the API, so they are screened here.
+    if (isCrisisText(stressor, fear, truth, action, goal.when, goal.outcome,
+      laserAnswers?.story, laserAnswers?.truthCheck, laserAnswers?.signal)) {
+      raiseCrisis(CRISIS_MESSAGE);
+      return;
+    }
 
     const seed = isBurnoutPath
       ? `I am the Asset. The work does not survive my collapse. I refuse to let "${stressor || 'this'}" spend what I do not have. Standing in the truth that ${truth}, I am reclaiming my sovereignty. My action is my seal: ${action}.`
       : `I hear the noise of "${stressor || 'this'}" and the fear that ${fear || 'I am not enough'}. I honor the friction, but I refuse to reside in it. Standing in the undeniable truth that ${truth}, I am reclaiming my sovereignty. My action is my seal: ${action}.`;
 
-
-    setManifesto(seed);
-    setIsOffline(true);
+    const request = ++decreeRequest.current;
+    let generated = '';
     setGenerating(true);
 
+    const finish = (res: { isOffline: boolean; crisis: boolean; crisisMessage?: string }) => {
+      if (request !== decreeRequest.current) return;
+      setGenerating(false);
+      if (res.crisis) { setManifesto(''); raiseCrisis(res.crisisMessage || CRISIS_MESSAGE); return; }
+      setManifesto(generated || seed);
+      setIsOffline(res.isOffline || !generated);
+      setCleared(true);
+    };
 
-    generateManifesto(stressor, truth, action, fear, entryLevel, isBurnoutPath, laserAnswers ?? EMPTY_LASER_ANSWERS, (text) => setManifesto(text))
-      .then(res => {
-        setGenerating(false);
-        // The server refuses to write a decree on top of crisis language.
-        // Drop the seeded text so it is never shown, and hand off.
-        if (res.crisis) { setManifesto(''); raiseCrisis(res.crisisMessage!); return; }
-        setIsOffline(res.isOffline);
-      })
-      .catch(() => setGenerating(false));
-  }, [isLocked, isBurnoutPath, manifesto]);
+    generateManifesto(stressor, truth, action, fear, entryLevel, isBurnoutPath, laserAnswers ?? EMPTY_LASER_ANSWERS, (text) => { generated = text; })
+      .then(finish)
+      .catch(() => finish({ isOffline: true, crisis: false }));
+  }, [isLocked, cleared]);
 
 
   // The Move is one action and when they will do it. The action question
@@ -1894,7 +1954,11 @@ const Integration: React.FC<IntegrationProps> = ({
   };
 
   const handleBack = () => onBack?.();
-  const handleNextStep = () => { if (goal.action?.trim()) setIsLocked(true); };
+  const handleNextStep = () => {
+    if (!goal.action?.trim()) return;
+    if (isCrisisText(goal.action, goal.when)) { raiseCrisis(CRISIS_MESSAGE); return; }
+    setIsLocked(true);
+  };
 
 
   const copyArtifact = async () => {
@@ -1928,6 +1992,19 @@ const Integration: React.FC<IntegrationProps> = ({
       <div className="h-full flex flex-col relative z-20">
         <Nav title="Integration" subtitle="Embodiment" onBack={() => setIsLocked(false)} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={90} />
         <Priming onComplete={() => setPrimingDone(true)} />
+      </div>
+    );
+  }
+
+
+  if (isLocked && !cleared) {
+    return (
+      <div className="h-full flex flex-col">
+        <Nav title="Integration" subtitle="Sealing" onBack={() => setIsLocked(false)} soundEnabled={soundEnabled} toggleSound={toggleSound} progress={95} />
+        <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-center gap-3 text-white/50">
+          <Loader2 size={20} className="animate-spin text-teal-400" />
+          <p className="font-sans text-sm">Writing your decree...</p>
+        </div>
       </div>
     );
   }
@@ -2624,10 +2701,23 @@ const App = () => {
   // Any endpoint may return { crisis: true }. When it does we stop the
   // session flow entirely rather than degrading to generated content.
   const raiseCrisis = (message: string) => {
-    setCrisisMessage(message || 'Please reach out to someone who can help. In the US, call or text 988 any time.');
-    setNavHistory(h => [...h, viewState].slice(-25));
+    setCrisisMessage(message || CRISIS_MESSAGE);
     setViewState('crisis');
   };
+
+  // Leaving the Crisis view ends the cycle and lands on the dashboard.
+  // "Back" used to return to the screen that raised it, which re-rendered
+  // the readout and upsells and re-ran the same check in a loop. It never
+  // routes to checkout: no upsell follows a crisis response.
+  const exitCrisis = () => {
+    clearCycleState();
+    setNavHistory([]);
+    setViewState('dashboard');
+  };
+
+  // Set once the dashboard's pattern card has raised the Crisis view, so
+  // returning to the dashboard doesn't raise it again on every visit.
+  const [patternCrisisShown, setPatternCrisisShown] = useState(false);
 
 
   const [bgState, setBgState] = useState('neutral');
@@ -2755,6 +2845,8 @@ const App = () => {
               hasCompletedFreeCycle={hasCompletedFreeCycle}
               hasAccess={hasAccess}
               horizon={horizon} patchHorizon={patchHorizon}
+              patternCrisisShown={patternCrisisShown}
+              onPatternCrisis={() => setPatternCrisisShown(true)}
               onBack={goBack}
             />
           )}
@@ -2844,7 +2936,7 @@ const App = () => {
           {viewState === 'burnout_check' && <VitalityScan {...common} setBurnoutPath={setIsBurnoutPath} onBack={goBack} />}
           {viewState === 'energy' && <EnergyAnalyzer setView={setView} onBack={goBack} />}
           {viewState === 'checkout' && <CheckoutGate onUnlock={unlockManualAccess} onUnlockLicense={unlockLicense} />}
-          {viewState === 'crisis' && <Crisis message={crisisMessage} onBack={goBack} />}
+          {viewState === 'crisis' && <Crisis message={crisisMessage} onBack={exitCrisis} />}
 
 
         </div>
