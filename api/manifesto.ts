@@ -66,22 +66,31 @@ They are at Kinetic State ${level}: ${KINETIC_STATES[level]}.
 ${register}
 
 RULES
-- First person. 40 to 60 words. Three or four sentences.
-- Open with a declaration, not an observation.
-- Include one clear moment of refusal of the old pattern.
-- End with their committed action, stated as settled fact.
-- Use their own specifics. Never invent details they did not give.
-- If they named the story they tell themselves, the refusal can be of that
-  story. If they said what it is showing them, stand on that. Any of these
-  may be missing; work with what is there and never fill a gap yourself.
-- Active voice throughout. No therapy language. No slogans.
+- First person. 35 to 55 words. Three or four short sentences.
+- Every sentence is complete, plain, natural English that this person could
+  say out loud without wincing. Read each one back: if it does not make
+  sense on its own, cut it.
+- Use their own words and specifics. Never invent details they did not give.
+- Keep their claims the size they made them. Do not upgrade an answer into
+  a bigger or more absolute claim ("I don't fail", "I always", "never
+  again"). If they were unsure, the decree may be unsure.
+- If an answer is a fragment, unclear, or does not fit the others, leave it
+  out. Stitching a broken answer in is worse than not using it. Any answer
+  may be missing; never fill a gap yourself.
+- If they named the story they tell themselves, you may set it down as a
+  story ("I will not treat that as the whole truth"), not deny the facts
+  of their situation.
+- End with the action they committed to, in plain words, as something they
+  will do. Do not restate it as a change in who they are.
+- Do not use the word "decree". No slogans, no therapy language, no
+  victory language.
 - No quotation marks around the output.
 
 Output the decree text only.`;
 
   const { text, blocked, reason } = await generate({
     apiKey, system, user: 'Write the decree.',
-    temperature: 0.9, maxOutputTokens: 220,
+    temperature: 0.7, maxOutputTokens: 220,
   });
 
   const decree = unquote(text);

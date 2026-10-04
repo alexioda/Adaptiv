@@ -95,6 +95,19 @@ export function restatesInput(question: string, situation: string): boolean {
 // The Move is about how they handle the situation, not a chore on the thing
 // itself ("What will you check in your app today?").
 const MOVE_CHORE = /\b(check|look at|looking at|review|browse|scroll|open up)\b/i;
+// The Integration screen frames the answer as "[When], I will [action]", so
+// the question has to ask for something they do. "What one thought about it
+// can you just notice?" got the answer "that I am focusing on the wrong
+// thing", which became "I will that I am focusing…".
+const MOVE_ASKS_ACTION = /\b(will you|are you going to|can you|could you)\b/i;
+const MOVE_NOT_ACTION = /\b(notice|observe|aware|awareness|feel|feeling|think|thought|sit with|let yourself|allow yourself|accept|acknowledge|remind yourself|believe|realize|realise)\b/i;
+function moveProblem(t: unknown): string | null {
+  if (typeof t !== 'string') return null;
+  if (MOVE_CHORE.test(t)) return 'move_chore';
+  if (MOVE_NOT_ACTION.test(t)) return 'move_not_action';
+  if (!MOVE_ASKS_ACTION.test(t)) return 'move_not_action';
+  return null;
+}
 
 export function questionProblem(text: unknown, situation: string): string | null {
   if (typeof text !== 'string') return 'missing';
@@ -164,8 +177,10 @@ WRITE THREE QUESTIONS
 - signal: asks what this situation shows them they care about, need, or
   want. Concrete, not mystical: never "the universe", never "trying to tell
   you".
-- move: asks what they will actually do about the hard part of this for
-  them: what they are avoiding, putting off, bracing against, or not saying.
+- move: asks for ONE action they will take, answerable as "I will ___". It
+  is about the hard part of this for them: what they are avoiding, putting
+  off, bracing against, or not saying. Never a noticing, feeling, thinking
+  or awareness question: the answer has to be something they do.
   Aim it at how they are handling the situation, not at a chore on the
   object itself. If the situation is launching a product, the move is about
   their hesitation or pressure around the launch, not about checking or
@@ -216,7 +231,7 @@ Return only JSON:
   const pick = (slot: 'story' | 'signal' | 'move'): Pair => {
     const got = parsed?.[slot];
     const fb = defaults[slot];
-    const chore = (t: unknown) => slot === 'move' && typeof t === 'string' && MOVE_CHORE.test(t) ? 'move_chore' : null;
+    const chore = (t: unknown) => slot === 'move' ? moveProblem(t) : null;
     const qProblem = questionProblem(got?.question, situation) ?? chore(got?.question);
     const aProblem = questionProblem(got?.alternate, situation) ?? chore(got?.alternate);
     if (qProblem) problems.push(`${slot}.question:${qProblem}`);

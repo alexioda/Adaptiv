@@ -120,12 +120,25 @@ Laser Coaching asks three questions, then the Integration screen asks one Move:
 1. **The Story** (AI) — what they tell themselves the situation means. Placeholder "I tell myself…".
 2. **True or Familiar** (fixed wording, from the Diffuser label; their Story answer is shown above it) — assumption: "If that’s an assumption, what else could it mean?"; fact: "If that’s a fact, what part is still up to you?"; none (Body path): "Is that true, or just familiar?". Never ask them to re-judge what they already labelled. Placeholder "It's…".
 3. **The Signal** (AI) — what the situation is showing them. Placeholder "It's showing me…".
-4. **The Move** (AI action question, same API call) — aimed at how they handle the hard part (what they avoid or put off), never a chore on the object itself; `MOVE_CHORE` rejects "check / look at / review…". Then "When will you do it?". Sentence: "[When], I will [action]."
+4. **The Move** (AI action question, same API call) — one thing they will *do*, answerable as "I will ___", aimed at how they handle the hard part (what they avoid or put off), never a chore on the object itself. `moveProblem()` rejects chores ("check / look at / review…"), noticing/feeling/thinking questions, and any question without "will you / are you going to / can you". Then "When will you do it?". Sentence: "[When], I will [action]." The answer field rejects non-actions ("that…", "I am…", "I feel…") with a hint instead of building "I will that…".
 
 - `api/coaching-questions.ts` returns every question with an `alternate` for "Say it another way". The fallback and fixed wording live there and in `src/lib/adaptivAI.ts` (`coachingFallback`); keep both copies identical.
 - The prompt uses its own plain-language rules, not `VOICE`: no brand words in questions, no state or pacing notes repeated to the person, shaped by one detail rather than restating their situation, under 14 words, no "Why", no yes/no. Describe what a question should *do*; never put copyable question wording in the prompt (that is how "What does that buy you?" happened).
 - `questionProblem()` enforces this in code: a failing question (banned shape, brand word, statement opener, yes/no, too long, restating input) is swapped for its fallback and the response is labelled `'partial'` (`'fallback'` if nothing survived).
 - Answers can be skipped ("Skip for now") and save as blank. All three go to the decree (`story`, `truthCheck`, `signal`) and to session history; the Signal answer becomes `expandingBelief`, the decree's truth. Sentence-starter chips fill an empty field and add to typed text, never overwrite.
+
+## Honest outcomes
+- The Integration read (`getAssessment()`) has one branch per real outcome:
+  stress down to the clear zone, stress down, stress up, stress held with
+  energy up / down / unchanged. It states what the numbers did and never
+  claims a shift that didn't happen. "No change" is presented as useful
+  information, not failure. The readout heading says "Kinetic Shift" only
+  when the level actually rose.
+- The decree is written at Seal It, before the post-session sliders, so it
+  never knows the outcome. Its prompt keeps the person's claims the size
+  they made them, drops fragments rather than stitching them in, and never
+  uses "decree" or victory language.
+- No clinical labels in the UI ("The Read", not "Clinical Read").
 
 ## Other prompts that mirror the person
 - `reflection` and `horizon-question` use only what the person wrote. Never

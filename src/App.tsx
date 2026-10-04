@@ -701,7 +701,15 @@ const Identity: React.FC<{ userName: string; setUserName: (n: string) => void; o
 );
 
 
-const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, frictionSource, setView, toggleSound, soundEnabled, onBack }) => (
+const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, frictionSource, setView, toggleSound, soundEnabled, onBack }) => {
+  // The button used to be live the instant this screen appeared, before the
+  // reflection had loaded, so a second tap on "My Mind" or a body zone
+  // landed on it and skipped the screen in under a second. It now waits for
+  // the reflection and a short beat after the screen opens.
+  const [settled, setSettled] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setSettled(true), 900); return () => clearTimeout(t); }, []);
+  const ready = settled && !!energyAnalysis?.reflection;
+  return (
   <div className="h-full flex flex-col animate-enter">
     <Nav title="Current Resonance" subtitle="The Lens" isDashboard={false} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={5} onBack={onBack} />
     <div className="flex-1 min-h-0 flex flex-col justify-center items-center text-center pb-8 overflow-y-auto hide-scrollbar">
@@ -713,12 +721,13 @@ const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, fri
         <p className="font-serif text-xl text-white/90 italic leading-relaxed">"{energyAnalysis?.reflection || "Connecting to your field..."}"</p>
       </div>
       <p className="font-sans text-sm text-white/50 max-w-xs leading-relaxed mb-10">This is your current energetic baseline. We will now shift this frequency.</p>
-      <button onClick={() => setView(frictionSource === 'mind' ? 'diffuser' : 'partswork')} className="w-full py-5 rounded-full bg-indigo-500 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-indigo-400 hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-all">
-        Shift This Energy
+      <button onClick={() => ready && setView(frictionSource === 'mind' ? 'diffuser' : 'partswork')} disabled={!ready} className="w-full py-5 rounded-full bg-indigo-500 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-indigo-400 hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-all disabled:opacity-40 disabled:hover:bg-indigo-500 disabled:hover:shadow-none">
+        {energyAnalysis?.reflection ? 'Shift This Energy' : 'Reading…'}
       </button>
     </div>
   </div>
-);
+  );
+};
 
 
 const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setDistortionType, setView, toggleSound, soundEnabled, onBack, raiseCrisis }) => {
@@ -1772,7 +1781,7 @@ const Integration: React.FC<IntegrationProps> = ({
   const [sessionSaved, setSessionSaved] = useState(false);
   // True once the crisis check for this decree has come back clean (or the
   // request failed after the client-side screen passed). Nothing that reads
-  // as product (readout, Clinical Read, decree, upsells) renders before it,
+  // as product (readout, The Read, decree, upsells) renders before it,
   // and the session is not saved before it.
   const [cleared, setCleared] = useState(false);
   const decreeRequest = useRef(0);
@@ -1799,32 +1808,55 @@ const Integration: React.FC<IntegrationProps> = ({
   };
 
 
+  // One branch per real outcome. The read says what the numbers did and never
+  // claims a shift that didn't happen: stress 7 → 7 with energy up used to
+  // fall through to "You successfully discharged 0 points… The storm has
+  // passed", and stress going UP with energy up got the same line.
   const getAssessment = () => {
-    if (stressDelta === 0 && energyDelta === 0) {
+    const pts = (n: number) => `${n} point${n === 1 ? '' : 's'}`;
+    const s = Math.abs(stressDelta);
+    const e = Math.abs(energyDelta);
+    if (stressDelta < 0 && postStress <= 4) {
       return {
-        status: "Baseline Unchanged",
-        color: "text-white/70",
-        read: "Your internal weather has not shifted yet. This is normal. Sometimes the protocol merely stops the downward spiral. Focus on grounding and revisit this architecture when you have more bandwidth.",
-      };
-    } else if (stressDelta >= 0 && energyDelta <= 0) {
-      return {
-        status: "Persistent Friction",
-        color: "text-rose-400",
-        read: `Your system is heavily gripping the stress of "${(stressor || '').substring(0, 30)}...". Do not force high-output action today. Lower your expectations, strip away non-essential tasks, and focus purely on biological regulation.`,
-      };
-    } else if (stressDelta < 0 && postStress <= 4) {
-      return {
-        status: "Deep Metabolic Shift",
+        status: "Clear Shift",
         color: "text-teal-400",
-        read: `Exceptional. You successfully metabolized ${Math.abs(stressDelta)} points of active friction and dropped your stress into the clear zone. You have reclaimed your cognitive bandwidth. Execute your commitment now.`,
-      };
-    } else {
-      return {
-        status: "Friction Metabolized",
-        color: "text-indigo-400",
-        read: `You successfully discharged ${Math.abs(stressDelta)} points of stress. You are stabilizing. The storm has passed, but guard your energy closely over the next 48 hours to lock in this new baseline.`,
+        read: `Friction came down ${pts(s)}, from ${stressLevel} to ${postStress}. That is a real drop. Act on your move while it is fresh.`,
       };
     }
+    if (stressDelta < 0) {
+      return {
+        status: "Friction Eased",
+        color: "text-indigo-400",
+        read: `Friction came down ${pts(s)}, from ${stressLevel} to ${postStress}. Something moved. It is still above the clear zone, so keep the rest of today light and let your move do the work.`,
+      };
+    }
+    if (stressDelta > 0) {
+      return {
+        status: "Friction Up",
+        color: "text-amber-300",
+        read: `Friction went up ${pts(s)}, from ${stressLevel} to ${postStress}. Looking straight at something can make it louder before it gets quieter. That is information, not a verdict. Keep your move small and check in again tomorrow.`,
+      };
+    }
+    // Stress held.
+    if (energyDelta > 0) {
+      return {
+        status: "Steadier",
+        color: "text-indigo-400",
+        read: `Friction held at ${postStress}, and your energy rose ${pts(e)}. The situation did not get lighter, but you have more to meet it with. That counts.`,
+      };
+    }
+    if (energyDelta < 0) {
+      return {
+        status: "Running Lower",
+        color: "text-amber-300",
+        read: `Friction held at ${postStress}, and your energy dropped ${pts(e)}. Facing something can cost energy before it gives any back. Keep the rest of today simple.`,
+      };
+    }
+    return {
+      status: "No Change Yet",
+      color: "text-white/70",
+      read: `Your numbers did not move: friction ${postStress}, energy ${postEnergy}. One session does not always shift a reading, and that is worth knowing, not a failure. You named what is going on and chose a move. Check in again after you have done it.`,
+    };
   };
   const assessment = getAssessment();
 
@@ -1941,13 +1973,21 @@ const Integration: React.FC<IntegrationProps> = ({
     // and chips arrive capitalised. Both need handling or the sentence reads
     // "I will I am offline to realign".
     const alreadyASentence = /^i\s/i.test(raw);
-    const verb = raw.replace(/^I will\s+/i, '');
+    const verb = raw.replace(/^I will\s+/i, '').replace(/^to\s+/i, '');
     const lower = verb.charAt(0).toLowerCase() + verb.slice(1);
     const clause = alreadyASentence ? `I${raw.slice(1)}` : `I will ${lower}`;
 
     if (!when) return `${clause}.`;
     return `${when.charAt(0).toUpperCase() + when.slice(1)}, ${clause}.`;
   };
+
+  // The sentence is "I will [action]", so the action has to be something they
+  // do. "that I am focusing on the wrong thing" became "I will that I am…".
+  // Catch the obvious non-actions and ask for the doing part instead.
+  const actionText = (goal.action || '').trim();
+  const notAnAction = /^(that|because|i am|i'm|im|i feel|i think|i notice|i was|it is|it's|its|my|the)\b/i.test(actionText)
+    && !/^i'?m going to\b/i.test(actionText)
+    && !/^i am offline to realign/i.test(actionText); // Preservation Mode's own wording
 
   const applyChip = (current: string, value: string, key: 'action' | 'when') => {
     setGoal({ ...goal, [key]: current.trim() ? `${current.trim()} ${value.toLowerCase()}` : value });
@@ -1957,6 +1997,7 @@ const Integration: React.FC<IntegrationProps> = ({
   const handleNextStep = () => {
     if (!goal.action?.trim()) return;
     if (isCrisisText(goal.action, goal.when)) { raiseCrisis(CRISIS_MESSAGE); return; }
+    if (notAnAction) return;
     setIsLocked(true);
   };
 
@@ -2045,7 +2086,7 @@ const Integration: React.FC<IntegrationProps> = ({
 
             {/* ── 2. SHIFT READOUT ── */}
             <div className="pt-6 border-t border-white/10 mb-8">
-              <h2 className="text-[11px] font-bold uppercase tracking-[0.25em] text-white/50 mb-6">2. Kinetic Shift Detected</h2>
+              <h2 className="text-[11px] font-bold uppercase tracking-[0.25em] text-white/50 mb-6">{exitLevel > entryLevel ? '2. Kinetic Shift' : '2. Kinetic State'}</h2>
 
               <div className="flex items-center justify-center gap-3 mb-6">
                 <div className="text-center min-w-0">
@@ -2054,7 +2095,7 @@ const Integration: React.FC<IntegrationProps> = ({
                 </div>
                 <ArrowRight size={20} className={`shrink-0 ${stressDelta < 0 || energyDelta > 0 ? "text-teal-400" : "text-white/20"}`} />
                 <div className="text-center min-w-0">
-                  <div className="text-2xl font-serif italic text-teal-400">Level {exitLevel}</div>
+                  <div className={`text-2xl font-serif italic ${exitLevel > entryLevel ? 'text-teal-400' : 'text-white/70'}`}>Level {exitLevel}</div>
                   <div className="text-[10px] uppercase tracking-widest text-white/40 mt-1 truncate">{KINETIC_STATES[exitLevel]}</div>
                 </div>
               </div>
@@ -2065,11 +2106,13 @@ const Integration: React.FC<IntegrationProps> = ({
                   <p className="text-[10px] uppercase tracking-widest text-white/40 mb-2">Stress</p>
                   <div className="flex items-center justify-center gap-2">
                     <span className="font-serif text-xl text-rose-400">{stressLevel}</span>
-                    <TrendingDown size={14} className={stressDelta < 0 ? "text-teal-400" : stressDelta === 0 ? "text-white/30" : "text-rose-400"} />
-                    <span className="font-serif text-xl text-teal-400">{postStress}</span>
+                    {stressDelta < 0
+                      ? <TrendingDown size={14} className="text-teal-400" />
+                      : <ArrowRight size={14} className={stressDelta === 0 ? "text-white/30" : "text-rose-400"} />}
+                    <span className={`font-serif text-xl ${stressDelta < 0 ? 'text-teal-400' : stressDelta === 0 ? 'text-white/70' : 'text-rose-400'}`}>{postStress}</span>
                   </div>
                   <p className={`text-[10px] font-bold mt-1 leading-tight ${stressDelta < 0 ? 'text-teal-400' : stressDelta === 0 ? 'text-white/50' : 'text-rose-400'}`}>
-                    {stressDelta < 0 ? `${Math.abs(stressDelta)} pts metabolized` : stressDelta === 0 ? 'Baseline held' : `+${stressDelta} (review)` }
+                    {stressDelta < 0 ? `${Math.abs(stressDelta)} pts lower` : stressDelta === 0 ? 'No change' : `${stressDelta} pts higher` }
                   </p>
                 </div>
                 <div className="bg-white/5 rounded-xl p-4 border border-white/5">
@@ -2089,7 +2132,7 @@ const Integration: React.FC<IntegrationProps> = ({
 
             {/* ── 3. CLINICAL READ ── */}
             <div className="bg-white/5 border border-white/10 p-5 rounded-2xl mb-8 text-left shadow-sm transition-all duration-500">
-              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/50 mb-3">3. Clinical Read</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/50 mb-3">3. The Read</p>
               <h3 className={`font-serif text-2xl italic mb-3 transition-colors duration-500 ${assessment.color}`}>{assessment.status}</h3>
               <p className="font-sans text-[15px] text-white/75 leading-relaxed">{assessment.read}</p>
             </div>
@@ -2123,7 +2166,7 @@ const Integration: React.FC<IntegrationProps> = ({
                 </div>
                 <p className="font-serif text-lg text-white italic mb-3 leading-snug">
                   {exitLevel <= 2 && `"You are beginning to reclaim your agency. The shift from survival to strategy starts with one sovereign decision. Make it now."`}
-                  {exitLevel === 3 && `"You have moved from reaction to command. Now stop tolerating what you have been explaining away. Name it. Then eliminate it."`}
+                  {exitLevel === 3 && `"Stop tolerating what you have been explaining away. Name it. Then deal with it."`}
                   {exitLevel === 4 && `"Your compassion is your strength and your drain. The next level requires you to direct that care inward first. Protect the Asset."`}
                   {exitLevel === 5 && `"You are operating in momentum. Most people never reach this frequency. Now build — don't just reframe. Execute from this state."`}
                   {exitLevel >= 6 && `"You are creating, not reacting. This is your natural state. The work now is to architect systems that sustain this frequency without requiring a crisis to access it."`}
@@ -2210,13 +2253,19 @@ const Integration: React.FC<IntegrationProps> = ({
               {showActionAlt ? 'Back to the first way' : 'Say it another way'}
             </button>
           )}
+          <p className="font-sans text-xs text-white/45 mb-3">Finish the sentence: <span className="text-white/70">I will…</span></p>
           <FlowInput
             value={goal.action || ''}
             onChange={v => setGoal({ ...goal, action: v })}
-            placeholder="I will..."
+            placeholder="e.g. send the launch email"
             accent="teal"
             className="mb-4"
           />
+          {notAnAction && (
+            <p className="font-sans text-sm text-amber-200/85 leading-relaxed -mt-2 mb-4">
+              That reads like a thought, not an action. What will you <em>do</em> about it? Start with a verb, e.g. "write down", "tell", "stop".
+            </p>
+          )}
           <div className="flex flex-wrap gap-2 mb-8">
             {ACTION_CHIPS.map(a => (
               <button key={a} onClick={() => applyChip(goal.action || '', a, 'action')}
@@ -2244,14 +2293,14 @@ const Integration: React.FC<IntegrationProps> = ({
 
           {/* The sentence assembles live, so they seal something they can read
               back rather than three disconnected fields. */}
-          {goal.action?.trim() && (
+          {goal.action?.trim() && !notAnAction && (
             <div className="bg-white/5 border border-teal-500/20 rounded-2xl p-5 mb-6 animate-enter">
               <span className="block font-sans text-[10px] uppercase tracking-widest text-white/40 mb-2">Your move</span>
               <p className="font-serif text-lg text-white italic leading-relaxed">{commitmentSentence()}</p>
             </div>
           )}
 
-          <button onClick={handleNextStep} disabled={!goal.action?.trim()}
+          <button onClick={handleNextStep} disabled={!goal.action?.trim() || notAnAction}
             className="w-full py-4 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase tracking-widest transition-all disabled:opacity-40">
             Seal It
           </button>
