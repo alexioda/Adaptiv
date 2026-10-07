@@ -68,8 +68,6 @@ production.
   `*.vercel.app` previews are allowed only when `VERCEL_ENV !== 'production'`.
 - Requests from any other origin get 403. A new production domain must be added
   here, or every AI call on it silently falls back to canned text.
-- `app.consciousgrowth.coach` is attached to this project but is not an app
-  origin: `vercel.json` redirects it to `app.liveadaptiv.com`.
 
 ## Environment variables (Vercel project `adaptiv`)
 - `GEMINI_API_KEY` (falls back to `GOOGLE_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`).

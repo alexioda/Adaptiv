@@ -3,13 +3,5 @@
     "api/*.ts": {
       "maxDuration": 30
     }
-  },
-  "redirects": [
-    {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "app.consciousgrowth.coach" }],
-      "destination": "https://app.liveadaptiv.com/:path*",
-      "permanent": false
-    }
-  ]
+  }
 }
