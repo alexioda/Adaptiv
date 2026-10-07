@@ -2540,7 +2540,6 @@ const CheckoutGate: React.FC<{
   onUnlock: () => void;
   onUnlockLicense: (key: string, instanceId: string, expiresAt: string | null) => void;
 }> = ({ onUnlock, onUnlockLicense }) => {
-  const [showCode, setShowCode] = useState(false);
   const [code, setCode] = useState('');
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState('');
@@ -2592,14 +2591,12 @@ const CheckoutGate: React.FC<{
         </div>
 
 
-        {!showCode ? (
-          <button onClick={() => setShowCode(true)} className="mt-8 text-[11px] text-white/40 hover:text-white uppercase tracking-widest">
-            Have an access code or license key?
-          </button>
-        ) : (
-          <div className="mt-8 w-full max-w-sm mx-auto">
-            <label htmlFor="cipher-code" className="block text-[11px] text-white/50 uppercase tracking-widest mb-3">Enter your access code or license key</label>
-            <p className="text-xs text-white/40 mb-3 leading-relaxed">Bought Monthly Access? Your license key is in your receipt email.</p>
+        {/* Always visible: after buying, people come back here with a key
+            from the receipt and need to see where it goes. It used to sit
+            behind a small grey "Have an access code?" link. */}
+        <div className="mt-10 w-full max-w-sm mx-auto rounded-2xl border border-teal-500/30 bg-teal-500/5 p-5 text-left">
+            <label htmlFor="cipher-code" className="block font-sans text-sm text-white/90 font-semibold mb-1">Already subscribed?</label>
+            <p className="text-xs text-white/55 mb-4 leading-relaxed">Paste the license key from your receipt email, or an access code, to continue.</p>
             <div className="flex gap-2">
               <input
                 id="cipher-code" type="text" value={code}
@@ -2619,8 +2616,7 @@ const CheckoutGate: React.FC<{
             {error && (
               <p className="text-[11px] text-rose-400 uppercase tracking-widest mt-3">{error}</p>
             )}
-          </div>
-        )}
+        </div>
 
       </div>
     </div>

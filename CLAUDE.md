@@ -84,7 +84,9 @@ production.
 - Free first cycle, then `CheckoutGate` (Lemon Squeezy links at
   `billing.liveadaptiv.com`). A locked user (free cycle done, no access)
   lands on it from "Return to Orbit" or when starting a new cycle; it has no
-  back link. Unlocked users never see it.
+  back link. Unlocked users never see it. The key field ("Already subscribed?")
+  is always visible there, not behind a link, so buyers coming back with a
+  key from the receipt see where it goes.
 - Unlocked (`hasAccess` in `App.tsx`) = a valid access code **or** a Monthly
   Access license key on this device. Both are entered in one field ("Have an
   access code or license key?"); a UUID-shaped entry goes to
