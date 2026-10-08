@@ -434,7 +434,7 @@ const FontStyles = () => (
     @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(10px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
     @keyframes toastOut { from{opacity:1} to{opacity:0} }
 
-    :focus-visible { outline:2px solid rgba(45,212,191,0.8); outline-offset:2px; }
+    :focus-visible:not(input):not(textarea) { outline:2px solid rgba(45,212,191,0.8); outline-offset:2px; }
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; }
@@ -455,7 +455,7 @@ const Toast: React.FC<{ message: string; onDone: () => void }> = ({ message, onD
 // ─────────────────────────────────────────────
 // FIX 2 + 3: FLOW INPUT
 // Auto-growing field. Wraps instead of scrolling sideways, grows past two
-// lines instead of hiding text, 18px so iOS does not zoom the viewport.
+// lines instead of hiding text, 20px so it reads easily and iOS does not zoom.
 // ─────────────────────────────────────────────
 const FlowInput: React.FC<{
   value: string;
@@ -464,8 +464,9 @@ const FlowInput: React.FC<{
   onSubmit?: () => void;
   autoFocus?: boolean;
   accent?: 'teal' | 'indigo' | 'white';
+  rows?: number;
   className?: string;
-}> = ({ value, onChange, placeholder, onSubmit, autoFocus = false, accent = 'white', className = '' }) => {
+}> = ({ value, onChange, placeholder, onSubmit, autoFocus = false, accent = 'white', rows = 3, className = '' }) => {
   const ref = useRef<HTMLTextAreaElement>(null);
 
 
@@ -486,7 +487,7 @@ const FlowInput: React.FC<{
   return (
     <textarea
       ref={ref}
-      rows={2}
+      rows={rows}
       value={value}
       autoFocus={autoFocus}
       placeholder={placeholder}
@@ -494,7 +495,7 @@ const FlowInput: React.FC<{
       onKeyDown={e => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit?.(); }
       }}
-      className={`w-full bg-white/5 border border-white/10 ${border} rounded-2xl px-4 py-3 text-white text-lg font-serif italic leading-relaxed text-left placeholder:text-white/25 outline-none resize-none overflow-hidden transition-colors ${className}`}
+      className={`w-full bg-white/5 border border-white/10 ${border} rounded-2xl px-4 py-3 text-white text-xl font-serif italic leading-relaxed text-left placeholder:text-white/25 outline-none resize-none overflow-hidden transition-colors ${className}`}
     />
   );
 };
@@ -1018,11 +1019,11 @@ const Horizon: React.FC<HorizonProps> = ({
               <div className="space-y-6">
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-widest text-teal-400 mb-3">What is weighing on you?</label>
-                  <textarea value={stressor} onChange={e => setStressor(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-base h-28 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic leading-relaxed placeholder:text-white/25" placeholder="The team missed another deadline..." />
+                  <textarea value={stressor} onChange={e => setStressor(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-lg h-28 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic leading-relaxed placeholder:text-white/25" placeholder="The team missed another deadline..." />
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-widest text-teal-400 mb-3">How are you experiencing this?</label>
-                  <textarea value={perception} onChange={e => setPerception(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-base h-28 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic leading-relaxed placeholder:text-white/25" placeholder="I am exhausted and resentful..." />
+                  <textarea value={perception} onChange={e => setPerception(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-lg h-28 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic leading-relaxed placeholder:text-white/25" placeholder="I am exhausted and resentful..." />
                 </div>
               </div>
 
@@ -1076,7 +1077,7 @@ const Horizon: React.FC<HorizonProps> = ({
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto flex flex-col mb-4 pr-1 pb-4 hide-scrollbar">
               {chatHistory.map((msg, idx) => (
-                <div key={idx} className={`slide-up-fade ${msg.role === 'ai' ? 'bg-white/10 border border-white/10 text-white rounded-[1rem_1rem_1rem_0] p-4 max-w-[92%] self-start mb-3 font-serif text-[1.15rem] leading-relaxed shadow-sm' : 'bg-teal-500/20 text-teal-100 border border-teal-500/30 rounded-[1rem_1rem_0_1rem] p-3 px-4 max-w-[88%] self-end mb-3 text-base'}`}>
+                <div key={idx} className={`slide-up-fade ${msg.role === 'ai' ? 'bg-white/10 border border-white/10 text-white rounded-[1rem_1rem_1rem_0] p-4 max-w-[92%] self-start mb-3 font-serif text-[1.15rem] leading-relaxed shadow-sm' : 'bg-white/[0.04] text-white/90 border border-white/15 rounded-[1rem_1rem_0_1rem] p-4 max-w-[88%] self-end mb-3 font-serif italic text-[1.15rem] leading-relaxed'}`}>
                   {msg.isHtml ? (
                     typeof msg.text === 'string' ? <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.text) }} /> : (
                       <>
@@ -1108,9 +1109,9 @@ const Horizon: React.FC<HorizonProps> = ({
               <div ref={chatEndRef} />
             </div>
             {showChatInput && !burnoutIntercept && (
-              <div className="mt-auto shrink-0 bg-white/5 p-2 rounded-2xl border border-white/10 flex items-center shadow-sm">
-                <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendUserMessage()} className="flex-1 min-w-0 bg-transparent border-none outline-none px-3 text-base text-white placeholder:text-white/40" placeholder="Type your response..." />
-                <button aria-label="Send" onClick={sendUserMessage} className="w-11 h-11 shrink-0 bg-teal-500 rounded-xl flex items-center justify-center text-slate-900 hover:bg-teal-400 transition-colors"><ArrowUp size={20} /></button>
+              <div className="mt-auto shrink-0 flex items-end gap-2">
+                <FlowInput value={chatInput} onChange={setChatInput} onSubmit={sendUserMessage} placeholder="Type your response…" accent="teal" rows={2} className="flex-1 min-w-0 max-h-40 !overflow-y-auto hide-scrollbar" />
+                <button aria-label="Send" onClick={sendUserMessage} disabled={!chatInput.trim()} className="w-14 h-14 shrink-0 mb-0.5 bg-white rounded-full flex items-center justify-center text-slate-900 shadow-lg hover:bg-white/90 transition-colors disabled:opacity-40"><ArrowUp size={26} strokeWidth={2.25} /></button>
               </div>
             )}
             {showRouteButton && (
