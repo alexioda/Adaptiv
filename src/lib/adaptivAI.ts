@@ -39,6 +39,8 @@ export interface SessionRecord {
   preEnergy: number; postEnergy: number;
   coreFear: string; expandingBelief: string;
   commitment: string; energyLevel: number;
+  // Laser Coaching answers; blank when skipped, absent on older records.
+  story?: string; truthCheck?: string; signal?: string;
 }
 export interface HorizonValidation {
   acknowledgment: string; validation: string; pivot: string;
@@ -93,8 +95,8 @@ export async function analyzeCurrentEnergy(
   const fallback: EnergyAnalysis = {
     level: depleted ? 2 : 3,
     reflection: depleted
-      ? 'You are carrying the weight of this and bracing against what it might cost you.'
-      : 'You are handling this on logic, and you may be tolerating more than you have admitted.',
+      ? 'This is weighing on you, and you have been carrying it for a while.'
+      : 'This is on your mind, and it matters to you how it turns out.',
   };
 
   if (localCrisis('reflection', stressor, perception)) {
@@ -123,7 +125,7 @@ export async function analyzeCurrentEnergy(
 export async function generateHorizonQuestion(
   stressor: string, perception: string, history: string, turn = 1,
 ): Promise<AIResult<string>> {
-  const fallback = 'What specifically feels most threatened by this situation right now?';
+  const fallback = 'What part of this bothers you most?';
   if (localCrisis('horizon-question', stressor, perception, history)) {
     return { data: CRISIS_MESSAGE, crisis: true, crisisMessage: CRISIS_MESSAGE, source: 'crisis' };
   }
@@ -226,29 +228,47 @@ export async function getSomaticEcho(
 }
 
 // ── COACHING QUESTIONS ───────────────────────────────────────
+// Laser Coaching asks three questions (The Story, True or Familiar, The
+// Signal); The Move's action question comes back in the same call. Every
+// question has a simpler alternate for "Say it another way".
+export interface QuestionPair { question: string; alternate: string }
+export interface LaserQuestion extends QuestionPair { id: 'story' | 'truth' | 'signal' }
+export interface CoachingQuestions { questions: LaserQuestion[]; move: QuestionPair }
+
+// Same wording as api/coaching-questions.ts (truthPair and fallbacks), used
+// when the network fails. The depleted test matches the server's on the
+// 1-10 scale.
+function coachingFallback(
+  stressLevel: number, energyLevel: number, distortionType: 'fact' | 'assumption' | null,
+): CoachingQuestions {
+  const depleted = stressLevel > 6 || energyLevel < 4;
+  const truth: QuestionPair = distortionType === 'assumption'
+    ? { question: 'If that’s an assumption, what else could it mean?', alternate: 'What’s another way to read this?' }
+    : distortionType === 'fact'
+      ? { question: 'If that’s a fact, what part is still up to you?', alternate: 'What can you still choose here?' }
+      : { question: 'Is that true, or just familiar?', alternate: 'Is this what’s happening, or what usually happens?' };
+  return {
+    questions: [
+      { id: 'story', question: 'When this happens, what do you tell yourself it means?', alternate: 'What does your mind say this means?' },
+      { id: 'truth', ...truth },
+      { id: 'signal', question: 'What does this show you that you care about?', alternate: 'What matters to you here?' },
+    ],
+    move: depleted
+      ? { question: 'What can you stop doing about this for now?', alternate: 'What can you put down tonight?' }
+      : { question: 'What will you do differently the next time this comes up?', alternate: 'What will you do next time?' },
+  };
+}
+
+function isPair(p: any): p is QuestionPair {
+  return p && typeof p.question === 'string' && p.question.trim() && typeof p.alternate === 'string' && p.alternate.trim();
+}
+
 export async function generateCoachingQuestions(
   stressor: string, perception: string, somatic: string,
   energyLevel: number, stressLevel: number,
   fear = '', distortionType: 'fact' | 'assumption' | null = null,
-): Promise<AIResult<string[]>> {
-  // Same set as api/coaching-questions.ts fallbackSet(), on the 1-10 scale.
-  const depleted = stressLevel > 6 || energyLevel < 4;
-  const fallback = [
-    distortionType === 'assumption'
-      ? 'What does it cost you to keep believing this without checking it?'
-      : distortionType === 'fact'
-        ? 'Even if this is true, what is still yours to decide?'
-        : depleted
-          ? 'What have you already decided about this that you have not said out loud?'
-          : energyLevel > 7
-            ? 'What are you tolerating here that you would not accept from anyone else?'
-            : 'Which part of this are you treating as certain without having checked it?',
-    'What is this arrangement costing you each week that you have stopped counting?',
-    'Once this is settled, what will you stop doing first thing in the morning?',
-    depleted
-      ? 'What could you drop tonight that nobody would notice was gone?'
-      : 'What message could you send tonight that makes the rest of this cheaper?',
-  ];
+): Promise<AIResult<CoachingQuestions>> {
+  const fallback = coachingFallback(stressLevel, energyLevel, distortionType);
 
   if (localCrisis('coaching-questions', stressor, perception, somatic, fear)) {
     return { data: fallback, crisis: true, crisisMessage: CRISIS_MESSAGE, source: 'crisis' };
@@ -263,7 +283,10 @@ export async function generateCoachingQuestions(
   }
   const qs = Array.isArray(r.json.questions) ? r.json.questions : [];
   return {
-    data: [0, 1, 2, 3].map(i => qs[i] || fallback[i]),
+    data: {
+      questions: fallback.questions.map((fb, i) => (isPair(qs[i]) ? { ...qs[i], id: fb.id } : fb)),
+      move: isPair(r.json.move) ? r.json.move : fallback.move,
+    },
     crisis: false, source: r.json.source ?? 'ai',
   };
 }
@@ -280,15 +303,16 @@ export async function generateEnergyInsight(level: number, type: string): Promis
 export async function generateManifesto(
   stressor: string, truth: string, action: string, fear: string,
   currentLevel: number, isBurnoutPath: boolean,
+  reflection: { story: string; truthCheck: string; signal: string },
   onUpdate: (text: string) => void,
 ): Promise<{ isOffline: boolean; crisis: boolean; crisisMessage?: string }> {
-  if (localCrisis('manifesto', stressor, truth, action, fear)) {
+  if (localCrisis('manifesto', stressor, truth, action, fear, reflection.story, reflection.truthCheck, reflection.signal)) {
     return { isOffline: false, crisis: true, crisisMessage: CRISIS_MESSAGE };
   }
   // currentLevel was previously accepted and never sent, so the
   // endpoint could not tone-match. It is sent now, with the path.
   const r = await post('/api/manifesto', {
-    stressor, truth, action, fear, currentLevel, isBurnoutPath,
+    stressor, truth, action, fear, currentLevel, isBurnoutPath, ...reflection,
   });
 
   if (!r.ok) return { isOffline: true, crisis: false };
@@ -312,4 +336,30 @@ export async function verifyCipher(code: string): Promise<boolean> {
   const r = await post('/api/verify-cipher', { code });
   if (!r.ok) return false;
   return r.json.valid === true;
+}
+
+// ── LICENSE KEY (Monthly Access) ─────────────────────────────
+// A Lemon Squeezy license key from a Monthly Access purchase. First use
+// activates this device (no instanceId); later calls re-check that
+// activation. 'unavailable' means we couldn't reach a verdict (network,
+// Lemon Squeezy down, a 429) — never treat it as a "no".
+export type LicenseReason = 'invalid' | 'wrong_product' | 'expired' | 'limit' | 'not_configured' | 'unavailable';
+export interface LicenseResult {
+  valid: boolean;
+  instanceId?: string;
+  expiresAt?: string | null;
+  reason?: LicenseReason;
+}
+
+// Lemon Squeezy keys are UUID-shaped; access codes are short words.
+export const looksLikeLicenseKey = (s: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.trim());
+
+export async function verifyLicense(key: string, instanceId?: string): Promise<LicenseResult> {
+  const r = await post('/api/verify-license', instanceId ? { key, instanceId } : { key });
+  if (!r.ok) return { valid: false, reason: 'unavailable' };
+  if (r.json.valid === true && typeof r.json.instanceId === 'string') {
+    return { valid: true, instanceId: r.json.instanceId, expiresAt: r.json.expiresAt ?? null };
+  }
+  return { valid: false, reason: r.json.reason ?? 'invalid' };
 }

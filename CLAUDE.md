@@ -11,7 +11,8 @@ production.
   function returns usable data even when the network fails.
 - `api/*.ts` — one endpoint per AI job (`reflection`, `horizon-question`,
   `horizon-validation`, `coaching-questions`, `somatic-echo`, `manifesto`,
-  `energy-analysis`, `pattern-insight`), plus `verify-cipher` (access codes, no AI).
+  `energy-analysis`, `pattern-insight`), plus `verify-cipher` (access codes) and
+  `verify-license` (Lemon Squeezy license keys), neither of which calls AI.
 - `api/_lib/shared.ts` — shared server code: origin check, rate limit, scale
   normalisation, voice rules, the Gemini call. The underscore stops Vercel from
   deploying `_lib` as an endpoint. `src/lib/adaptivAI.ts` lives in `src/`, not
@@ -67,21 +68,43 @@ production.
   `*.vercel.app` previews are allowed only when `VERCEL_ENV !== 'production'`.
 - Requests from any other origin get 403. A new production domain must be added
   here, or every AI call on it silently falls back to canned text.
-- `app.consciousgrowth.coach` is attached to this project but is not an app
-  origin: `vercel.json` redirects it to `app.liveadaptiv.com`.
 
 ## Environment variables (Vercel project `adaptiv`)
 - `GEMINI_API_KEY` (falls back to `GOOGLE_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`).
 - `ACCESS_CIPHERS` — comma-separated access codes for `api/verify-cipher.ts`,
   case-insensitive. This is the only name for it. Do not add `VALID_CIPHERS`.
+- `LEMONSQUEEZY_STORE_ID` (295177), `LEMONSQUEEZY_ALLOWED_VARIANTS`
+  (comma-separated: 1576863 monthly, 1576855 yearly) for `api/verify-license.ts`. Unset means
+  every license key is refused with `not_configured`.
 - Read them with `process.env`, never `globalThis`.
 
 ## Access and payment
 - Free first cycle, then `CheckoutGate` (Lemon Squeezy links at
-  `billing.liveadaptiv.com`). "Have an access code?" on the same screen calls
-  `/api/verify-cipher`; a valid code sets `la_adaptiv_manual_access` in
-  localStorage and the user is never routed back to checkout.
-- Access is client-side state only, not server-side entitlement.
+  `billing.liveadaptiv.com`). A locked user (free cycle done, no access)
+  lands on it from "Return to Orbit" or when starting a new cycle; it has no
+  back link. Unlocked users never see it. The key field ("Already subscribed?")
+  is always visible there, not behind a link, so buyers coming back with a
+  key from the receipt see where it goes.
+- Unlocked (`hasAccess` in `App.tsx`) = a valid access code **or** a Monthly
+  Access license key on this device. Both are entered in one field ("Have an
+  access code or license key?"); a UUID-shaped entry goes to
+  `/api/verify-license`, anything else to `/api/verify-cipher`.
+- Access code: sets `la_adaptiv_manual_access`. Never expires.
+- License key (`la_adaptiv_license`: key, instanceId, expiresAt, checkedAt,
+  validAt):
+  - First use activates the device in Lemon Squeezy (3 devices per key).
+  - Re-checked about once a day, and whenever `expiresAt` has passed.
+  - A definite no (expired, disabled, deactivated device) removes it at once.
+    No verdict (offline, Lemon Squeezy down) keeps it for 7 days after the last yes.
+  - The License API answers "valid" for any store's key, so
+    `verify-license` also checks the store ID and variant, and validates
+    before activating, so a foreign key never spends a slot.
+  - Only the app subscription (monthly or yearly) unlocks the app. The Field
+    Guide and Stress Transformation Guide do not.
+- Both non-AI endpoints use `createLimiter()` from `shared.ts`: 8 tries per
+  10 minutes per IP, plus the same origin check and 1 KB body cap.
+- Access is still client-side state, not server-side entitlement: the AI
+  endpoints don't check it.
 
 ## Voice (the `VOICE` block in `shared.ts` applies it to every prompt)
 Never: leverage, optimize, unlock, game-changer, journey, passion, seamless,
@@ -92,13 +115,40 @@ Short declarative sentences. No therapy-speak. Never diagnose or imply clinical
 authority. Avoid iPEC's trademarked "Energy Leadership", "catabolic" and
 "anabolic" — use "Kinetic States" (1 Depleted … 7 Sovereign).
 
-## Coaching questions
-The standard lives in the `coaching-questions.ts` prompt: four questions
-(MIRROR, PIVOT, VISION, CATALYST), each tied to the person's own details. Never
-the generic shapes ("what would it look like if", "what's holding you back",
-"best self", "one small step", "how does that make you feel", anything starting
-"Why", anything answerable yes/no). The fallback questions follow the same rule,
-and the server and client copies must stay identical.
+## Laser Coaching and The Move
+Laser Coaching asks three questions, then the Integration screen asks one Move:
+1. **The Story** (AI) — what they tell themselves the situation means. Placeholder "I tell myself…".
+2. **True or Familiar** (fixed wording, from the Diffuser label; their Story answer is shown above it) — assumption: "If that’s an assumption, what else could it mean?"; fact: "If that’s a fact, what part is still up to you?"; none (Body path): "Is that true, or just familiar?". Never ask them to re-judge what they already labelled. Placeholder "It's…".
+3. **The Signal** (AI) — what the situation is showing them. Placeholder "It's showing me…".
+4. **The Move** (AI action question, same API call) — one thing they will *do*, answerable as "I will ___", aimed at how they handle the hard part (what they avoid or put off), never a chore on the object itself. `moveProblem()` rejects chores ("check / look at / review…"), noticing/feeling/thinking questions, and any question without "will you / are you going to / can you". Then "When will you do it?". Sentence: "[When], I will [action]." The answer field rejects non-actions ("that…", "I am…", "I feel…") with a hint instead of building "I will that…".
+
+- `api/coaching-questions.ts` returns every question with an `alternate` for "Say it another way". The fallback and fixed wording live there and in `src/lib/adaptivAI.ts` (`coachingFallback`); keep both copies identical.
+- The prompt uses its own plain-language rules, not `VOICE`: no brand words in questions, no state or pacing notes repeated to the person, shaped by one detail rather than restating their situation, under 14 words, no "Why", no yes/no. Describe what a question should *do*; never put copyable question wording in the prompt (that is how "What does that buy you?" happened).
+- `questionProblem()` enforces this in code: a failing question (banned shape, brand word, statement opener, yes/no, too long, restating input) is swapped for its fallback and the response is labelled `'partial'` (`'fallback'` if nothing survived).
+- Answers can be skipped ("Skip for now") and save as blank. All three go to the decree (`story`, `truthCheck`, `signal`) and to session history; the Signal answer becomes `expandingBelief`, the decree's truth. Sentence-starter chips fill an empty field and add to typed text, never overwrite.
+
+## Honest outcomes
+- The Integration read (`getAssessment()`) has one branch per real outcome:
+  stress down to the clear zone, stress down, stress up, stress held with
+  energy up / down / unchanged. It states what the numbers did and never
+  claims a shift that didn't happen. "No change" is presented as useful
+  information, not failure. The readout heading says "Kinetic Shift" only
+  when the level actually rose.
+- The decree is written at Seal It, before the post-session sliders, so it
+  never knows the outcome. Its prompt keeps the person's claims the size
+  they made them, drops fragments rather than stitching them in, and never
+  uses "decree" or victory language.
+- No clinical labels in the UI ("The Read", not "Clinical Read").
+
+## Other prompts that mirror the person
+- `reflection` and `horizon-question` use only what the person wrote. Never
+  seed them with example symptoms ("cognitive fog", "racing thoughts") — the
+  model repeats them back as if the person said them.
+- `horizon-question` answers their last chat reply; "not sure" gets an
+  easier question, not the same one reworded. Generic shapes ("what are you
+  observing", "what signs") are swapped for a fallback.
+- Diffuser asks for the loop as a statement. A question or "I don't know"
+  gets one nudge before the Fact/Assumption filter.
 
 ## Careful with
 - Every slider in the app is 1–10. `normalizeScale()` converts to 0–100 for

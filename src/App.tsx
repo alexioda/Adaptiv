@@ -20,9 +20,12 @@ import {
   generateEnergyInsight,
   generateManifesto,
   verifyCipher,
+  verifyLicense,
+  looksLikeLicenseKey,
   isCrisisText,
   CRISIS_MESSAGE,
 } from './lib/adaptivAI';
+import type { QuestionPair, LaserQuestion, LicenseReason } from './lib/adaptivAI';
 
 
 // ─────────────────────────────────────────────
@@ -63,7 +66,14 @@ interface SessionRecord {
   expandingBelief: string;
   commitment: string;
   energyLevel: number;
+  // Laser Coaching answers; blank when skipped, absent on older records.
+  story?: string;
+  truthCheck?: string;
+  signal?: string;
 }
+
+interface LaserAnswers { story: string; truthCheck: string; signal: string }
+const EMPTY_LASER_ANSWERS: LaserAnswers = { story: '', truthCheck: '', signal: '' };
 
 
 // ── FIX 9: Horizon conversation state lives in App so it survives navigation ──
@@ -120,7 +130,7 @@ interface HorizonProps extends CommonProps {
   setFrictionSource: (s: string) => void;
   setSomaticZones: (zones: string[]) => void;
   hasCompletedFreeCycle: boolean;
-  hasManualAccess: boolean;
+  hasAccess: boolean;
   horizon: HorizonState;
   patchHorizon: (p: HorizonPatch) => void;
   patternCrisisShown: boolean;
@@ -154,8 +164,9 @@ interface LaserCoachingProps extends CommonProps {
   somatic: string;
   fear: string;
   distortionType: 'fact' | 'assumption' | null;
-  setGoal: (g: any) => void;
   setExpandingBelief: (s: string) => void;
+  setLaserAnswers: (a: LaserAnswers) => void;
+  setMoveQuestion: (q: QuestionPair | null) => void;
   energyLevel: number;
   stressLevel: number;
 }
@@ -189,6 +200,8 @@ interface IntegrationProps extends CommonProps {
   expandingBelief: string;
   stressor: string;
   fear: string;
+  laserAnswers: LaserAnswers;
+  moveQuestion: QuestionPair | null;
   sessionCount: number;
   completeSession: () => void;
   resetApp: () => void;
@@ -225,7 +238,19 @@ const STORAGE_KEYS = {
   SESSION_HISTORY: 'adaptiv_sessionHistory',
   FREE_CYCLE: 'la_adaptiv_free_cycle_done',
   MANUAL_ACCESS: 'la_adaptiv_manual_access',
+  LICENSE: 'la_adaptiv_license',
 };
+
+// A Monthly Access license key activated on this device.
+interface StoredLicense {
+  key: string;
+  instanceId: string;
+  expiresAt: string | null;
+  checkedAt: number;   // last time we asked, whatever the answer
+  validAt: number;     // last time the answer was yes
+}
+const LICENSE_RECHECK_MS = 24 * 60 * 60_000;     // re-check about once a day
+const LICENSE_GRACE_MS = 7 * 24 * 60 * 60_000;   // keep access this long if we can't reach a verdict
 
 
 function storageGet<T>(key: string, fallback: T): T {
@@ -409,7 +434,7 @@ const FontStyles = () => (
     @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(10px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
     @keyframes toastOut { from{opacity:1} to{opacity:0} }
 
-    :focus-visible { outline:2px solid rgba(45,212,191,0.8); outline-offset:2px; }
+    :focus-visible:not(input):not(textarea) { outline:2px solid rgba(45,212,191,0.8); outline-offset:2px; }
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; }
@@ -430,7 +455,7 @@ const Toast: React.FC<{ message: string; onDone: () => void }> = ({ message, onD
 // ─────────────────────────────────────────────
 // FIX 2 + 3: FLOW INPUT
 // Auto-growing field. Wraps instead of scrolling sideways, grows past two
-// lines instead of hiding text, 18px so iOS does not zoom the viewport.
+// lines instead of hiding text, 20px so it reads easily and iOS does not zoom.
 // ─────────────────────────────────────────────
 const FlowInput: React.FC<{
   value: string;
@@ -439,8 +464,9 @@ const FlowInput: React.FC<{
   onSubmit?: () => void;
   autoFocus?: boolean;
   accent?: 'teal' | 'indigo' | 'white';
+  rows?: number;
   className?: string;
-}> = ({ value, onChange, placeholder, onSubmit, autoFocus = false, accent = 'white', className = '' }) => {
+}> = ({ value, onChange, placeholder, onSubmit, autoFocus = false, accent = 'white', rows = 3, className = '' }) => {
   const ref = useRef<HTMLTextAreaElement>(null);
 
 
@@ -461,7 +487,7 @@ const FlowInput: React.FC<{
   return (
     <textarea
       ref={ref}
-      rows={2}
+      rows={rows}
       value={value}
       autoFocus={autoFocus}
       placeholder={placeholder}
@@ -469,7 +495,7 @@ const FlowInput: React.FC<{
       onKeyDown={e => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit?.(); }
       }}
-      className={`w-full bg-white/5 border border-white/10 ${border} rounded-2xl px-4 py-3 text-white text-lg font-serif italic leading-relaxed text-left placeholder:text-white/25 outline-none resize-none overflow-hidden transition-colors ${className}`}
+      className={`w-full bg-white/5 border border-white/10 ${border} rounded-2xl px-4 py-3 text-white text-xl font-serif italic leading-relaxed text-left placeholder:text-white/25 outline-none resize-none overflow-hidden transition-colors ${className}`}
     />
   );
 };
@@ -676,7 +702,15 @@ const Identity: React.FC<{ userName: string; setUserName: (n: string) => void; o
 );
 
 
-const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, frictionSource, setView, toggleSound, soundEnabled, onBack }) => (
+const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, frictionSource, setView, toggleSound, soundEnabled, onBack }) => {
+  // The button used to be live the instant this screen appeared, before the
+  // reflection had loaded, so a second tap on "My Mind" or a body zone
+  // landed on it and skipped the screen in under a second. It now waits for
+  // the reflection and a short beat after the screen opens.
+  const [settled, setSettled] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setSettled(true), 900); return () => clearTimeout(t); }, []);
+  const ready = settled && !!energyAnalysis?.reflection;
+  return (
   <div className="h-full flex flex-col animate-enter">
     <Nav title="Current Resonance" subtitle="The Lens" isDashboard={false} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={5} onBack={onBack} />
     <div className="flex-1 min-h-0 flex flex-col justify-center items-center text-center pb-8 overflow-y-auto hide-scrollbar">
@@ -688,20 +722,31 @@ const EnergyReflection: React.FC<EnergyReflectionProps> = ({ energyAnalysis, fri
         <p className="font-serif text-xl text-white/90 italic leading-relaxed">"{energyAnalysis?.reflection || "Connecting to your field..."}"</p>
       </div>
       <p className="font-sans text-sm text-white/50 max-w-xs leading-relaxed mb-10">This is your current energetic baseline. We will now shift this frequency.</p>
-      <button onClick={() => setView(frictionSource === 'mind' ? 'diffuser' : 'partswork')} className="w-full py-5 rounded-full bg-indigo-500 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-indigo-400 hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-all">
-        Shift This Energy
+      <button onClick={() => ready && setView(frictionSource === 'mind' ? 'diffuser' : 'partswork')} disabled={!ready} className="w-full py-5 rounded-full bg-indigo-500 text-white font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-indigo-400 hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-all disabled:opacity-40 disabled:hover:bg-indigo-500 disabled:hover:shadow-none">
+        {energyAnalysis?.reflection ? 'Shift This Energy' : 'Reading…'}
       </button>
     </div>
   </div>
-);
+  );
+};
 
 
 const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setDistortionType, setView, toggleSound, soundEnabled, onBack, raiseCrisis }) => {
   const [step, setStep] = useState(0);
+  const [nudge, setNudge] = useState<'question' | 'unsure' | null>(null);
   const chooseDistortion = (t: 'fact' | 'assumption') => { setDistortionType(t); setView('laser'); };
+  // The Filter sorts a statement into fact or assumption. A question ("Why is
+  // this happening?") or "I don't know…" can't be sorted, so ask once for the
+  // statement underneath it. They can still carry on as written.
   const capture = () => {
-    if (!fear) return;
-    if (isCrisisText(fear)) { raiseCrisis(CRISIS_MESSAGE); return; }
+    const t = fear.trim();
+    if (!t) return;
+    if (isCrisisText(t)) { raiseCrisis(CRISIS_MESSAGE); return; }
+    if (!nudge) {
+      if (t.endsWith('?') || /^(why|what|how|when|where|who|will|should|can|could|is|are|am|do|does)\b/i.test(t)) { setNudge('question'); return; }
+      if (/\b(don'?t|dont|do not) know\b|\bnot sure\b|\bno idea\b/i.test(t)) { setNudge('unsure'); return; }
+    }
+    setNudge(null);
     setStep(1);
   };
   return (
@@ -710,21 +755,33 @@ const Diffuser: React.FC<DiffuserProps> = ({ fear, setFear, setDistortionType, s
       <div className="flex-1 min-h-0 flex flex-col justify-center animate-enter overflow-y-auto hide-scrollbar pb-8">
         {step === 0 ? (
           <>
-            <h3 className="font-serif text-2xl text-white italic mb-6 text-center">"What is the loudest loop?"</h3>
+            <h3 className="font-serif text-2xl text-white italic mb-3 text-center">"What is the loudest loop?"</h3>
+            <p className="font-sans text-sm text-white/55 text-center leading-relaxed mb-6">
+              The thought your mind keeps repeating about this, written as a statement.
+              <span className="block text-white/40 mt-1">For example: "They think I'm not ready." or "This launch will flop."</span>
+            </p>
             <FlowInput
               value={fear}
-              onChange={setFear}
-              placeholder="I keep thinking about..."
+              onChange={v => { setFear(v); setNudge(null); }}
+              placeholder="I keep thinking that..."
               onSubmit={capture}
               accent="indigo"
-              className="mb-8"
+              className="mb-4"
             />
-            <button onClick={capture} disabled={!fear} className="w-full py-4 rounded-full bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 font-sans text-xs tracking-widest uppercase hover:bg-indigo-500/30 transition-all disabled:opacity-40">Capture Thought</button>
+            {nudge && (
+              <p className="font-sans text-sm text-indigo-200/80 leading-relaxed mb-4">
+                {nudge === 'question'
+                  ? "That's a question. What answer does your mind keep giving it? Write that answer, or continue as it is."
+                  : "Not knowing is real. Underneath it, what does your mind say will happen? Write that, or continue as it is."}
+              </p>
+            )}
+            <button onClick={capture} disabled={!fear.trim()} className="w-full mt-4 py-4 rounded-full bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 font-sans text-xs tracking-widest uppercase hover:bg-indigo-500/30 transition-all disabled:opacity-40">{nudge ? 'Continue as it is' : 'Capture Thought'}</button>
           </>
         ) : (
           <div className="text-center">
             <Split size={48} className="text-indigo-300 mx-auto mb-6" />
             <h3 className="font-serif text-2xl text-white italic mb-4">The Filter</h3>
+            <p className="font-serif text-lg text-white/85 italic mb-4 leading-relaxed">"{fear.trim()}"</p>
             <p className="text-base text-white/70 mb-8 leading-relaxed">Is this thought an absolute <strong>Fact</strong> (provable in court) or an <strong>Assumption</strong> (an interpretation)?</p>
             <div className="grid grid-cols-2 gap-4">
               <button onClick={() => chooseDistortion('fact')} className="py-4 rounded-xl border border-white/10 hover:bg-white/5 transition-all text-[11px] uppercase tracking-widest">It's a Fact</button>
@@ -746,7 +803,7 @@ const Horizon: React.FC<HorizonProps> = ({
   setView, toggleSound, soundEnabled, resetApp, setEnergyAnalysis,
   soundType, setSoundType, onBack, sessionHistory,
   stressLevel, setStressLevel, energyLevel, setEnergyLevel, isBurnout,
-  setFrictionSource, setSomaticZones, hasCompletedFreeCycle, hasManualAccess,
+  setFrictionSource, setSomaticZones, hasCompletedFreeCycle, hasAccess,
   horizon, patchHorizon, raiseCrisis, patternCrisisShown, onPatternCrisis
 }) => {
   const { step, chatHistory, aiQuestionCount, showChatInput, showRouteButton, burnoutIntercept, pickingZone, patternInsight, patternLoaded } = horizon;
@@ -814,7 +871,7 @@ const Horizon: React.FC<HorizonProps> = ({
     // and the burnout intercept. The intercept used to answer first, so
     // "I'm exhausted and I want to kill myself" got a Vitality Scan offer.
     if (isCrisisText(stressor, perception)) { raiseCrisis(CRISIS_MESSAGE); return; }
-    if (hasCompletedFreeCycle && !hasManualAccess) { setView('checkout'); return; }
+    if (hasCompletedFreeCycle && !hasAccess) { setView('checkout'); return; }
 
 
     patchHorizon({
@@ -962,11 +1019,11 @@ const Horizon: React.FC<HorizonProps> = ({
               <div className="space-y-6">
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-widest text-teal-400 mb-3">What is weighing on you?</label>
-                  <textarea value={stressor} onChange={e => setStressor(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-base h-28 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic leading-relaxed placeholder:text-white/25" placeholder="The team missed another deadline..." />
+                  <textarea value={stressor} onChange={e => setStressor(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-lg h-28 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic leading-relaxed placeholder:text-white/25" placeholder="The team missed another deadline..." />
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-widest text-teal-400 mb-3">How are you experiencing this?</label>
-                  <textarea value={perception} onChange={e => setPerception(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-base h-28 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic leading-relaxed placeholder:text-white/25" placeholder="I am exhausted and resentful..." />
+                  <textarea value={perception} onChange={e => setPerception(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-lg h-28 outline-none focus:border-teal-400 transition-all resize-none text-white font-serif italic leading-relaxed placeholder:text-white/25" placeholder="I am exhausted and resentful..." />
                 </div>
               </div>
 
@@ -998,7 +1055,7 @@ const Horizon: React.FC<HorizonProps> = ({
               ) : null}
 
 
-              {hasCompletedFreeCycle && !hasManualAccess && (
+              {hasCompletedFreeCycle && !hasAccess && (
                 <p className="text-[11px] text-teal-300/70 mt-5 leading-relaxed">
                   Your first cycle is complete. Starting a new one opens the access options.
                 </p>
@@ -1020,7 +1077,7 @@ const Horizon: React.FC<HorizonProps> = ({
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto flex flex-col mb-4 pr-1 pb-4 hide-scrollbar">
               {chatHistory.map((msg, idx) => (
-                <div key={idx} className={`slide-up-fade ${msg.role === 'ai' ? 'bg-white/10 border border-white/10 text-white rounded-[1rem_1rem_1rem_0] p-4 max-w-[92%] self-start mb-3 font-serif text-[1.15rem] leading-relaxed shadow-sm' : 'bg-teal-500/20 text-teal-100 border border-teal-500/30 rounded-[1rem_1rem_0_1rem] p-3 px-4 max-w-[88%] self-end mb-3 text-base'}`}>
+                <div key={idx} className={`slide-up-fade ${msg.role === 'ai' ? 'bg-white/10 border border-white/10 text-white rounded-[1rem_1rem_1rem_0] p-4 max-w-[92%] self-start mb-3 font-serif text-[1.15rem] leading-relaxed shadow-sm' : 'bg-white/[0.04] text-white/90 border border-white/15 rounded-[1rem_1rem_0_1rem] p-4 max-w-[88%] self-end mb-3 font-serif italic text-[1.15rem] leading-relaxed'}`}>
                   {msg.isHtml ? (
                     typeof msg.text === 'string' ? <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.text) }} /> : (
                       <>
@@ -1052,9 +1109,9 @@ const Horizon: React.FC<HorizonProps> = ({
               <div ref={chatEndRef} />
             </div>
             {showChatInput && !burnoutIntercept && (
-              <div className="mt-auto shrink-0 bg-white/5 p-2 rounded-2xl border border-white/10 flex items-center shadow-sm">
-                <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendUserMessage()} className="flex-1 min-w-0 bg-transparent border-none outline-none px-3 text-base text-white placeholder:text-white/40" placeholder="Type your response..." />
-                <button aria-label="Send" onClick={sendUserMessage} className="w-11 h-11 shrink-0 bg-teal-500 rounded-xl flex items-center justify-center text-slate-900 hover:bg-teal-400 transition-colors"><ArrowUp size={20} /></button>
+              <div className="mt-auto shrink-0 flex items-end gap-2">
+                <FlowInput value={chatInput} onChange={setChatInput} onSubmit={sendUserMessage} placeholder="Type your response…" accent="teal" rows={2} className="flex-1 min-w-0 max-h-40 !overflow-y-auto hide-scrollbar" />
+                <button aria-label="Send" onClick={sendUserMessage} disabled={!chatInput.trim()} className="w-14 h-14 shrink-0 mb-0.5 bg-white rounded-full flex items-center justify-center text-slate-900 shadow-lg hover:bg-white/90 transition-colors disabled:opacity-40"><ArrowUp size={26} strokeWidth={2.25} /></button>
               </div>
             )}
             {showRouteButton && (
@@ -1292,16 +1349,28 @@ const PartsWork: React.FC<PartsWorkProps> = ({ selectedPart, sensation, setSensa
 // ─────────────────────────────────────────────
 // LASER COACHING
 // ─────────────────────────────────────────────
-const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, somatic, fear, distortionType, setView, toggleSound, soundEnabled, setGoal, setExpandingBelief, energyLevel, stressLevel, onBack, raiseCrisis }) => {
+// Sentence starters fill an empty field and add to typed text otherwise —
+// never overwrite. Shown with "…", inserted without it.
+const addStarter = (current: string, chip: string) => {
+  const base = chip.replace(/…$/, '').trim();
+  if (!current.trim()) return `${base} `;
+  const keepCase = /^I(\s|')/.test(base);
+  const joined = keepCase ? base : base.charAt(0).toLowerCase() + base.slice(1);
+  return `${current.trim()} ${joined} `;
+};
+
+const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, somatic, fear, distortionType, setView, toggleSound, soundEnabled, setExpandingBelief, setLaserAnswers, setMoveQuestion, energyLevel, stressLevel, onBack, raiseCrisis }) => {
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<any>({ topic: '', result: '', permission: '', action: '' });
-  const [aiQuestions, setAiQuestions] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<LaserAnswers>(EMPTY_LASER_ANSWERS);
+  const [questions, setQuestions] = useState<LaserQuestion[]>([]);
+  const [move, setMove] = useState<QuestionPair | null>(null);
+  const [showAlt, setShowAlt] = useState<Record<number, boolean>>({});
   const [somaticEcho, setSomaticEcho] = useState('');
   const [loading, setLoading] = useState(true);
 
 
   useEffect(() => {
-    if (aiQuestions.length === 0) {
+    if (questions.length === 0) {
       setLoading(true);
       Promise.all([
         generateCoachingQuestions(stressor || "General Stress", perception || "Feeling Stuck", somatic, energyLevel, stressLevel, fear, distortionType),
@@ -1309,7 +1378,8 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
       ]).then(([q, echo]) => {
         if (q.crisis) { raiseCrisis(q.crisisMessage!); return; }
         if (echo.crisis) { raiseCrisis(echo.crisisMessage!); return; }
-        setAiQuestions(q.data);
+        setQuestions(q.data.questions);
+        setMove(q.data.move);
         setSomaticEcho(echo.data);
         setLoading(false);
       });
@@ -1317,68 +1387,107 @@ const LaserCoaching: React.FC<LaserCoachingProps> = ({ stressor, perception, som
   }, []);
 
 
-  const starters: Record<number, string[]> = {
-    0: ["My insight is...","The real issue is...","I'm realizing that...","I sense..."],
-    1: ["To feel...","To achieve...","To experience...","To become..."],
-    2: ["To make a mess.","To prioritize me.","To let go.","To trust myself."],
-    3: ["I will call...","I will write...","I will stop...","I will start..."],
+  // Labels, placeholders and starters are fixed per question so they always
+  // match what is being asked. True-or-Familiar starters follow the Diffuser
+  // label, like the question itself.
+  const TRUTH_CHIPS =
+    distortionType === 'assumption' ? ["It could mean…", "Maybe they…", "Maybe it's…"]
+    : distortionType === 'fact' ? ["I can still…", "It's up to me to…", "I get to decide…"]
+    : ["It's true because…", "It's familiar because…", "Part of it is true…"];
+
+  const STEPS: { key: keyof LaserAnswers; label: string; ph: string; chips: string[] }[] = [
+    { key: 'story', label: 'The Story', ph: 'I tell myself…', chips: ["It means I…", "It means they…", "It means this will…"] },
+    { key: 'truthCheck', label: 'True or Familiar', ph: "It's…", chips: TRUTH_CHIPS },
+    { key: 'signal', label: 'The Signal', ph: "It's showing me…", chips: ["It's showing me I need…", "It's showing me I care about…", "It's showing me it's time to…"] },
+  ];
+
+  const current = STEPS[step];
+  const q = questions[step];
+  const questionText = q ? (showAlt[step] ? q.alternate : q.question) : '';
+  const hasAlt = !!q && q.alternate.trim() !== '' && q.alternate.trim() !== q.question.trim();
+  const value = answers[current.key];
+
+  const finish = (final: LaserAnswers) => {
+    const cleaned: LaserAnswers = {
+      story: final.story.trim(), truthCheck: final.truthCheck.trim(), signal: final.signal.trim(),
+    };
+    setLaserAnswers(cleaned);
+    // What the friction is showing them is the truth the decree stands on.
+    // A skipped Signal leaves any earlier belief (e.g. from Parts Dialogue).
+    if (cleaned.signal) setExpandingBelief(cleaned.signal);
+    setMoveQuestion(move);
+    setView('integration');
   };
 
+  const advance = (next: LaserAnswers) => {
+    if (step < STEPS.length - 1) setStep(step + 1);
+    else finish(next);
+  };
 
-  const currentQ = [
-    { id: 'topic', label: 'The Insight', q: aiQuestions[0] || "Connecting to the field...", ph: 'My insight is...' },
-    { id: 'result', label: 'The Vision', q: aiQuestions[1] || "If this shifted, what state or outcome would you experience?", ph: 'I want to...' },
-    { id: 'permission', label: 'Permission', q: aiQuestions[2] || "What permission do you need to give yourself to move forward?", ph: 'I give myself permission to...' },
-    { id: 'action', label: 'The Move', q: aiQuestions[3] || "What is the single boldest step that makes everything else easier?", ph: 'I will...' },
-  ][step];
-
-
-  // ── FIX 8: never advance on an empty field ──
+  // ── FIX 8: never advance on an empty field — skipping is its own button ──
+  // Laser answers only reach the server with the decree, so each one is
+  // screened here as it is given.
   const handleNext = () => {
-    if (!answers[currentQ.id]) return;
-    // "result" and "permission" are never sent to the API, so every
-    // answer is screened here as it is given.
-    if (isCrisisText(answers[currentQ.id])) { raiseCrisis(CRISIS_MESSAGE); return; }
-    if (step < 3) setStep(step + 1);
-    else {
-      setExpandingBelief(answers.topic);
-      setGoal((prev: any) => ({ ...prev, outcome: answers.result, action: answers.action }));
-      setView('integration');
-    }
+    if (!value.trim()) return;
+    if (isCrisisText(value)) { raiseCrisis(CRISIS_MESSAGE); return; }
+    advance(answers);
+  };
+
+  // Skipped answers save as blank; the decree and The Move work without them.
+  const handleSkip = () => {
+    const next = { ...answers, [current.key]: '' };
+    setAnswers(next);
+    advance(next);
   };
 
 
   return (
     <div className="h-full flex flex-col">
-      <Nav title="Breakthrough Laser" subtitle="Rapid Shift" onBack={() => step > 0 ? setStep(step - 1) : onBack?.()} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={80} aiActive={!loading} />
+      <Nav title="Breakthrough Laser" subtitle={current.label} onBack={() => step > 0 ? setStep(step - 1) : onBack?.()} toggleSound={toggleSound} soundEnabled={soundEnabled} progress={70 + step * 5} aiActive={!loading} />
       <div className="flex-1 min-h-0 pt-2 overflow-y-auto hide-scrollbar pb-10">
         <div className="glass-panel p-6 rounded-[32px]">
           {loading ? (
             <div className="text-center py-10"><Loader2 className="animate-spin mx-auto text-teal-400" /></div>
           ) : (
-            <div className="animate-enter">
+            <div className="animate-enter" key={step}>
               {step === 0 && somaticEcho && (
                 <p className="font-serif text-base text-white/55 italic mb-6 leading-relaxed border-l-2 border-teal-500/30 pl-3">{somaticEcho}</p>
               )}
-              <span className="font-sans text-[10px] text-white/50 uppercase tracking-widest mb-4 block">{currentQ.label}</span>
-              <h3 className="font-serif text-2xl text-white italic mb-8 leading-snug">{currentQ.q}</h3>
+              <span className="font-sans text-[10px] text-white/50 uppercase tracking-widest mb-4 block">{current.label} · {step + 1} of {STEPS.length}</span>
+              {step > 0 && answers.story.trim() && (
+                <p className="font-serif text-base text-white/55 italic mb-4 leading-relaxed border-l-2 border-white/15 pl-3">Your story: "{answers.story.trim()}"</p>
+              )}
+              <h3 className="font-serif text-2xl text-white italic mb-3 leading-snug">{questionText}</h3>
+              {hasAlt && (
+                <button onClick={() => setShowAlt({ ...showAlt, [step]: !showAlt[step] })}
+                  className="mb-6 text-[11px] text-teal-300/80 hover:text-teal-200 uppercase tracking-widest transition-colors">
+                  {showAlt[step] ? 'Back to the first way' : 'Say it another way'}
+                </button>
+              )}
               <FlowInput
-                key={currentQ.id}
-                value={answers[currentQ.id]}
-                onChange={v => setAnswers({ ...answers, [currentQ.id]: v })}
-                placeholder={currentQ.ph}
+                key={current.key}
+                value={value}
+                onChange={v => setAnswers({ ...answers, [current.key]: v })}
+                placeholder={current.ph}
                 onSubmit={handleNext}
                 accent="teal"
-                className="mb-6"
+                className="mb-4"
               />
               <div className="flex flex-wrap gap-2 mb-6">
-                {(starters[step] || []).map(s => (
-                  <button key={s} onClick={() => setAnswers({ ...answers, [currentQ.id]: s })} className="px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs text-white/60 hover:bg-white/10 transition-colors">{s}</button>
+                {current.chips.map(c => (
+                  <button key={c} onClick={() => setAnswers({ ...answers, [current.key]: addStarter(value, c) })}
+                    className="px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs text-white/60 hover:bg-white/10 transition-colors">{c}</button>
                 ))}
               </div>
-              <div className="flex justify-end">
-                <button onClick={handleNext} disabled={!answers[currentQ.id]} className="px-8 py-3 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-widest uppercase disabled:opacity-50">
-                  {step === 3 ? "Lock It In" : "Next"}
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <button onClick={handleSkip} className="text-[11px] text-white/45 hover:text-white/75 uppercase tracking-widest transition-colors">
+                    Skip for now
+                  </button>
+                  <p className="font-sans text-xs text-white/30 mt-1">Not knowing is an answer too.</p>
+                </div>
+                <button onClick={handleNext} disabled={!value.trim()} className="shrink-0 px-8 py-3 rounded-full bg-white text-slate-900 font-sans text-xs font-bold tracking-widest uppercase disabled:opacity-50">
+                  {step === STEPS.length - 1 ? "On to The Move" : "Next"}
                 </button>
               </div>
             </div>
@@ -1658,7 +1767,7 @@ const Priming: React.FC<PrimingProps> = ({ onComplete }) => {
 // ─────────────────────────────────────────────
 const Integration: React.FC<IntegrationProps> = ({
   goal, setGoal, goalStep, setGoalStep, isLocked, setIsLocked,
-  expandingBelief, stressor, fear, sessionCount, completeSession,
+  expandingBelief, stressor, fear, laserAnswers, moveQuestion, sessionCount, completeSession,
   resetApp, setView, toggleSound, soundEnabled, somaticZones,
   isBurnoutPath, userName, energyAnalysis, stressLevel, energyLevel,
   postStressLevel, setPostStressLevel, postEnergyLevel, setPostEnergyLevel,
@@ -1673,7 +1782,7 @@ const Integration: React.FC<IntegrationProps> = ({
   const [sessionSaved, setSessionSaved] = useState(false);
   // True once the crisis check for this decree has come back clean (or the
   // request failed after the client-side screen passed). Nothing that reads
-  // as product (readout, Clinical Read, decree, upsells) renders before it,
+  // as product (readout, The Read, decree, upsells) renders before it,
   // and the session is not saved before it.
   const [cleared, setCleared] = useState(false);
   const decreeRequest = useRef(0);
@@ -1700,32 +1809,55 @@ const Integration: React.FC<IntegrationProps> = ({
   };
 
 
+  // One branch per real outcome. The read says what the numbers did and never
+  // claims a shift that didn't happen: stress 7 → 7 with energy up used to
+  // fall through to "You successfully discharged 0 points… The storm has
+  // passed", and stress going UP with energy up got the same line.
   const getAssessment = () => {
-    if (stressDelta === 0 && energyDelta === 0) {
+    const pts = (n: number) => `${n} point${n === 1 ? '' : 's'}`;
+    const s = Math.abs(stressDelta);
+    const e = Math.abs(energyDelta);
+    if (stressDelta < 0 && postStress <= 4) {
       return {
-        status: "Baseline Unchanged",
-        color: "text-white/70",
-        read: "Your internal weather has not shifted yet. This is normal. Sometimes the protocol merely stops the downward spiral. Focus on grounding and revisit this architecture when you have more bandwidth.",
-      };
-    } else if (stressDelta >= 0 && energyDelta <= 0) {
-      return {
-        status: "Persistent Friction",
-        color: "text-rose-400",
-        read: `Your system is heavily gripping the stress of "${(stressor || '').substring(0, 30)}...". Do not force high-output action today. Lower your expectations, strip away non-essential tasks, and focus purely on biological regulation.`,
-      };
-    } else if (stressDelta < 0 && postStress <= 4) {
-      return {
-        status: "Deep Metabolic Shift",
+        status: "Clear Shift",
         color: "text-teal-400",
-        read: `Exceptional. You successfully metabolized ${Math.abs(stressDelta)} points of active friction and dropped your stress into the clear zone. You have reclaimed your cognitive bandwidth. Execute your commitment now.`,
-      };
-    } else {
-      return {
-        status: "Friction Metabolized",
-        color: "text-indigo-400",
-        read: `You successfully discharged ${Math.abs(stressDelta)} points of stress. You are stabilizing. The storm has passed, but guard your energy closely over the next 48 hours to lock in this new baseline.`,
+        read: `Friction came down ${pts(s)}, from ${stressLevel} to ${postStress}. That is a real drop. Act on your move while it is fresh.`,
       };
     }
+    if (stressDelta < 0) {
+      return {
+        status: "Friction Eased",
+        color: "text-indigo-400",
+        read: `Friction came down ${pts(s)}, from ${stressLevel} to ${postStress}. Something moved. It is still above the clear zone, so keep the rest of today light and let your move do the work.`,
+      };
+    }
+    if (stressDelta > 0) {
+      return {
+        status: "Friction Up",
+        color: "text-amber-300",
+        read: `Friction went up ${pts(s)}, from ${stressLevel} to ${postStress}. Looking straight at something can make it louder before it gets quieter. That is information, not a verdict. Keep your move small and check in again tomorrow.`,
+      };
+    }
+    // Stress held.
+    if (energyDelta > 0) {
+      return {
+        status: "Steadier",
+        color: "text-indigo-400",
+        read: `Friction held at ${postStress}, and your energy rose ${pts(e)}. The situation did not get lighter, but you have more to meet it with. That counts.`,
+      };
+    }
+    if (energyDelta < 0) {
+      return {
+        status: "Running Lower",
+        color: "text-amber-300",
+        read: `Friction held at ${postStress}, and your energy dropped ${pts(e)}. Facing something can cost energy before it gives any back. Keep the rest of today simple.`,
+      };
+    }
+    return {
+      status: "No Change Yet",
+      color: "text-white/70",
+      read: `Your numbers did not move: friction ${postStress}, energy ${postEnergy}. One session does not always shift a reading, and that is worth knowing, not a failure. You named what is going on and chose a move. Check in again after you have done it.`,
+    };
   };
   const assessment = getAssessment();
 
@@ -1743,6 +1875,9 @@ const Integration: React.FC<IntegrationProps> = ({
         expandingBelief,
         commitment: commitmentSentence(),
         energyLevel: exitLevel,
+        story: laserAnswers?.story ?? '',
+        truthCheck: laserAnswers?.truthCheck ?? '',
+        signal: laserAnswers?.signal ?? '',
       };
       saveSession(record);
       setSessionSaved(true);
@@ -1779,7 +1914,8 @@ const Integration: React.FC<IntegrationProps> = ({
     const action = goal.action || (isBurnoutPath ? "I am offline to realign" : "I move on this now");
 
     // goal.when and goal.outcome never reach the API, so they are screened here.
-    if (isCrisisText(stressor, fear, truth, action, goal.when, goal.outcome)) {
+    if (isCrisisText(stressor, fear, truth, action, goal.when, goal.outcome,
+      laserAnswers?.story, laserAnswers?.truthCheck, laserAnswers?.signal)) {
       raiseCrisis(CRISIS_MESSAGE);
       return;
     }
@@ -1801,47 +1937,58 @@ const Integration: React.FC<IntegrationProps> = ({
       setCleared(true);
     };
 
-    generateManifesto(stressor, truth, action, fear, entryLevel, isBurnoutPath, (text) => { generated = text; })
+    generateManifesto(stressor, truth, action, fear, entryLevel, isBurnoutPath, laserAnswers ?? EMPTY_LASER_ANSWERS, (text) => { generated = text; })
       .then(finish)
       .catch(() => finish({ isOffline: true, crisis: false }));
   }, [isLocked, cleared]);
 
 
-  // A cue beats a deadline. "Today" is a deadline; "when I close my laptop"
-  // is a cue, and cues are the part that actually drives follow-through.
+  // The Move is one action and when they will do it. The action question
+  // comes from Laser Coaching's same AI call; this is the fallback.
+  const actionPair: QuestionPair = moveQuestion ?? {
+    question: isBurnoutPath ? 'What can you stop doing about this for now?' : 'What are you going to do about this?',
+    alternate: isBurnoutPath ? 'What can you put down tonight?' : 'What will you actually do next?',
+  };
+  const [showActionAlt, setShowActionAlt] = useState(false);
+
   const ACTION_CHIPS = [
     'Send the message I have been avoiding',
     'Close the laptop',
     'Say no to one thing',
     'Ask someone for help with this',
   ];
-  const TRIGGER_CHIPS = [
-    'When I close this app',
+  const WHEN_CHIPS = [
+    'Right after my morning coffee',
     'Before I open my laptop tomorrow',
+    'Tonight, before bed',
     'At the end of this shift',
-    'Next time it comes up',
   ];
 
+  // Reads "[When], I will [action]." — or "I will [action]." with no time.
   const commitmentSentence = () => {
-    const raw = (goal.action || '').trim().replace(/\.$/, '');
-    const cue = (goal.when || '').trim().replace(/\.$/, '');
+    const raw = (goal.action || '').trim().replace(/[.,;]+$/, '');
+    const when = (goal.when || '').trim().replace(/[.,;]+$/, '');
     if (!raw) return '';
 
     // Preservation Mode writes a full statement ("I am offline to realign"),
     // and chips arrive capitalised. Both need handling or the sentence reads
     // "I will I am offline to realign".
     const alreadyASentence = /^i\s/i.test(raw);
-    const verb = raw.replace(/^I will\s+/i, '');
+    const verb = raw.replace(/^I will\s+/i, '').replace(/^to\s+/i, '');
     const lower = verb.charAt(0).toLowerCase() + verb.slice(1);
-    const clause = alreadyASentence ? raw.charAt(0).toUpperCase() + raw.slice(1) : `I will ${lower}`;
+    const clause = alreadyASentence ? `I${raw.slice(1)}` : `I will ${lower}`;
 
-    if (!cue) return `${clause}.`;
-    if (/^(when|before|after|at|next|the moment|first thing|tonight|tomorrow|now|today)\b/i.test(cue)) {
-      const head = cue.charAt(0).toUpperCase() + cue.slice(1);
-      return `${head}, ${clause}.`;
-    }
-    return `${clause} — ${cue}.`;
+    if (!when) return `${clause}.`;
+    return `${when.charAt(0).toUpperCase() + when.slice(1)}, ${clause}.`;
   };
+
+  // The sentence is "I will [action]", so the action has to be something they
+  // do. "that I am focusing on the wrong thing" became "I will that I am…".
+  // Catch the obvious non-actions and ask for the doing part instead.
+  const actionText = (goal.action || '').trim();
+  const notAnAction = /^(that|because|i am|i'm|im|i feel|i think|i notice|i was|it is|it's|its|my|the)\b/i.test(actionText)
+    && !/^i'?m going to\b/i.test(actionText)
+    && !/^i am offline to realign/i.test(actionText); // Preservation Mode's own wording
 
   const applyChip = (current: string, value: string, key: 'action' | 'when') => {
     setGoal({ ...goal, [key]: current.trim() ? `${current.trim()} ${value.toLowerCase()}` : value });
@@ -1851,6 +1998,7 @@ const Integration: React.FC<IntegrationProps> = ({
   const handleNextStep = () => {
     if (!goal.action?.trim()) return;
     if (isCrisisText(goal.action, goal.when)) { raiseCrisis(CRISIS_MESSAGE); return; }
+    if (notAnAction) return;
     setIsLocked(true);
   };
 
@@ -1939,7 +2087,7 @@ const Integration: React.FC<IntegrationProps> = ({
 
             {/* ── 2. SHIFT READOUT ── */}
             <div className="pt-6 border-t border-white/10 mb-8">
-              <h2 className="text-[11px] font-bold uppercase tracking-[0.25em] text-white/50 mb-6">2. Kinetic Shift Detected</h2>
+              <h2 className="text-[11px] font-bold uppercase tracking-[0.25em] text-white/50 mb-6">{exitLevel > entryLevel ? '2. Kinetic Shift' : '2. Kinetic State'}</h2>
 
               <div className="flex items-center justify-center gap-3 mb-6">
                 <div className="text-center min-w-0">
@@ -1948,7 +2096,7 @@ const Integration: React.FC<IntegrationProps> = ({
                 </div>
                 <ArrowRight size={20} className={`shrink-0 ${stressDelta < 0 || energyDelta > 0 ? "text-teal-400" : "text-white/20"}`} />
                 <div className="text-center min-w-0">
-                  <div className="text-2xl font-serif italic text-teal-400">Level {exitLevel}</div>
+                  <div className={`text-2xl font-serif italic ${exitLevel > entryLevel ? 'text-teal-400' : 'text-white/70'}`}>Level {exitLevel}</div>
                   <div className="text-[10px] uppercase tracking-widest text-white/40 mt-1 truncate">{KINETIC_STATES[exitLevel]}</div>
                 </div>
               </div>
@@ -1959,11 +2107,13 @@ const Integration: React.FC<IntegrationProps> = ({
                   <p className="text-[10px] uppercase tracking-widest text-white/40 mb-2">Stress</p>
                   <div className="flex items-center justify-center gap-2">
                     <span className="font-serif text-xl text-rose-400">{stressLevel}</span>
-                    <TrendingDown size={14} className={stressDelta < 0 ? "text-teal-400" : stressDelta === 0 ? "text-white/30" : "text-rose-400"} />
-                    <span className="font-serif text-xl text-teal-400">{postStress}</span>
+                    {stressDelta < 0
+                      ? <TrendingDown size={14} className="text-teal-400" />
+                      : <ArrowRight size={14} className={stressDelta === 0 ? "text-white/30" : "text-rose-400"} />}
+                    <span className={`font-serif text-xl ${stressDelta < 0 ? 'text-teal-400' : stressDelta === 0 ? 'text-white/70' : 'text-rose-400'}`}>{postStress}</span>
                   </div>
                   <p className={`text-[10px] font-bold mt-1 leading-tight ${stressDelta < 0 ? 'text-teal-400' : stressDelta === 0 ? 'text-white/50' : 'text-rose-400'}`}>
-                    {stressDelta < 0 ? `${Math.abs(stressDelta)} pts metabolized` : stressDelta === 0 ? 'Baseline held' : `+${stressDelta} (review)` }
+                    {stressDelta < 0 ? `${Math.abs(stressDelta)} pts lower` : stressDelta === 0 ? 'No change' : `${stressDelta} pts higher` }
                   </p>
                 </div>
                 <div className="bg-white/5 rounded-xl p-4 border border-white/5">
@@ -1983,7 +2133,7 @@ const Integration: React.FC<IntegrationProps> = ({
 
             {/* ── 3. CLINICAL READ ── */}
             <div className="bg-white/5 border border-white/10 p-5 rounded-2xl mb-8 text-left shadow-sm transition-all duration-500">
-              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/50 mb-3">3. Clinical Read</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/50 mb-3">3. The Read</p>
               <h3 className={`font-serif text-2xl italic mb-3 transition-colors duration-500 ${assessment.color}`}>{assessment.status}</h3>
               <p className="font-sans text-[15px] text-white/75 leading-relaxed">{assessment.read}</p>
             </div>
@@ -2017,7 +2167,7 @@ const Integration: React.FC<IntegrationProps> = ({
                 </div>
                 <p className="font-serif text-lg text-white italic mb-3 leading-snug">
                   {exitLevel <= 2 && `"You are beginning to reclaim your agency. The shift from survival to strategy starts with one sovereign decision. Make it now."`}
-                  {exitLevel === 3 && `"You have moved from reaction to command. Now stop tolerating what you have been explaining away. Name it. Then eliminate it."`}
+                  {exitLevel === 3 && `"Stop tolerating what you have been explaining away. Name it. Then deal with it."`}
                   {exitLevel === 4 && `"Your compassion is your strength and your drain. The next level requires you to direct that care inward first. Protect the Asset."`}
                   {exitLevel === 5 && `"You are operating in momentum. Most people never reach this frequency. Now build — don't just reframe. Execute from this state."`}
                   {exitLevel >= 6 && `"You are creating, not reacting. This is your natural state. The work now is to architect systems that sustain this frequency without requiring a crisis to access it."`}
@@ -2092,19 +2242,31 @@ const Integration: React.FC<IntegrationProps> = ({
 
           <h3 className="font-serif text-2xl text-white italic mb-2">The Move</h3>
           <p className="font-sans text-sm text-white/50 mb-8 leading-relaxed">
-            One action, and the moment that will remind you. Not a plan — a cue.
+            One action, and when you will do it.
           </p>
 
-          <label className="block font-sans text-[11px] uppercase tracking-widest text-teal-400 mb-3">
-            What are you doing about it?
+          <label className="block font-sans text-base text-white/85 mb-2 leading-snug">
+            {showActionAlt ? actionPair.alternate : actionPair.question}
           </label>
+          {actionPair.alternate.trim() && actionPair.alternate.trim() !== actionPair.question.trim() && (
+            <button onClick={() => setShowActionAlt(!showActionAlt)}
+              className="mb-4 text-[11px] text-teal-300/80 hover:text-teal-200 uppercase tracking-widest transition-colors">
+              {showActionAlt ? 'Back to the first way' : 'Say it another way'}
+            </button>
+          )}
+          <p className="font-sans text-xs text-white/45 mb-3">Finish the sentence: <span className="text-white/70">I will…</span></p>
           <FlowInput
             value={goal.action || ''}
             onChange={v => setGoal({ ...goal, action: v })}
-            placeholder="I will..."
+            placeholder="e.g. send the launch email"
             accent="teal"
             className="mb-4"
           />
+          {notAnAction && (
+            <p className="font-sans text-sm text-amber-200/85 leading-relaxed -mt-2 mb-4">
+              That reads like a thought, not an action. What will you <em>do</em> about it? Start with a verb, e.g. "write down", "tell", "stop".
+            </p>
+          )}
           <div className="flex flex-wrap gap-2 mb-8">
             {ACTION_CHIPS.map(a => (
               <button key={a} onClick={() => applyChip(goal.action || '', a, 'action')}
@@ -2113,18 +2275,18 @@ const Integration: React.FC<IntegrationProps> = ({
           </div>
 
           <label className="block font-sans text-[11px] uppercase tracking-widest text-teal-400 mb-3">
-            What will remind you?
+            When will you do it?
           </label>
           <FlowInput
             value={goal.when || ''}
             onChange={v => setGoal({ ...goal, when: v })}
-            placeholder="When I..."
+            placeholder="e.g. Right after my morning coffee"
             onSubmit={handleNextStep}
             accent="teal"
             className="mb-4"
           />
           <div className="flex flex-wrap gap-2 mb-8">
-            {TRIGGER_CHIPS.map(t => (
+            {WHEN_CHIPS.map(t => (
               <button key={t} onClick={() => applyChip(goal.when || '', t, 'when')}
                 className="px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs text-white/60 hover:bg-white/10 transition-colors">{t}</button>
             ))}
@@ -2132,20 +2294,20 @@ const Integration: React.FC<IntegrationProps> = ({
 
           {/* The sentence assembles live, so they seal something they can read
               back rather than three disconnected fields. */}
-          {goal.action?.trim() && (
+          {goal.action?.trim() && !notAnAction && (
             <div className="bg-white/5 border border-teal-500/20 rounded-2xl p-5 mb-6 animate-enter">
               <span className="block font-sans text-[10px] uppercase tracking-widest text-white/40 mb-2">Your move</span>
               <p className="font-serif text-lg text-white italic leading-relaxed">{commitmentSentence()}</p>
             </div>
           )}
 
-          <button onClick={handleNextStep} disabled={!goal.action?.trim()}
+          <button onClick={handleNextStep} disabled={!goal.action?.trim() || notAnAction}
             className="w-full py-4 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase tracking-widest transition-all disabled:opacity-40">
             Seal It
           </button>
           {!goal.when?.trim() && goal.action?.trim() && (
             <p className="text-center font-sans text-xs text-white/35 mt-3">
-              A cue makes it far more likely to happen, but you can seal without one.
+              Picking a time makes it far more likely to happen, but you can seal without one.
             </p>
           )}
         </div>
@@ -2364,30 +2526,48 @@ const EnergyAnalyzer: React.FC<EnergyAnalyzerProps> = ({ setView, onBack }) => {
 // ─────────────────────────────────────────────
 // CHECKOUT GATE (PAYWALL)
 // ─────────────────────────────────────────────
-const CheckoutGate: React.FC<{ onBack: () => void; onUnlock: () => void }> = ({ onBack, onUnlock }) => {
-  const [showCode, setShowCode] = useState(false);
+// Only a locked user ever sees this (free cycle done, no access code). It has
+// no way back: every other screen would route them straight here again.
+const LICENSE_ERRORS: Record<LicenseReason, string> = {
+  invalid: "That key didn't work. Check it and try again.",
+  wrong_product: "That key isn't for Monthly Access.",
+  expired: 'This subscription has ended. Renew Monthly Access to continue.',
+  limit: 'This key is already active on 3 devices.',
+  not_configured: "We couldn't check that key right now. Try again later.",
+  unavailable: "We couldn't check that key right now. Try again in a minute.",
+};
+
+const CheckoutGate: React.FC<{
+  onUnlock: () => void;
+  onUnlockLicense: (key: string, instanceId: string, expiresAt: string | null) => void;
+}> = ({ onUnlock, onUnlockLicense }) => {
   const [code, setCode] = useState('');
   const [checking, setChecking] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState('');
 
+  // One field for both: a UUID-shaped entry is a Lemon Squeezy license key,
+  // anything else an access code.
   const submitCode = async () => {
-    if (!code.trim() || checking) return;
+    const entry = code.trim();
+    if (!entry || checking) return;
     setChecking(true);
-    setError(false);
-    const valid = await verifyCipher(code.trim());
+    setError('');
+    if (looksLikeLicenseKey(entry)) {
+      const r = await verifyLicense(entry);
+      setChecking(false);
+      if (r.valid && r.instanceId) { onUnlockLicense(entry, r.instanceId, r.expiresAt ?? null); return; }
+      setError(LICENSE_ERRORS[r.reason ?? 'invalid']);
+      return;
+    }
+    const valid = await verifyCipher(entry);
     setChecking(false);
     if (valid) { onUnlock(); return; }
-    setError(true);
+    setError("That code didn't work. Check it and try again.");
     setCode('');
   };
 
   return (
     <div className="h-full flex flex-col overflow-y-auto hide-scrollbar">
-      <div className="shrink-0 pt-1 pb-2">
-        <button aria-label="Go back" onClick={onBack} className="p-2 rounded-full glass-button text-white/70 hover:text-white transition-colors">
-          <ChevronLeft size={20} />
-        </button>
-      </div>
       <div className="flex-1 flex flex-col justify-center text-center py-6">
         <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6 border border-teal-500/30 bg-teal-500/10 shrink-0">
           <Lock size={32} className="text-teal-400" />
@@ -2412,19 +2592,18 @@ const CheckoutGate: React.FC<{ onBack: () => void; onUnlock: () => void }> = ({ 
         </div>
 
 
-        {!showCode ? (
-          <button onClick={() => setShowCode(true)} className="mt-8 text-[11px] text-white/40 hover:text-white uppercase tracking-widest">
-            Have an access code?
-          </button>
-        ) : (
-          <div className="mt-8 w-full max-w-sm mx-auto">
-            <label htmlFor="cipher-code" className="block text-[11px] text-white/50 uppercase tracking-widest mb-3">Enter your access code</label>
+        {/* Always visible: after buying, people come back here with a key
+            from the receipt and need to see where it goes. It used to sit
+            behind a small grey "Have an access code?" link. */}
+        <div className="mt-10 w-full max-w-sm mx-auto rounded-2xl border border-teal-500/30 bg-teal-500/5 p-5 text-left">
+            <label htmlFor="cipher-code" className="block font-sans text-sm text-white/90 font-semibold mb-1">Already subscribed?</label>
+            <p className="text-xs text-white/55 mb-4 leading-relaxed">Paste the license key from your receipt email, or an access code, to continue.</p>
             <div className="flex gap-2">
               <input
                 id="cipher-code" type="text" value={code}
-                onChange={e => { setCode(e.target.value); setError(false); }}
+                onChange={e => { setCode(e.target.value); setError(''); }}
                 onKeyDown={e => e.key === 'Enter' && submitCode()}
-                placeholder="ACCESS CODE"
+                placeholder="CODE OR KEY"
                 autoCapitalize="characters"
                 className="flex-1 min-w-0 bg-white/5 border border-white/10 focus:border-teal-400/70 rounded-xl px-4 py-3 text-white text-sm tracking-widest uppercase text-center outline-none transition-colors placeholder:text-white/25"
               />
@@ -2436,15 +2615,10 @@ const CheckoutGate: React.FC<{ onBack: () => void; onUnlock: () => void }> = ({ 
               </button>
             </div>
             {error && (
-              <p className="text-[11px] text-rose-400 uppercase tracking-widest mt-3">That code didn't work. Check it and try again.</p>
+              <p className="text-[11px] text-rose-400 uppercase tracking-widest mt-3">{error}</p>
             )}
-          </div>
-        )}
+        </div>
 
-
-        <button onClick={onBack} className="mt-8 text-[11px] text-white/40 hover:text-white uppercase tracking-widest">
-          Back to my sessions
-        </button>
       </div>
     </div>
   );
@@ -2460,16 +2634,57 @@ const App = () => {
   const [sessionHistory, setSessionHistory] = useState<SessionRecord[]>(() => storageGet<SessionRecord[]>(STORAGE_KEYS.SESSION_HISTORY, []));
   const [hasCompletedFreeCycle, setHasCompletedFreeCycle] = useState(() => storageGet<boolean>(STORAGE_KEYS.FREE_CYCLE, false));
   const [hasManualAccess, setHasManualAccess] = useState(() => storageGet<boolean>(STORAGE_KEYS.MANUAL_ACCESS, false));
-  // Goes straight to the dashboard rather than through goHome(): the
-  // hasManualAccess update isn't visible until the next render, so goHome()
+  const [license, setLicenseState] = useState<StoredLicense | null>(() => storageGet<StoredLicense | null>(STORAGE_KEYS.LICENSE, null));
+  const setLicense = (l: StoredLicense | null) => {
+    setLicenseState(l);
+    if (l) storageSet(STORAGE_KEYS.LICENSE, l);
+    else { try { localStorage.removeItem(STORAGE_KEYS.LICENSE); } catch { /* storage blocked */ } }
+  };
+  // Unlocked = an access code, or a Monthly Access license on this device.
+  const hasAccess = hasManualAccess || license !== null;
+
+  // Both unlocks go straight to the dashboard rather than through goHome():
+  // the access update isn't visible until the next render, so goHome()
   // would still see a locked user and route back to checkout.
-  const unlockManualAccess = () => {
-    setHasManualAccess(true);
-    storageSet(STORAGE_KEYS.MANUAL_ACCESS, true);
+  const enterUnlocked = () => {
     clearCycleState();
     setNavHistory([]);
     setViewState('dashboard');
   };
+  const unlockManualAccess = () => {
+    setHasManualAccess(true);
+    storageSet(STORAGE_KEYS.MANUAL_ACCESS, true);
+    enterUnlocked();
+  };
+  const unlockLicense = (key: string, instanceId: string, expiresAt: string | null) => {
+    const now = Date.now();
+    setLicense({ key, instanceId, expiresAt, checkedAt: now, validAt: now });
+    enterUnlocked();
+  };
+
+  // Re-check a stored license about once a day, and whenever its expiry has
+  // passed, so a cancelled subscription stops working. A definite "no"
+  // removes it at once; no verdict (offline, Lemon Squeezy down) keeps it
+  // for up to LICENSE_GRACE_MS since the last "yes".
+  useEffect(() => {
+    if (!license) return;
+    const now = Date.now();
+    const expired = license.expiresAt !== null && Date.parse(license.expiresAt) < now;
+    if (!expired && now - license.checkedAt < LICENSE_RECHECK_MS) return;
+    let cancelled = false;
+    verifyLicense(license.key, license.instanceId).then(r => {
+      if (cancelled) return;
+      const t = Date.now();
+      if (r.valid) {
+        setLicense({ ...license, expiresAt: r.expiresAt ?? null, checkedAt: t, validAt: t });
+      } else if (r.reason === 'unavailable' || r.reason === 'not_configured') {
+        if (t - license.validAt > LICENSE_GRACE_MS) setLicense(null);
+      } else {
+        setLicense(null);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
 
 
   const setUserName = (n: string) => { setUserNameState(n); storageSet(STORAGE_KEYS.USER_NAME, n); };
@@ -2515,16 +2730,17 @@ const App = () => {
     setPostStressLevel(5); setPostEnergyLevel(5);
     setPressure(5); setAbility(5);
     setHorizon({ ...INITIAL_HORIZON });
+    setLaserAnswers(EMPTY_LASER_ANSWERS);
+    setMoveQuestion(null);
     setCrisisMessage('');
   };
 
-  // "Return to Orbit" ends the cycle. It used to land on whatever Horizon
-  // step was left over — usually the body/mind chooser — instead of a
-  // clean start or the paywall.
+  // "Return to Orbit" ends the cycle. Locked users (free cycle done, no access
+  // code) land on checkout; everyone else on a clean dashboard.
   const goHome = () => {
     clearCycleState();
     setNavHistory([]);
-    setViewState(hasCompletedFreeCycle && !hasManualAccess ? 'checkout' : 'dashboard');
+    setViewState(hasCompletedFreeCycle && !hasAccess ? 'checkout' : 'dashboard');
   };
 
   // ── CRISIS ──
@@ -2582,6 +2798,9 @@ const App = () => {
   const [pressure, setPressure] = useState(5);
   const [ability, setAbility] = useState(5);
   const [goal, setGoal] = useState<Goal>({ what: '', measure: '', when: '', outcome: '', action: '' });
+  // Laser Coaching's answers, and the action question it hands to The Move.
+  const [laserAnswers, setLaserAnswers] = useState<LaserAnswers>(EMPTY_LASER_ANSWERS);
+  const [moveQuestion, setMoveQuestion] = useState<QuestionPair | null>(null);
   const [goalStep, setGoalStep] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [breathing, setBreathing] = useState(false);
@@ -2634,7 +2853,7 @@ const App = () => {
   const resetApp = () => {
     clearCycleState();
     setNavHistory([]);
-    setViewState(hasCompletedFreeCycle && !hasManualAccess ? 'checkout' : 'welcome');
+    setViewState(hasCompletedFreeCycle && !hasAccess ? 'checkout' : 'welcome');
   };
 
 
@@ -2670,7 +2889,7 @@ const App = () => {
               setFrictionSource={setFrictionSource}
               setSomaticZones={setSomaticZones}
               hasCompletedFreeCycle={hasCompletedFreeCycle}
-              hasManualAccess={hasManualAccess}
+              hasAccess={hasAccess}
               horizon={horizon} patchHorizon={patchHorizon}
               patternCrisisShown={patternCrisisShown}
               onPatternCrisis={() => setPatternCrisisShown(true)}
@@ -2701,9 +2920,10 @@ const App = () => {
           {viewState === 'laser' && (
             <LaserCoaching {...common}
               stressor={stressor} perception={perception}
-              somatic={[somaticZones[0], sensation && `sensation: ${sensation}`, needed && `the part needs: ${needed}`, resourceMemory && `their resource: ${resourceMemory}`].filter(Boolean).join('. ') || 'Mental Loops / Cognitive Fog'}
+              somatic={[somaticZones[0], sensation && `sensation: ${sensation}`, needed && `the part needs: ${needed}`, resourceMemory && `their resource: ${resourceMemory}`].filter(Boolean).join('. ') || 'In their thoughts'}
               fear={fear} distortionType={distortionType}
-              setGoal={setGoal} setExpandingBelief={setExpandingBelief}
+              setExpandingBelief={setExpandingBelief}
+              setLaserAnswers={setLaserAnswers} setMoveQuestion={setMoveQuestion}
               energyLevel={energyLevel} stressLevel={stressLevel}
               onBack={goBack}
             />
@@ -2732,6 +2952,7 @@ const App = () => {
               goal={goal} setGoal={setGoal} goalStep={goalStep} setGoalStep={setGoalStep}
               isLocked={isLocked} setIsLocked={setIsLocked}
               expandingBelief={expandingBelief} stressor={stressor} fear={fear}
+              laserAnswers={laserAnswers} moveQuestion={moveQuestion}
               sessionCount={sessionCount} completeSession={completeSession}
               resetApp={resetApp} somaticZones={somaticZones}
               isBurnoutPath={isBurnoutPath} userName={userName}
@@ -2760,7 +2981,7 @@ const App = () => {
 
           {viewState === 'burnout_check' && <VitalityScan {...common} setBurnoutPath={setIsBurnoutPath} onBack={goBack} />}
           {viewState === 'energy' && <EnergyAnalyzer setView={setView} onBack={goBack} />}
-          {viewState === 'checkout' && <CheckoutGate onBack={goHome} onUnlock={unlockManualAccess} />}
+          {viewState === 'checkout' && <CheckoutGate onUnlock={unlockManualAccess} onUnlockLicense={unlockLicense} />}
           {viewState === 'crisis' && <Crisis message={crisisMessage} onBack={exitCrisis} />}
 
 
