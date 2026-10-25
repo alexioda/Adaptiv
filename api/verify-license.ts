@@ -19,9 +19,20 @@
 //   LEMONSQUEEZY_ALLOWED_VARIANTS  comma-separated variant ids that unlock
 //                                  the app (Monthly Access only)
 //   LEMONSQUEEZY_API_BASE          optional; tests point it at a stub
+//   MAILERLITE_API_KEY             optional. Unset = archetype/tier are just
+//                                  never attached; the license check itself
+//                                  never depends on this.
 //
 // Like verify-cipher, this does not use guard(): no AI, and its own
 // tighter rate limit.
+//
+// Archetype enrichment: the License API's `meta` block includes the buyer's
+// email (the same one entered at Lemon Squeezy checkout). If that address
+// matches a MailerLite subscriber with a `kinetic_archetype`/`kinetic_tier`
+// field (set by The Kinetic Audit quiz), we attach those to a successful
+// verdict so the client has them. This is pure enrichment: a lookup miss,
+// timeout, or missing API key never affects `valid`, and must never block or
+// fail the license check itself.
 // ─────────────────────────────────────────────────────────────
 import { isAllowedOrigin, corsFor, json, createLimiter } from './_lib/shared';
 
@@ -32,6 +43,7 @@ const rateLimited = createLimiter(8, 10 * 60_000);
 
 const INSTANCE_NAME = 'Adaptiv web app';
 const TIMEOUT_MS = 8_000;
+const MAILERLITE_TIMEOUT_MS = 4_000;
 
 type Reason = 'invalid' | 'wrong_product' | 'expired' | 'limit' | 'not_configured' | 'unavailable';
 
@@ -41,7 +53,36 @@ interface LsLicense {
   error?: string | null;
   license_key?: { status?: string; expires_at?: string | null };
   instance?: { id?: string } | null;
-  meta?: { store_id?: number; product_id?: number; variant_id?: number };
+  meta?: {
+    store_id?: number;
+    product_id?: number;
+    variant_id?: number;
+    customer_email?: string;
+  };
+}
+
+// Best-effort MailerLite lookup. Never throws, never blocks on more than
+// MAILERLITE_TIMEOUT_MS, and returns null for anything short of a clean hit:
+// no key configured, no match, a malformed field, or any network/HTTP error.
+async function lookupArchetype(email: string): Promise<{ archetype: string; tier: string } | null> {
+  const apiKey = process.env.MAILERLITE_API_KEY;
+  if (!apiKey || !email) return null;
+  try {
+    const res = await fetch(`https://connect.mailerlite.com/api/subscribers/${encodeURIComponent(email)}`, {
+      headers: { Accept: 'application/json', Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(MAILERLITE_TIMEOUT_MS),
+    });
+    if (!res.ok) return null; // includes 404 (no subscriber for this email)
+    const body = (await res.json().catch(() => null)) as
+      { data?: { fields?: Record<string, unknown> } } | null;
+    const fields = body?.data?.fields;
+    const archetype = fields?.kinetic_archetype;
+    const tier = fields?.kinetic_tier;
+    if (typeof archetype !== 'string' || !archetype || typeof tier !== 'string' || !tier) return null;
+    return { archetype, tier };
+  } catch {
+    return null; // timeout, DNS, TLS, whatever — this is enrichment, not a gate
+  }
 }
 
 async function ls(path: 'validate' | 'activate', fields: Record<string, string>):
@@ -125,7 +166,8 @@ export default async function handler(req: Request): Promise<Response> {
     if (!r.data.valid) return verdict(false, { reason: r.data.license_key?.status === 'expired' ? 'expired' : 'invalid' });
     const p = problem(r.data, storeId, variants);
     if (p) return verdict(false, { reason: p });
-    return verdict(true, { instanceId, expiresAt: r.data.license_key?.expires_at ?? null });
+    const enrichment = await lookupArchetype(r.data.meta?.customer_email ?? '');
+    return verdict(true, { instanceId, expiresAt: r.data.license_key?.expires_at ?? null, ...enrichment });
   }
 
   // ── First use on this device ──
@@ -146,5 +188,6 @@ export default async function handler(req: Request): Promise<Response> {
     const limit = /activation limit/i.test(act.data.error ?? '');
     return verdict(false, { reason: limit ? 'limit' : 'invalid' });
   }
-  return verdict(true, { instanceId: act.data.instance.id, expiresAt: act.data.license_key?.expires_at ?? null });
+  const enrichment = await lookupArchetype(pre.data.meta?.customer_email ?? act.data.meta?.customer_email ?? '');
+  return verdict(true, { instanceId: act.data.instance.id, expiresAt: act.data.license_key?.expires_at ?? null, ...enrichment });
 }

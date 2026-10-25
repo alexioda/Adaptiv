@@ -76,6 +76,12 @@ production.
 - `LEMONSQUEEZY_STORE_ID` (295177), `LEMONSQUEEZY_ALLOWED_VARIANTS`
   (comma-separated: 1576863 monthly, 1576855 yearly) for `api/verify-license.ts`. Unset means
   every license key is refused with `not_configured`.
+- `MAILERLITE_API_KEY` — optional, `api/verify-license.ts` only. On a valid
+  license, looks up the buyer's email (from the License API's `meta.customer_email`)
+  in MailerLite and attaches `archetype`/`tier` from the `kinetic_archetype`/
+  `kinetic_tier` subscriber fields (set by The Kinetic Audit quiz) to the
+  verdict. Unset, or no matching subscriber, just means those fields are
+  absent — never affects whether the license is accepted.
 - Read them with `process.env`, never `globalThis`.
 
 ## Access and payment
